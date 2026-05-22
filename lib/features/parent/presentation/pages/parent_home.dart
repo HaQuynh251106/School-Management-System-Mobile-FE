@@ -1,0 +1,1801 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/widgets/attendance_badge.dart';
+import '../../../../shared/widgets/chat_pages.dart';
+import '../../../../shared/widgets/notification_center.dart';
+import '../../../../shared/widgets/section_header.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_event.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
+import 'invoice_detail.dart';
+import 'parent_attendance_detail.dart';
+import 'parent_subject_detail.dart';
+
+// =================== MOCK DATA ===================
+
+class _Child {
+  const _Child({
+    required this.id,
+    required this.name,
+    required this.className,
+    required this.avatarColor,
+    required this.avgScore,
+    required this.presentCount,
+    required this.absentCount,
+  });
+
+  final String id;
+  final String name;
+  final String className;
+  final Color avatarColor;
+  final double avgScore;
+  final int presentCount;
+  final int absentCount;
+}
+
+const _children = [
+  _Child(
+    id: 'u-student-1',
+    name: 'Phạm Hoài An',
+    className: '10A1',
+    avatarColor: AppColors.studentAccent,
+    avgScore: 8.1,
+    presentCount: 45,
+    absentCount: 2,
+  ),
+  _Child(
+    id: 'u-student-2',
+    name: 'Phạm Hoài Bình',
+    className: '8A1',
+    avatarColor: AppColors.teacherAccent,
+    avgScore: 8.7,
+    presentCount: 48,
+    absentCount: 0,
+  ),
+];
+
+class _ARecord {
+  const _ARecord(this.subject, this.date, this.status, this.note);
+  final String subject;
+  final String date;
+  final String status;
+  final String? note;
+}
+
+const _attWeek = [
+  _ARecord('Tiếng Anh', '19/05', 'ABSENT_UNEXCUSED', 'Không liên lạc được PH'),
+  _ARecord('Sinh học', '19/05', 'LATE', 'Muộn 10 phút'),
+  _ARecord('Toán', '20/05', 'ABSENT_EXCUSED', 'Có đơn xin nghỉ ốm'),
+  _ARecord('Vật lý', '21/05', 'PRESENT', null),
+  _ARecord('Toán', '21/05', 'PRESENT', null),
+];
+
+const _attMonth = [
+  _ARecord('Tiếng Anh', '02/05', 'PRESENT', null),
+  _ARecord('Toán', '03/05', 'PRESENT', null),
+  _ARecord('Vật lý', '06/05', 'LATE', 'Muộn 5 phút'),
+  _ARecord('Ngữ văn', '08/05', 'ABSENT_EXCUSED', 'Đám tang ông'),
+  _ARecord('Sinh học', '12/05', 'PRESENT', null),
+  _ARecord('Tiếng Anh', '19/05', 'ABSENT_UNEXCUSED', 'Không liên lạc được PH'),
+  _ARecord('Sinh học', '19/05', 'LATE', 'Muộn 10 phút'),
+  _ARecord('Toán', '20/05', 'ABSENT_EXCUSED', 'Có đơn xin nghỉ ốm'),
+];
+
+const _attSemester = [
+  _ARecord('Toán', '15/09', 'PRESENT', null),
+  _ARecord('Vật lý', '22/09', 'LATE', 'Muộn 3 phút'),
+  _ARecord('Tiếng Anh', '10/10', 'ABSENT_EXCUSED', 'Tham gia HSG'),
+  _ARecord('Sinh học', '25/10', 'ABSENT_UNEXCUSED', 'Trốn tiết'),
+  _ARecord('Ngữ văn', '08/11', 'PRESENT', null),
+  _ARecord('Toán', '12/11', 'PRESENT', null),
+  _ARecord('Vật lý', '20/11', 'PRESENT', null),
+  _ARecord('Tiếng Anh', '02/05', 'PRESENT', null),
+  _ARecord('Toán', '03/05', 'PRESENT', null),
+  _ARecord('Vật lý', '06/05', 'LATE', 'Muộn 5 phút'),
+  _ARecord('Ngữ văn', '08/05', 'ABSENT_EXCUSED', 'Đám tang ông'),
+  _ARecord('Sinh học', '12/05', 'PRESENT', null),
+  _ARecord('Tiếng Anh', '19/05', 'ABSENT_UNEXCUSED', 'Không liên lạc được PH'),
+];
+
+class _SubjectGrade {
+  const _SubjectGrade(this.subject, this.scores);
+  final String subject;
+  final List<double?> scores; // [M, 15p, GK, CK]
+}
+
+const _gradesHk1 = [
+  _SubjectGrade('Toán', [9.0, 8.5, 7.5, 8.8]),
+  _SubjectGrade('Vật lý', [8.0, 7.8, 8.8, 8.0]),
+  _SubjectGrade('Tiếng Anh', [7.0, 7.5, 8.0, 7.5]),
+  _SubjectGrade('Ngữ văn', [7.5, 6.0, 6.5, 7.0]),
+  _SubjectGrade('Sinh học', [8.5, 7.0, 8.0, 8.5]),
+];
+
+const _gradesHk2 = [
+  _SubjectGrade('Toán', [8.5, 8.0, null, null]),
+  _SubjectGrade('Vật lý', [9.0, null, null, null]),
+  _SubjectGrade('Tiếng Anh', [7.5, null, null, null]),
+  _SubjectGrade('Ngữ văn', [null, null, null, null]),
+  _SubjectGrade('Sinh học', [null, null, null, null]),
+];
+
+class _Invoice {
+  const _Invoice({
+    required this.code,
+    required this.title,
+    required this.dueDate,
+    required this.total,
+    required this.status,
+    this.paidAt,
+  });
+  final String code;
+  final String title;
+  final String dueDate;
+  final int total;
+  final String status;
+  final String? paidAt;
+}
+
+const _invoices = [
+  _Invoice(
+    code: 'HD-2025-HK2-0042',
+    title: 'Học phí HK2 — 2025/2026',
+    dueDate: '15/06/2026',
+    total: 4500000,
+    status: 'PENDING',
+  ),
+  _Invoice(
+    code: 'HD-2025-XHK-0017',
+    title: 'Bảo hiểm + Ngoại khóa Robotics',
+    dueDate: '30/05/2026',
+    total: 1250000,
+    status: 'OVERDUE',
+  ),
+  _Invoice(
+    code: 'HD-2025-HK1-0042',
+    title: 'Học phí HK1 — 2025/2026',
+    dueDate: '15/12/2025',
+    total: 4500000,
+    status: 'PAID',
+    paidAt: '12/12/2025',
+  ),
+  _Invoice(
+    code: 'HD-2025-DN-0042',
+    title: 'Đồng phục đầu năm',
+    dueDate: '15/09/2025',
+    total: 850000,
+    status: 'PAID',
+    paidAt: '08/09/2025',
+  ),
+];
+
+// =================== ROOT ===================
+
+class ParentHome extends StatefulWidget {
+  const ParentHome({super.key});
+
+  @override
+  State<ParentHome> createState() => _ParentHomeState();
+}
+
+class _ParentHomeState extends State<ParentHome> {
+  int _tab = 0;
+  int _activeChild = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final child = _children[_activeChild];
+    return Scaffold(
+      body: IndexedStack(
+        index: _tab,
+        children: [
+          _MonitorTab(
+            child: child,
+            onSwitchChild: _showChildSwitcher,
+            onGoInvoices: () => setState(() => _tab = 3),
+          ),
+          _AttendanceTab(child: child),
+          _GradesTab(child: child),
+          _InvoicesTab(child: child),
+          _ProfileTab(
+              activeChild: child, onSwitchChild: _showChildSwitcher),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _tab,
+        onDestinationSelected: (i) => setState(() => _tab = i),
+        indicatorColor: AppColors.parentAccent.withOpacity(0.15),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.monitor_heart_outlined),
+            selectedIcon: Icon(Icons.monitor_heart_rounded,
+                color: AppColors.parentAccent),
+            label: 'Giám sát',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.event_note_outlined),
+            selectedIcon: Icon(Icons.event_note_rounded,
+                color: AppColors.parentAccent),
+            label: 'Chuyên cần',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.stars_outlined),
+            selectedIcon:
+                Icon(Icons.stars_rounded, color: AppColors.parentAccent),
+            label: 'Kết quả',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.receipt_long_outlined),
+            selectedIcon: Icon(Icons.receipt_long_rounded,
+                color: AppColors.parentAccent),
+            label: 'Hóa đơn',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline_rounded),
+            selectedIcon:
+                Icon(Icons.person_rounded, color: AppColors.parentAccent),
+            label: 'Tài khoản',
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showChildSwitcher() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Chọn học sinh',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 16),
+            ..._children.asMap().entries.map((e) {
+              final idx = e.key;
+              final c = e.value;
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  backgroundColor: c.avatarColor.withOpacity(0.14),
+                  child: Text(c.name[0],
+                      style: TextStyle(
+                          color: c.avatarColor, fontWeight: FontWeight.bold)),
+                ),
+                title: Text(c.name),
+                subtitle: Text('Lớp ${c.className}'),
+                trailing: _activeChild == idx
+                    ? const Icon(Icons.check_circle_rounded,
+                        color: AppColors.parentAccent)
+                    : null,
+                onTap: () {
+                  setState(() => _activeChild = idx);
+                  Navigator.pop(context);
+                },
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// =================== TAB 1: MONITOR ===================
+
+class _MonitorTab extends StatelessWidget {
+  const _MonitorTab({
+    required this.child,
+    required this.onSwitchChild,
+    required this.onGoInvoices,
+  });
+  final _Child child;
+  final VoidCallback onSwitchChild;
+  final VoidCallback onGoInvoices;
+
+  @override
+  Widget build(BuildContext context) {
+    final pendingInvoice = _invoices
+        .where((i) => i.status != 'PAID')
+        .fold<int>(0, (s, i) => s + i.total);
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Giám sát con'),
+        backgroundColor: AppColors.parentAccent,
+        actions: const [_PChatAction(), _PNotiAction()],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _ChildCard(child: child, onSwitch: onSwitchChild),
+          const SizedBox(height: 16),
+          _AlertBanner(),
+          if (pendingInvoice > 0) ...[
+            const SizedBox(height: 12),
+            _InvoiceBanner(
+              totalPending: pendingInvoice,
+              onTap: onGoInvoices,
+            ),
+          ],
+          const SizedBox(height: 16),
+          const SectionHeader(title: 'Tổng quan học kỳ'),
+          const SizedBox(height: 10),
+          _SummaryRow(child: child),
+          const SizedBox(height: 16),
+          const SectionHeader(title: 'Điểm danh gần đây'),
+          const SizedBox(height: 10),
+          ..._attWeek.take(4).map((r) => Card(
+                margin: const EdgeInsets.only(bottom: 6),
+                child: ListTile(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ParentAttendanceDetail(
+                        childName: child.name,
+                        subject: r.subject,
+                        date: r.date,
+                        status: r.status,
+                        note: r.note,
+                      ),
+                    ),
+                  ),
+                  title: Text(r.subject,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w500, fontSize: 14)),
+                  subtitle: Text(r.note ?? r.date,
+                      style: const TextStyle(fontSize: 12),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AttendanceBadge(r.status),
+                      const Icon(Icons.chevron_right_rounded,
+                          color: AppColors.textSecondary, size: 18),
+                    ],
+                  ),
+                ),
+              )),
+          const SizedBox(height: 16),
+          const SectionHeader(title: 'Top điểm gần đây'),
+          const SizedBox(height: 10),
+          Card(
+            child: Column(
+              children: [
+                _RecentGradeRow(
+                    subject: 'Toán', score: 8.8, note: 'Bài kiểm tra GK'),
+                Divider(height: 0),
+                _RecentGradeRow(
+                    subject: 'Sinh học', score: 8.5, note: 'Bài 15 phút'),
+                Divider(height: 0),
+                _RecentGradeRow(
+                    subject: 'Tiếng Anh', score: 7.0, note: 'Bài miệng'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecentGradeRow extends StatelessWidget {
+  const _RecentGradeRow({
+    required this.subject,
+    required this.score,
+    required this.note,
+  });
+  final String subject;
+  final double score;
+  final String note;
+
+  Color get _color {
+    if (score >= 8) return AppColors.success;
+    if (score >= 6.5) return AppColors.warning;
+    return AppColors.error;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: _color.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Center(
+          child: Text(score.toStringAsFixed(1),
+              style: TextStyle(
+                  fontWeight: FontWeight.bold, color: _color, fontSize: 14)),
+        ),
+      ),
+      title: Text(subject,
+          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+      subtitle: Text(note,
+          style: const TextStyle(
+              fontSize: 12, color: AppColors.textSecondary)),
+    );
+  }
+}
+
+class _AlertBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.absentUnexcused.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border:
+            Border.all(color: AppColors.absentUnexcused.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: const [
+          Icon(Icons.warning_amber_rounded,
+              color: AppColors.absentUnexcused, size: 22),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Con vắng mặt không phép ngày 19/05 — Tiếng Anh tiết 1',
+              style:
+                  TextStyle(fontSize: 13, color: AppColors.absentUnexcused),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InvoiceBanner extends StatelessWidget {
+  const _InvoiceBanner({
+    required this.totalPending,
+    required this.onTap,
+  });
+  final int totalPending;
+  final VoidCallback onTap;
+
+  String _formatVnd(int amount) {
+    final s = amount.toString();
+    final buf = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
+      buf.write(s[i]);
+    }
+    return '${buf.toString()} ₫';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.warning.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.warning.withOpacity(0.3)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.payment_rounded,
+                  color: AppColors.warning, size: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Có hóa đơn cần thanh toán',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 13)),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Tổng: ${_formatVnd(totalPending)}',
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.warning),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded,
+                  color: AppColors.warning),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SummaryRow extends StatelessWidget {
+  const _SummaryRow({required this.child});
+  final _Child child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _SummaryCard(
+            value: child.avgScore.toStringAsFixed(1),
+            label: 'Điểm TB',
+            color: AppColors.success,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _SummaryCard(
+            value: '${child.presentCount}/${child.presentCount + child.absentCount}',
+            label: 'Có mặt',
+            color: AppColors.primary,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _SummaryCard(
+            value: '${child.absentCount}',
+            label: 'Vắng',
+            color: child.absentCount > 0
+                ? AppColors.error
+                : AppColors.textSecondary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+  final String value;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Text(value,
+                style: TextStyle(
+                    fontSize: 22, fontWeight: FontWeight.bold, color: color)),
+            const SizedBox(height: 4),
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textSecondary)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChildCard extends StatelessWidget {
+  const _ChildCard({required this.child, required this.onSwitch});
+  final _Child child;
+  final VoidCallback onSwitch;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: InkWell(
+        onTap: onSwitch,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 26,
+                backgroundColor: child.avatarColor.withOpacity(0.14),
+                child: Text(child.name[0],
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                        color: child.avatarColor)),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(child.name,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 15)),
+                    const SizedBox(height: 2),
+                    Text('Lớp ${child.className}',
+                        style: const TextStyle(
+                            color: AppColors.textSecondary, fontSize: 12)),
+                  ],
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.parentAccent.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Đổi con',
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.parentAccent)),
+                    SizedBox(width: 4),
+                    Icon(Icons.swap_horiz_rounded,
+                        size: 14, color: AppColors.parentAccent),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// =================== TAB 2: ATTENDANCE ===================
+
+class _AttendanceTab extends StatelessWidget {
+  const _AttendanceTab({required this.child});
+  final _Child child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Chuyên cần — ${child.name}'),
+          backgroundColor: AppColors.parentAccent,
+          actions: const [_PChatAction(), _PNotiAction()],
+          bottom: const TabBar(
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white60,
+            indicatorColor: Colors.white,
+            tabs: [
+              Tab(text: 'Tuần này'),
+              Tab(text: 'Tháng này'),
+              Tab(text: 'Học kỳ'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            _AttendanceRange(child: child, records: _attWeek, rangeLabel: 'tuần này'),
+            _AttendanceRange(
+                child: child, records: _attMonth, rangeLabel: 'tháng này'),
+            _AttendanceRange(
+                child: child, records: _attSemester, rangeLabel: 'học kỳ'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AttendanceRange extends StatelessWidget {
+  const _AttendanceRange({
+    required this.child,
+    required this.records,
+    required this.rangeLabel,
+  });
+  final _Child child;
+  final List<_ARecord> records;
+  final String rangeLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final stats = {
+      'Có mặt': records.where((r) => r.status == 'PRESENT').length,
+      'Vắng phép': records.where((r) => r.status == 'ABSENT_EXCUSED').length,
+      'Vắng KP': records.where((r) => r.status == 'ABSENT_UNEXCUSED').length,
+      'Muộn': records.where((r) => r.status == 'LATE').length,
+    };
+    final rate = records.isEmpty
+        ? 0.0
+        : (stats['Có mặt']! + stats['Muộn']! * 0.5) / records.length;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _RateBanner(rate: rate, rangeLabel: rangeLabel),
+        const SizedBox(height: 14),
+        _StatsRow(stats: stats),
+        const SizedBox(height: 16),
+        const SectionHeader(title: 'Lịch sử'),
+        const SizedBox(height: 10),
+        ...records.map((r) => Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ParentAttendanceDetail(
+                      childName: child.name,
+                      subject: r.subject,
+                      date: r.date,
+                      status: r.status,
+                      note: r.note,
+                    ),
+                  ),
+                ),
+                leading: const Icon(Icons.schedule_rounded,
+                    color: AppColors.textSecondary, size: 20),
+                title: Text(r.subject,
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
+                subtitle: Text(r.note ?? r.date,
+                    style: const TextStyle(fontSize: 12),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AttendanceBadge(r.status),
+                    const Icon(Icons.chevron_right_rounded,
+                        color: AppColors.textSecondary, size: 18),
+                  ],
+                ),
+              ),
+            )),
+      ],
+    );
+  }
+}
+
+class _StatsRow extends StatelessWidget {
+  const _StatsRow({required this.stats});
+  final Map<String, int> stats;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = [
+      AppColors.present,
+      AppColors.absentExcused,
+      AppColors.absentUnexcused,
+      AppColors.late,
+    ];
+    return Row(
+      children: List.generate(stats.length, (i) {
+        final entry = stats.entries.elementAt(i);
+        return Expanded(
+          child: Card(
+            margin: EdgeInsets.only(right: i < 3 ? 6 : 0),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Column(
+                children: [
+                  Text('${entry.value}',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          color: colors[i])),
+                  const SizedBox(height: 2),
+                  Text(entry.key,
+                      style: const TextStyle(
+                          fontSize: 10,
+                          color: AppColors.textSecondary),
+                      textAlign: TextAlign.center),
+                ],
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _RateBanner extends StatelessWidget {
+  const _RateBanner({required this.rate, required this.rangeLabel});
+  final double rate;
+  final String rangeLabel;
+
+  Color get _color {
+    if (rate >= 0.9) return AppColors.success;
+    if (rate >= 0.75) return AppColors.warning;
+    return AppColors.error;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final percent = (rate * 100).toStringAsFixed(0);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _color.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 50,
+            height: 50,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                CircularProgressIndicator(
+                  value: rate,
+                  color: _color,
+                  backgroundColor: _color.withOpacity(0.18),
+                  strokeWidth: 5,
+                ),
+                Text('$percent%',
+                    style: TextStyle(
+                        color: _color,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Tỉ lệ chuyên cần $rangeLabel',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 13)),
+                const SizedBox(height: 2),
+                Text(
+                  rate >= 0.9
+                      ? 'Rất tốt — duy trì nhé!'
+                      : rate >= 0.75
+                          ? 'Cần lưu ý'
+                          : 'Cảnh báo — đã thông báo',
+                  style: TextStyle(color: _color, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =================== TAB 3: GRADES ===================
+
+class _GradesTab extends StatelessWidget {
+  const _GradesTab({required this.child});
+  final _Child child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Kết quả — ${child.name}'),
+          backgroundColor: AppColors.parentAccent,
+          actions: const [_PChatAction(), _PNotiAction()],
+          bottom: const TabBar(
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white60,
+            indicatorColor: Colors.white,
+            tabs: [
+              Tab(text: 'HK1'),
+              Tab(text: 'HK2'),
+              Tab(text: 'Cả năm'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            _SemesterGrades(
+                child: child,
+                semester: 'Học kỳ 1 — 2025/2026',
+                subjects: _gradesHk1),
+            _SemesterGrades(
+                child: child,
+                semester: 'Học kỳ 2 — 2025/2026',
+                subjects: _gradesHk2),
+            _YearlyView(child: child),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SemesterGrades extends StatelessWidget {
+  const _SemesterGrades({
+    required this.child,
+    required this.semester,
+    required this.subjects,
+  });
+  final _Child child;
+  final String semester;
+  final List<_SubjectGrade> subjects;
+
+  double? _avg(_SubjectGrade sg) {
+    const weights = [1, 1, 2, 3];
+    var sum = 0.0;
+    var sumW = 0;
+    for (var i = 0; i < sg.scores.length; i++) {
+      if (sg.scores[i] != null) {
+        sum += sg.scores[i]! * weights[i];
+        sumW += weights[i];
+      }
+    }
+    return sumW == 0 ? null : sum / sumW;
+  }
+
+  Color _avgColor(double avg) {
+    if (avg >= 8) return AppColors.success;
+    if (avg >= 6.5) return AppColors.warning;
+    return AppColors.error;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final allAvgs = subjects.map(_avg).whereType<double>().toList();
+    final overall = allAvgs.isEmpty
+        ? null
+        : allAvgs.reduce((a, b) => a + b) / allAvgs.length;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppColors.parentAccent,
+                AppColors.parentAccent.withOpacity(0.7),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.auto_graph_rounded,
+                  color: Colors.white70, size: 36),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(semester,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14)),
+                    const SizedBox(height: 4),
+                    Text(
+                      overall == null
+                          ? 'Chưa có điểm'
+                          : 'TB: ${overall.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                          color: Colors.white70, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        const SectionHeader(title: 'Theo môn'),
+        const SizedBox(height: 10),
+        ...subjects.map((sg) {
+          final avg = _avg(sg);
+          return Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ParentSubjectDetail(
+                    childName: child.name,
+                    subject: sg.subject,
+                    semester: semester,
+                  ),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: (avg != null ? _avgColor(avg) : AppColors.divider)
+                            .withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Center(
+                        child: Text(
+                          avg?.toStringAsFixed(1) ?? '—',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: avg != null
+                                  ? _avgColor(avg)
+                                  : AppColors.textSecondary),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(sg.subject,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w600, fontSize: 14)),
+                          const SizedBox(height: 4),
+                          Text(
+                            'M: ${sg.scores[0]?.toStringAsFixed(1) ?? "—"} • '
+                            '15p: ${sg.scores[1]?.toStringAsFixed(1) ?? "—"} • '
+                            'GK: ${sg.scores[2]?.toStringAsFixed(1) ?? "—"} • '
+                            'CK: ${sg.scores[3]?.toStringAsFixed(1) ?? "—"}',
+                            style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right_rounded,
+                        color: AppColors.textSecondary),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+}
+
+class _YearlyView extends StatelessWidget {
+  const _YearlyView({required this.child});
+  final _Child child;
+
+  double _avg(List<double?> scores) {
+    const weights = [1, 1, 2, 3];
+    var sum = 0.0;
+    var sumW = 0;
+    for (var i = 0; i < scores.length; i++) {
+      if (scores[i] != null) {
+        sum += scores[i]! * weights[i];
+        sumW += weights[i];
+      }
+    }
+    return sumW == 0 ? 0 : sum / sumW;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.parentAccent.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.lightbulb_outline_rounded,
+                  color: AppColors.parentAccent),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Cuối năm: nếu TB ≥ 5.0 + hạnh kiểm ≥ Trung bình ⇒ lên lớp',
+                  style: TextStyle(fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        const SectionHeader(title: 'TB cả năm theo môn'),
+        const SizedBox(height: 10),
+        for (var i = 0; i < _gradesHk1.length; i++) ...[
+          () {
+            final hk1 = _avg(_gradesHk1[i].scores);
+            final hk2 = _avg(_gradesHk2[i].scores);
+            final year = hk2 == 0 ? hk1 : (hk1 + 2 * hk2) / 3;
+            return Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(_gradesHk1[i].subject,
+                            style: const TextStyle(fontWeight: FontWeight.w600)),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.parentAccent.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'Năm: ${year.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                color: AppColors.parentAccent),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('HK1',
+                                  style: TextStyle(
+                                      fontSize: 10,
+                                      color: AppColors.textSecondary)),
+                              LinearProgressIndicator(
+                                value: hk1 / 10,
+                                color: AppColors.parentAccent,
+                                backgroundColor: AppColors.divider,
+                                minHeight: 5,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(hk1.toStringAsFixed(1),
+                                  style: const TextStyle(
+                                      fontSize: 12, fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('HK2',
+                                  style: TextStyle(
+                                      fontSize: 10,
+                                      color: AppColors.textSecondary)),
+                              LinearProgressIndicator(
+                                value: hk2 / 10,
+                                color: AppColors.warning,
+                                backgroundColor: AppColors.divider,
+                                minHeight: 5,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(hk2 == 0 ? '—' : hk2.toStringAsFixed(1),
+                                  style: const TextStyle(
+                                      fontSize: 12, fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }(),
+        ],
+      ],
+    );
+  }
+}
+
+// =================== TAB 4: INVOICES ===================
+
+class _InvoicesTab extends StatelessWidget {
+  const _InvoicesTab({required this.child});
+  final _Child child;
+
+  @override
+  Widget build(BuildContext context) {
+    final pending =
+        _invoices.where((i) => i.status != 'PAID').toList();
+    final paid = _invoices.where((i) => i.status == 'PAID').toList();
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Hóa đơn'),
+          backgroundColor: AppColors.parentAccent,
+          actions: const [_PChatAction(), _PNotiAction()],
+          bottom: TabBar(
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white60,
+            indicatorColor: Colors.white,
+            tabs: [
+              Tab(text: 'Cần thanh toán (${pending.length})'),
+              Tab(text: 'Đã thanh toán (${paid.length})'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            _InvoiceList(invoices: pending, childName: child.name, empty: 'Không có hóa đơn cần thanh toán'),
+            _InvoiceList(invoices: paid, childName: child.name, empty: 'Chưa có hóa đơn đã thanh toán'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InvoiceList extends StatelessWidget {
+  const _InvoiceList({
+    required this.invoices,
+    required this.childName,
+    required this.empty,
+  });
+  final List<_Invoice> invoices;
+  final String childName;
+  final String empty;
+
+  String _formatVnd(int amount) {
+    final s = amount.toString();
+    final buf = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
+      buf.write(s[i]);
+    }
+    return '${buf.toString()} ₫';
+  }
+
+  Color _statusColor(String status) => switch (status) {
+        'PAID' => AppColors.success,
+        'OVERDUE' => AppColors.error,
+        _ => AppColors.warning,
+      };
+
+  String _statusLabel(String status) => switch (status) {
+        'PAID' => 'Đã thanh toán',
+        'OVERDUE' => 'Quá hạn',
+        _ => 'Chưa TT',
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    if (invoices.isEmpty) {
+      return Center(
+        child: Text(empty,
+            style: const TextStyle(color: AppColors.textSecondary)),
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: invoices.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (_, i) {
+        final inv = invoices[i];
+        final color = _statusColor(inv.status);
+        return Card(
+          margin: EdgeInsets.zero,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => InvoiceDetailPage(
+                  invoiceCode: inv.code,
+                  childName: childName,
+                  semester: inv.title,
+                  dueDate: inv.dueDate,
+                  status: inv.status,
+                  paidAt: inv.paidAt,
+                  items: _mockItems(inv.title, inv.total),
+                ),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          _statusLabel(inv.status),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(inv.code,
+                          style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(inv.title,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600, fontSize: 14)),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.event_rounded,
+                          size: 14, color: AppColors.textSecondary),
+                      const SizedBox(width: 4),
+                      Text(
+                        inv.status == 'PAID'
+                            ? 'Đã TT: ${inv.paidAt}'
+                            : 'Hạn: ${inv.dueDate}',
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                      const Spacer(),
+                      Text(
+                        _formatVnd(inv.total),
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: color,
+                            fontSize: 16),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  List<InvoiceLineItem> _mockItems(String title, int total) {
+    if (title.contains('Bảo hiểm')) {
+      return const [
+        InvoiceLineItem('Bảo hiểm y tế', 650000),
+        InvoiceLineItem('Ngoại khóa Robotics', 600000),
+      ];
+    }
+    if (title.contains('Đồng phục')) {
+      return const [
+        InvoiceLineItem('2 áo trắng', 350000),
+        InvoiceLineItem('2 quần xanh', 350000),
+        InvoiceLineItem('Cà vạt', 150000),
+      ];
+    }
+    return [
+      const InvoiceLineItem('Học phí', 3500000),
+      const InvoiceLineItem('Tiền ăn trưa', 800000),
+      InvoiceLineItem('Khác', total - 3500000 - 800000),
+    ];
+  }
+}
+
+// =================== TAB 5: PROFILE ===================
+
+class _ProfileTab extends StatelessWidget {
+  const _ProfileTab({
+    required this.activeChild,
+    required this.onSwitchChild,
+  });
+  final _Child activeChild;
+  final VoidCallback onSwitchChild;
+
+  @override
+  Widget build(BuildContext context) {
+    final user = (context.read<AuthBloc>().state as AuthAuthenticated).user;
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Tài khoản'),
+        backgroundColor: AppColors.parentAccent,
+        actions: const [_PChatAction(), _PNotiAction()],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  const CircleAvatar(
+                    radius: 36,
+                    backgroundColor: AppColors.parentAccent,
+                    child: Icon(Icons.family_restroom_rounded,
+                        color: Colors.white, size: 32),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(user.fullName,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(height: 4),
+                  Text(user.email ?? user.username,
+                      style: const TextStyle(
+                          color: AppColors.textSecondary, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.parentAccent.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'Đang xem: ${activeChild.name} (${activeChild.className})',
+                      style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.parentAccent,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const SectionHeader(title: 'Tài khoản'),
+          const SizedBox(height: 8),
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.swap_horiz_rounded,
+                      color: AppColors.parentAccent),
+                  title: const Text('Chuyển học sinh'),
+                  subtitle: Text('${_children.length} con liên kết',
+                      style: const TextStyle(
+                          fontSize: 11, color: AppColors.textSecondary)),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: onSwitchChild,
+                ),
+                const Divider(height: 0),
+                ListTile(
+                  leading: const Icon(Icons.sports_basketball_rounded,
+                      color: AppColors.parentAccent),
+                  title: const Text('Đăng ký ngoại khóa cho con'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => _showExtraCourses(context),
+                ),
+                const Divider(height: 0),
+                ListTile(
+                  leading: const Icon(Icons.chat_bubble_outline_rounded,
+                      color: AppColors.parentAccent),
+                  title: const Text('Liên lạc với GVCN / GV bộ môn'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const ChatListPage(
+                        accent: AppColors.parentAccent,
+                        threads: _parentThreads,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          const SectionHeader(title: 'Cài đặt'),
+          const SizedBox(height: 8),
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.notifications_outlined,
+                      color: AppColors.parentAccent),
+                  title: const Text('Cài đặt thông báo'),
+                  trailing: Switch(value: true, onChanged: (_) {}),
+                ),
+                const Divider(height: 0),
+                ListTile(
+                  leading: const Icon(Icons.security_outlined,
+                      color: AppColors.parentAccent),
+                  title: const Text('Đổi mật khẩu'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () {},
+                ),
+                const Divider(height: 0),
+                const ListTile(
+                  leading: Icon(Icons.info_outline_rounded,
+                      color: AppColors.parentAccent),
+                  title: Text('Phiên bản'),
+                  trailing: Text('0.1.0',
+                      style: TextStyle(color: AppColors.textSecondary)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          ListTile(
+            leading: const Icon(Icons.logout_rounded, color: AppColors.error),
+            title: const Text('Đăng xuất',
+                style: TextStyle(color: AppColors.error)),
+            onTap: () =>
+                context.read<AuthBloc>().add(const AuthLogoutRequested()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showExtraCourses(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Khóa ngoại khóa đang mở',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 12),
+            _ExtraCourseTile(
+              name: 'Robotics — Trình độ cơ bản',
+              schedule: 'T7 14:00–16:00',
+              fee: '600.000 ₫',
+              spots: 12,
+              total: 20,
+            ),
+            const SizedBox(height: 8),
+            _ExtraCourseTile(
+              name: 'Vẽ truyện tranh',
+              schedule: 'T7 09:00–11:00',
+              fee: '450.000 ₫',
+              spots: 18,
+              total: 25,
+            ),
+            const SizedBox(height: 8),
+            _ExtraCourseTile(
+              name: 'STEM — Lập trình Python',
+              schedule: 'CN 14:00–16:00',
+              fee: '750.000 ₫',
+              spots: 5,
+              total: 15,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ExtraCourseTile extends StatelessWidget {
+  const _ExtraCourseTile({
+    required this.name,
+    required this.schedule,
+    required this.fee,
+    required this.spots,
+    required this.total,
+  });
+  final String name;
+  final String schedule;
+  final String fee;
+  final int spots;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.parentAccent.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.sports_basketball_rounded,
+                color: AppColors.parentAccent),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 13)),
+                Text('$schedule • Còn $spots/$total chỗ',
+                    style: const TextStyle(
+                        fontSize: 11, color: AppColors.textSecondary)),
+                Text(fee,
+                    style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.parentAccent,
+                        fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Đã đăng ký $name'),
+                  backgroundColor: AppColors.success,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.parentAccent,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text('Đăng ký', style: TextStyle(fontSize: 12)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =================== SHARED ACTIONS ===================
+
+const _parentThreads = <ChatThread>[
+  ChatThread(
+    name: 'Trần Thị Hoa',
+    role: 'GVCN lớp 10A1',
+    lastMessage: 'Vâng anh chị, em nắm rồi. Bài tập về nhà cô sẽ gửi qua app.',
+    lastTime: '08:32',
+    unread: 0,
+  ),
+  ChatThread(
+    name: 'Lê Văn Minh',
+    role: 'GV Vật lý 10A1',
+    lastMessage: 'Em An làm bài kiểm tra rất tốt, anh chị động viên cháu nhé.',
+    lastTime: 'Hôm qua',
+    unread: 1,
+  ),
+  ChatThread(
+    name: 'Phạm Quốc Bảo',
+    role: 'GV Tiếng Anh 10A1',
+    lastMessage: 'Lịch thi GK sẽ được dời sang tuần sau.',
+    lastTime: '3 ngày trước',
+    unread: 0,
+  ),
+  ChatThread(
+    name: 'Lớp 10A1',
+    role: 'Thông báo từ GVCN',
+    lastMessage: 'Cô gửi bài tập về nhà chương 3 nhé!',
+    lastTime: 'Hôm qua',
+    unread: 0,
+    isBroadcast: true,
+  ),
+];
+
+class _PNotiAction extends StatelessWidget {
+  const _PNotiAction();
+
+  @override
+  Widget build(BuildContext context) {
+    final unread = mockNotifications.where((n) => !n.read).length;
+    return Padding(
+      padding: const EdgeInsets.only(right: 4),
+      child: Stack(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const NotificationCenter(
+                  accent: AppColors.parentAccent,
+                  items: mockNotifications,
+                ),
+              ),
+            ),
+          ),
+          if (unread > 0)
+            Positioned(
+              right: 8,
+              top: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: AppColors.error,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                constraints: const BoxConstraints(minWidth: 14),
+                child: Text('$unread',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PChatAction extends StatelessWidget {
+  const _PChatAction();
+
+  @override
+  Widget build(BuildContext context) {
+    final unread =
+        _parentThreads.fold<int>(0, (s, t) => s + t.unread);
+    return Padding(
+      padding: const EdgeInsets.only(right: 0),
+      child: Stack(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chat_bubble_outline_rounded),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const ChatListPage(
+                  accent: AppColors.parentAccent,
+                  threads: _parentThreads,
+                ),
+              ),
+            ),
+          ),
+          if (unread > 0)
+            Positioned(
+              right: 8,
+              top: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: AppColors.error,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                constraints: const BoxConstraints(minWidth: 14),
+                child: Text('$unread',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
