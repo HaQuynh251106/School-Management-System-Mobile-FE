@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_service.dart';
 import '../../../../core/theme/app_colors.dart';
 
 class _Template {
   const _Template({
     required this.code,
     required this.name,
-    required this.category,
     required this.channel,
     required this.subject,
     required this.body,
@@ -14,73 +15,32 @@ class _Template {
   });
   final String code;
   final String name;
-  final String category;
   final String channel;
   final String subject;
   final String body;
   final bool active;
+
+  factory _Template.fromJson(Map<String, dynamic> m) => _Template(
+        code: (m['code'] ?? '').toString(),
+        name: (m['name'] ?? '').toString(),
+        channel: (m['channel'] ?? '').toString(),
+        subject: (m['titleTemplate'] ?? '').toString(),
+        body: (m['bodyTemplate'] ?? '').toString(),
+        active: m['active'] == true,
+      );
 }
 
-class NotificationTemplatesPage extends StatelessWidget {
+class NotificationTemplatesPage extends StatefulWidget {
   const NotificationTemplatesPage({super.key});
 
-  static const _templates = [
-    _Template(
-      code: 'ATTENDANCE_ABSENT_PUSH',
-      name: 'Cảnh báo vắng - Push',
-      category: 'ATTENDANCE_ALERT',
-      channel: 'PUSH',
-      subject: 'Học sinh vắng mặt',
-      body:
-          'Học sinh {{studentName}} vắng tiết {{period}} ngày {{date}}.',
-    ),
-    _Template(
-      code: 'ATTENDANCE_ABSENT_EMAIL',
-      name: 'Cảnh báo vắng - Email',
-      category: 'ATTENDANCE_ALERT',
-      channel: 'EMAIL',
-      subject: '[Smart School] Thông báo vắng mặt',
-      body:
-          'Kính gửi PH {{parentName}}, học sinh {{studentName}} đã vắng '
-          'tiết {{period}} ngày {{date}}. Lý do: {{reason}}.',
-    ),
-    _Template(
-      code: 'INVOICE_ISSUED_EMAIL',
-      name: 'Hóa đơn mới - Email',
-      category: 'INVOICE',
-      channel: 'EMAIL',
-      subject: '[Smart School] Hóa đơn học phí {{invoiceCode}}',
-      body:
-          'Hóa đơn {{invoiceCode}} trị giá {{totalAmount}} VNĐ, hạn {{dueDate}}.',
-    ),
-    _Template(
-      code: 'GRADE_PUBLISHED_PUSH',
-      name: 'Có điểm mới',
-      category: 'GRADE_PUBLISHED',
-      channel: 'PUSH',
-      subject: 'Điểm mới',
-      body: 'Bạn vừa nhận điểm môn {{subject}}: {{score}}.',
-    ),
-    _Template(
-      code: 'ASSIGNMENT_PUBLISHED_PUSH',
-      name: 'Bài tập mới',
-      category: 'ASSIGNMENT',
-      channel: 'PUSH',
-      subject: 'Bài tập mới',
-      body:
-          'GV {{teacherName}} giao bài "{{title}}" — hạn {{deadline}}.',
-    ),
-    _Template(
-      code: 'PAYMENT_SUCCESS_EMAIL',
-      name: 'Thanh toán thành công',
-      category: 'PAYMENT',
-      channel: 'EMAIL',
-      subject: '[Smart School] Biên nhận thanh toán {{invoiceCode}}',
-      body:
-          'Cảm ơn anh chị đã thanh toán hóa đơn {{invoiceCode}}. '
-          'Số tiền: {{amount}} VNĐ qua {{method}}.',
-    ),
-  ];
+  @override
+  State<NotificationTemplatesPage> createState() =>
+      _NotificationTemplatesPageState();
+}
+
+class _NotificationTemplatesPageState extends State<NotificationTemplatesPage> {
+  late final Future<List<Map<String, dynamic>>> _future =
+      sl<ApiService>().notificationTemplates();
 
   static (Color, IconData) _channelStyle(String channel) {
     switch (channel) {
@@ -108,93 +68,114 @@ class NotificationTemplatesPage extends StatelessWidget {
               onPressed: () {}),
         ],
       ),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: _templates.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 8),
-        itemBuilder: (_, i) {
-          final t = _templates[i];
-          final (color, icon) = _channelStyle(t.channel);
-          return Card(
-            margin: EdgeInsets.zero,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: () => _showEdit(context, t),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: _future,
+        builder: (context, snap) {
+          if (snap.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snap.hasError) {
+            return Center(
+                child: Text('Lỗi: ${snap.error}',
+                    style: const TextStyle(color: AppColors.textSecondary)));
+          }
+          final templates =
+              (snap.data ?? []).map(_Template.fromJson).toList();
+          if (templates.isEmpty) {
+            return const Center(
+                child: Text('Chưa có template',
+                    style: TextStyle(color: AppColors.textSecondary)));
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: templates.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (_, i) {
+              final t = templates[i];
+              final (color, icon) = _channelStyle(t.channel);
+              return Card(
+                margin: EdgeInsets.zero,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => _showEdit(context, t),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: color.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(icon, color: color, size: 18),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Text(t.name,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13)),
+                                  Text(t.code,
+                                      style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.textSecondary)),
+                                ],
+                              ),
+                            ),
+                            Switch(
+                              value: t.active,
+                              onChanged: (_) {},
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
                         Container(
-                          width: 36,
-                          height: 36,
+                          padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: color.withOpacity(0.12),
+                            color: AppColors.background,
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Icon(icon, color: color, size: 18),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(t.name,
+                              if (t.channel == 'EMAIL' &&
+                                  t.subject.isNotEmpty) ...[
+                                Text(t.subject,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12)),
+                                const SizedBox(height: 4),
+                              ],
+                              Text(t.body,
                                   style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13)),
-                              Text(t.code,
-                                  style: const TextStyle(
-                                      fontSize: 11,
-                                      color: AppColors.textSecondary)),
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary,
+                                      height: 1.4)),
                             ],
                           ),
                         ),
-                        Switch(
-                          value: t.active,
-                          onChanged: (_) {},
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 6,
+                          children: [
+                            _Chip(label: t.channel, color: color),
+                          ],
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (t.channel == 'EMAIL') ...[
-                            Text(t.subject,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 12)),
-                            const SizedBox(height: 4),
-                          ],
-                          Text(t.body,
-                              style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary,
-                                  height: 1.4)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      children: [
-                        _Chip(label: t.category, color: AppColors.adminAccent),
-                        _Chip(label: t.channel, color: color),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           );
         },
       ),

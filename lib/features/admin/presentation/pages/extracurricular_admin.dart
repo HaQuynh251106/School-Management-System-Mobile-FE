@@ -1,77 +1,46 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_service.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../shared/widgets/section_header.dart';
 
 class _AdminCourse {
   const _AdminCourse({
-    required this.code,
     required this.name,
     required this.fee,
-    required this.enrolled,
-    required this.max,
-    required this.instructor,
+    required this.capacity,
+    required this.description,
+    required this.schedule,
     required this.status,
   });
-  final String code;
   final String name;
   final int fee;
-  final int enrolled;
-  final int max;
-  final String instructor;
+  final int capacity;
+  final String description;
+  final String schedule;
   final String status;
+
+  factory _AdminCourse.fromJson(Map<String, dynamic> m) => _AdminCourse(
+        name: (m['name'] ?? '').toString(),
+        fee: (m['fee'] is num) ? (m['fee'] as num).toInt() : 0,
+        capacity: (m['capacity'] is num) ? (m['capacity'] as num).toInt() : 0,
+        description: (m['description'] ?? '').toString(),
+        schedule: (m['schedule'] ?? '').toString(),
+        status: (m['status'] ?? '').toString(),
+      );
 }
 
-class ExtracurricularAdminPage extends StatelessWidget {
+class ExtracurricularAdminPage extends StatefulWidget {
   const ExtracurricularAdminPage({super.key});
 
-  static const _courses = [
-    _AdminCourse(
-      code: 'EXT-RBT-2025',
-      name: 'Robotics — Trình độ cơ bản',
-      fee: 600000,
-      enrolled: 12,
-      max: 20,
-      instructor: 'Lê Văn Minh',
-      status: 'OPEN',
-    ),
-    _AdminCourse(
-      code: 'EXT-ART-2025',
-      name: 'Vẽ truyện tranh',
-      fee: 450000,
-      enrolled: 18,
-      max: 25,
-      instructor: 'Nguyễn Thị Hồng',
-      status: 'OPEN',
-    ),
-    _AdminCourse(
-      code: 'EXT-STEM-2025',
-      name: 'STEM — Lập trình Python',
-      fee: 750000,
-      enrolled: 5,
-      max: 15,
-      instructor: 'Phạm Quốc Bảo',
-      status: 'OPEN',
-    ),
-    _AdminCourse(
-      code: 'EXT-BB-2025',
-      name: 'Bóng rổ trường',
-      fee: 350000,
-      enrolled: 22,
-      max: 25,
-      instructor: 'Trần Văn Hùng',
-      status: 'OPEN',
-    ),
-    _AdminCourse(
-      code: 'EXT-EN-2024',
-      name: 'CLB Tiếng Anh',
-      fee: 500000,
-      enrolled: 15,
-      max: 20,
-      instructor: 'Native Speaker',
-      status: 'CLOSED',
-    ),
-  ];
+  @override
+  State<ExtracurricularAdminPage> createState() =>
+      _ExtracurricularAdminPageState();
+}
+
+class _ExtracurricularAdminPageState extends State<ExtracurricularAdminPage> {
+  late final Future<List<Map<String, dynamic>>> _future =
+      sl<ApiService>().clubs();
 
   String _formatVnd(int amount) {
     final s = amount.toString();
@@ -85,37 +54,51 @@ class ExtracurricularAdminPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final open = _courses.where((c) => c.status == 'OPEN').toList();
-    final closed = _courses.where((c) => c.status == 'CLOSED').toList();
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Khóa ngoại khóa'),
-          backgroundColor: AppColors.adminAccent,
-          bottom: TabBar(
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white60,
-            indicatorColor: Colors.white,
-            tabs: [
-              Tab(text: 'Đang mở (${open.length})'),
-              Tab(text: 'Đã đóng (${closed.length})'),
-            ],
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _future,
+      builder: (context, snap) {
+        final loading = snap.connectionState != ConnectionState.done;
+        final courses = (snap.data ?? []).map(_AdminCourse.fromJson).toList();
+        final open = courses.where((c) => c.status == 'OPEN').toList();
+        final closed = courses.where((c) => c.status == 'CLOSED').toList();
+        return DefaultTabController(
+          length: 2,
+          child: Scaffold(
+            appBar: AppBar(
+              title: const Text('Khóa ngoại khóa'),
+              backgroundColor: AppColors.adminAccent,
+              bottom: TabBar(
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white60,
+                indicatorColor: Colors.white,
+                tabs: [
+                  Tab(text: 'Đang mở (${open.length})'),
+                  Tab(text: 'Đã đóng (${closed.length})'),
+                ],
+              ),
+            ),
+            floatingActionButton: FloatingActionButton.extended(
+              onPressed: () => _showCreate(context),
+              backgroundColor: AppColors.adminAccent,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Tạo khóa'),
+            ),
+            body: loading
+                ? const Center(child: CircularProgressIndicator())
+                : snap.hasError
+                    ? Center(
+                        child: Text('Lỗi: ${snap.error}',
+                            style: const TextStyle(
+                                color: AppColors.textSecondary)))
+                    : TabBarView(
+                        children: [
+                          _buildList(context, open),
+                          _buildList(context, closed),
+                        ],
+                      ),
           ),
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => _showCreate(context),
-          backgroundColor: AppColors.adminAccent,
-          icon: const Icon(Icons.add_rounded),
-          label: const Text('Tạo khóa'),
-        ),
-        body: TabBarView(
-          children: [
-            _buildList(context, open),
-            _buildList(context, closed),
-          ],
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -131,7 +114,6 @@ class ExtracurricularAdminPage extends StatelessWidget {
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (_, i) {
         final c = items[i];
-        final percent = c.enrolled / c.max;
         return Card(
           margin: EdgeInsets.zero,
           child: Padding(
@@ -161,7 +143,12 @@ class ExtracurricularAdminPage extends StatelessWidget {
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14)),
                           const SizedBox(height: 2),
-                          Text('${c.code} • GV: ${c.instructor}',
+                          Text(
+                              c.schedule.isEmpty
+                                  ? c.description
+                                  : '${c.schedule}${c.description.isEmpty ? '' : ' • ${c.description}'}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                   fontSize: 11,
                                   color: AppColors.textSecondary)),
@@ -195,11 +182,11 @@ class ExtracurricularAdminPage extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Doanh thu dự kiến',
+                          const Text('Doanh thu tối đa',
                               style: TextStyle(
                                   fontSize: 10,
                                   color: AppColors.textSecondary)),
-                          Text(_formatVnd(c.fee * c.enrolled),
+                          Text(_formatVnd(c.fee * c.capacity),
                               style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 13,
@@ -212,21 +199,10 @@ class ExtracurricularAdminPage extends StatelessWidget {
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: percent,
-                          color: percent >= 0.8
-                              ? AppColors.error
-                              : AppColors.adminAccent,
-                          backgroundColor: AppColors.divider,
-                          minHeight: 6,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text('${c.enrolled}/${c.max} HS',
+                    const Icon(Icons.groups_outlined,
+                        size: 14, color: AppColors.textSecondary),
+                    const SizedBox(width: 6),
+                    Text('Sĩ số tối đa: ${c.capacity} HS',
                         style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,

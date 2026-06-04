@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_service.dart';
 import '../../../../shared/widgets/attendance_badge.dart';
 import '../../../../shared/widgets/notification_center.dart';
 import '../../../../shared/widgets/section_header.dart';
@@ -122,6 +124,7 @@ class _TimetableTabState extends State<_TimetableTab>
     with SingleTickerProviderStateMixin {
   late TabController _ctrl;
   static const _days = ['T2', 'T3', 'T4', 'T5', 'T6'];
+  static const _dayCodes = ['MON', 'TUE', 'WED', 'THU', 'FRI'];
   static const _dayLabels = [
     'Thứ Hai',
     'Thứ Ba',
@@ -129,6 +132,8 @@ class _TimetableTabState extends State<_TimetableTab>
     'Thứ Năm',
     'Thứ Sáu'
   ];
+  late final Future<List<Map<String, dynamic>>> _future =
+      sl<ApiService>().myTimetable();
 
   @override
   void initState() {
@@ -158,10 +163,26 @@ class _TimetableTabState extends State<_TimetableTab>
           tabs: _days.map((d) => Tab(text: d)).toList(),
         ),
       ),
-      body: TabBarView(
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: _future,
+        builder: (context, snap) {
+          if (snap.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final all = snap.data ?? [];
+          return TabBarView(
         controller: _ctrl,
         children: List.generate(5, (i) {
-          final slots = _weekSlots[i] ?? [];
+          final slots = all
+              .where((s) => s['dayOfWeek'] == _dayCodes[i])
+              .map((s) => _TSlot(
+                    (s['subjectName'] ?? '').toString(),
+                    'Tiết ${s['periodNo']}',
+                    '${s['startTime'] ?? ''}–${s['endTime'] ?? ''}',
+                    (s['roomCode'] ?? '').toString(),
+                  ))
+              .toList()
+            ..sort((a, b) => a.period.compareTo(b.period));
           if (slots.isEmpty) {
             return const Center(
               child: Text('Không có tiết học',
@@ -217,6 +238,8 @@ class _TimetableTabState extends State<_TimetableTab>
             },
           );
         }),
+          );
+        },
       ),
     );
   }
@@ -230,24 +253,61 @@ class _SubjectGrade {
   final List<double?> scores; // [Miệng, 15p, GK, CK]
 }
 
-const _gradesHk1 = <_SubjectGrade>[
-  _SubjectGrade('Toán', [9.0, 8.5, 7.5, 8.8]),
-  _SubjectGrade('Vật lý', [8.0, 7.8, 8.8, 8.0]),
-  _SubjectGrade('Tiếng Anh', [7.0, 7.5, 8.0, 7.5]),
-  _SubjectGrade('Ngữ văn', [7.5, 6.0, 6.5, 7.0]),
-  _SubjectGrade('Sinh học', [8.5, 7.0, 8.0, 8.5]),
-];
-
-const _gradesHk2 = <_SubjectGrade>[
-  _SubjectGrade('Toán', [8.5, 8.0, null, null]),
-  _SubjectGrade('Vật lý', [9.0, null, null, null]),
-  _SubjectGrade('Tiếng Anh', [7.5, null, null, null]),
-  _SubjectGrade('Ngữ văn', [null, null, null, null]),
-  _SubjectGrade('Sinh học', [null, null, null, null]),
-];
-
-class _GradesTab extends StatelessWidget {
+class _GradesTab extends StatefulWidget {
   const _GradesTab();
+
+  @override
+  State<_GradesTab> createState() => _GradesTabState();
+}
+
+class _GradesTabState extends State<_GradesTab> {
+  late final Future<List<List<Map<String, dynamic>>>> _future = Future.wait([
+    sl<ApiService>().grades(),
+    sl<ApiService>().semesters(),
+  ]);
+
+  // Order of categories in the score chips: [Miệng, 15p, GK, CK]
+  static const _categoryOrder = ['ORAL', '15M', 'MID', 'FINAL'];
+
+  /// Build the per-semester subject list from raw grade maps belonging to one
+  /// semester. Groups by subjectName, then fills the 4-slot score list in the
+  /// order [ORAL, 15M, MID, FINAL] (null when a category is absent).
+  List<_SubjectGrade> _subjectsFor(List<Map<String, dynamic>> grades) {
+    final bySubject = <String, List<double?>>{};
+    final order = <String>[]; // preserve first-seen subject order
+    for (final g in grades) {
+      final subject = (g['subjectName'] ?? '').toString();
+      if (subject.isEmpty) continue;
+      final scores = bySubject.putIfAbsent(subject, () {
+        order.add(subject);
+        return List<double?>.filled(_categoryOrder.length, null);
+      });
+      final idx = _categoryOrder.indexOf((g['category'] ?? '').toString());
+      if (idx < 0) continue;
+      final raw = g['score'];
+      scores[idx] = raw == null ? null : (raw as num).toDouble();
+    }
+    return order.map((s) => _SubjectGrade(s, bySubject[s]!)).toList();
+  }
+
+  /// Find the semesterId(s) matching code 'HK1'/'HK2' (fallback to sequence
+  /// 1/2), then return all grades whose semesterId is in that set.
+  List<Map<String, dynamic>> _gradesForSemester(
+    List<Map<String, dynamic>> grades,
+    List<Map<String, dynamic>> semesters,
+    String code,
+    int sequence,
+  ) {
+    final ids = semesters
+        .where((s) =>
+            (s['code'] ?? '').toString() == code ||
+            (s['sequence'] is num && (s['sequence'] as num).toInt() == sequence))
+        .map((s) => (s['id'] ?? '').toString())
+        .toSet();
+    return grades
+        .where((g) => ids.contains((g['semesterId'] ?? '').toString()))
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -269,12 +329,37 @@ class _GradesTab extends StatelessWidget {
             ],
           ),
         ),
-        body: const TabBarView(
-          children: [
-            _SemesterGrades(semester: 'Học kỳ 1 — 2025/2026', subjects: _gradesHk1),
-            _SemesterGrades(semester: 'Học kỳ 2 — 2025/2026', subjects: _gradesHk2),
-            _YearlyGradesView(),
-          ],
+        body: FutureBuilder<List<List<Map<String, dynamic>>>>(
+          future: _future,
+          builder: (context, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snap.hasError) {
+              return Center(
+                  child: Text('Lỗi: ${snap.error}',
+                      style: const TextStyle(color: AppColors.textSecondary)));
+            }
+            final data = snap.data ?? const [];
+            final grades = data.isNotEmpty ? data[0] : const <Map<String, dynamic>>[];
+            final semesters =
+                data.length > 1 ? data[1] : const <Map<String, dynamic>>[];
+
+            final hk1 = _subjectsFor(
+                _gradesForSemester(grades, semesters, 'HK1', 1));
+            final hk2 = _subjectsFor(
+                _gradesForSemester(grades, semesters, 'HK2', 2));
+
+            return TabBarView(
+              children: [
+                _SemesterGrades(
+                    semester: 'Học kỳ 1 — 2025/2026', subjects: hk1),
+                _SemesterGrades(
+                    semester: 'Học kỳ 2 — 2025/2026', subjects: hk2),
+                _YearlyGradesView(hk1: hk1, hk2: hk2),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -315,7 +400,16 @@ class _SemesterGrades extends StatelessWidget {
         const SizedBox(height: 16),
         const SectionHeader(title: 'Theo môn học'),
         const SizedBox(height: 10),
-        ...subjects.map((sg) => _buildSubjectCard(context, sg, semester)),
+        if (subjects.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: Text('Chưa có điểm',
+                  style: TextStyle(color: AppColors.textSecondary)),
+            ),
+          )
+        else
+          ...subjects.map((sg) => _buildSubjectCard(context, sg, semester)),
       ],
     );
   }
@@ -481,7 +575,9 @@ class _ScoreChip extends StatelessWidget {
 }
 
 class _YearlyGradesView extends StatelessWidget {
-  const _YearlyGradesView();
+  const _YearlyGradesView({required this.hk1, required this.hk2});
+  final List<_SubjectGrade> hk1;
+  final List<_SubjectGrade> hk2;
 
   double _avg(List<double?> scores) {
     const weights = [1, 1, 2, 3];
@@ -498,13 +594,15 @@ class _YearlyGradesView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final data = <Map<String, double>>[];
-    for (var i = 0; i < _gradesHk1.length; i++) {
-      data.add({
-        'hk1': _avg(_gradesHk1[i].scores),
-        'hk2': _avg(_gradesHk2[i].scores),
-      });
-    }
+    // Union of subjects across both semesters, preserving HK1 order first.
+    final hk1Avg = {for (final sg in hk1) sg.subject: _avg(sg.scores)};
+    final hk2Avg = {for (final sg in hk2) sg.subject: _avg(sg.scores)};
+    final subjects = <String>[
+      ...hk1.map((sg) => sg.subject),
+      ...hk2
+          .map((sg) => sg.subject)
+          .where((s) => !hk1Avg.containsKey(s)),
+    ];
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -532,12 +630,21 @@ class _YearlyGradesView extends StatelessWidget {
         const SizedBox(height: 16),
         const SectionHeader(title: 'So sánh HK1 vs HK2'),
         const SizedBox(height: 10),
-        for (var i = 0; i < _gradesHk1.length; i++)
-          _buildYearlyRow(
-            _gradesHk1[i].subject,
-            data[i]['hk1']!,
-            data[i]['hk2']!,
-          ),
+        if (subjects.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: Text('Chưa có điểm',
+                  style: TextStyle(color: AppColors.textSecondary)),
+            ),
+          )
+        else
+          for (final subject in subjects)
+            _buildYearlyRow(
+              subject,
+              hk1Avg[subject] ?? 0,
+              hk2Avg[subject] ?? 0,
+            ),
       ],
     );
   }
@@ -673,36 +780,49 @@ const _attSemester = <_ARecord>[
   _ARecord('Toán', '20/05', 'ABSENT_EXCUSED', 'Có đơn xin nghỉ ốm'),
 ];
 
-class _AttendanceTab extends StatelessWidget {
+class _AttendanceTab extends StatefulWidget {
   const _AttendanceTab();
+  @override
+  State<_AttendanceTab> createState() => _AttendanceTabState();
+}
+
+class _AttendanceTabState extends State<_AttendanceTab> {
+  late final Future<List<Map<String, dynamic>>> _future = sl<ApiService>().attendance();
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Chuyên cần'),
-          backgroundColor: AppColors.studentAccent,
-          actions: const [_NotiAction()],
-          bottom: const TabBar(
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white60,
-            indicatorColor: Colors.white,
-            tabs: [
-              Tab(text: 'Tuần này'),
-              Tab(text: 'Tháng này'),
-              Tab(text: 'Học kỳ'),
-            ],
-          ),
-        ),
-        body: const TabBarView(
-          children: [
-            _AttendanceRange(records: _attWeek, rangeLabel: 'tuần này'),
-            _AttendanceRange(records: _attMonth, rangeLabel: 'tháng này'),
-            _AttendanceRange(records: _attSemester, rangeLabel: 'học kỳ'),
-          ],
-        ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Chuyên cần'),
+        backgroundColor: AppColors.studentAccent,
+        actions: const [_NotiAction()],
+      ),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: _future,
+        builder: (context, snap) {
+          if (snap.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snap.hasError) {
+            return Center(
+                child: Text('Lỗi: ${snap.error}',
+                    style: const TextStyle(color: AppColors.textSecondary)));
+          }
+          final records = (snap.data ?? [])
+              .map((r) => _ARecord(
+                    (r['subjectName'] ?? '').toString(),
+                    (r['date'] ?? '').toString(),
+                    (r['status'] ?? '').toString(),
+                    r['note'] as String?,
+                  ))
+              .toList();
+          if (records.isEmpty) {
+            return const Center(
+                child: Text('Chưa có dữ liệu điểm danh',
+                    style: TextStyle(color: AppColors.textSecondary)));
+          }
+          return _AttendanceRange(records: records, rangeLabel: 'học kỳ');
+        },
       ),
     );
   }
@@ -1015,6 +1135,7 @@ class _ProfileTab extends StatelessWidget {
 
 class _Assignment {
   const _Assignment({
+    this.id,
     required this.title,
     required this.subject,
     required this.teacher,
@@ -1023,6 +1144,7 @@ class _Assignment {
     this.score,
     this.feedback,
   });
+  final String? id;
   final String title;
   final String subject;
   final String teacher;
@@ -1032,95 +1154,139 @@ class _Assignment {
   final String? feedback;
 }
 
-const _assignments = <_Assignment>[
-  _Assignment(
-    title: 'Bài tập Hàm số bậc hai',
-    subject: 'Toán',
-    teacher: 'Trần Thị Hoa',
-    deadline: '28/05 23:59',
-    status: 'PENDING',
-  ),
-  _Assignment(
-    title: 'Thí nghiệm con lắc đơn',
-    subject: 'Vật lý',
-    teacher: 'Lê Văn Minh',
-    deadline: '30/05 23:59',
-    status: 'PENDING',
-  ),
-  _Assignment(
-    title: 'Tập làm văn — Tả mẹ',
-    subject: 'Ngữ văn',
-    teacher: 'Nguyễn Thị Hồng',
-    deadline: '25/05 23:59',
-    status: 'SUBMITTED',
-  ),
-  _Assignment(
-    title: 'Bài luận — My favorite hobby',
-    subject: 'Tiếng Anh',
-    teacher: 'Phạm Quốc Bảo',
-    deadline: '20/05 23:59',
-    status: 'GRADED',
-    score: 8.5,
-    feedback: 'Bài viết tốt, có ý sáng tạo. Cần lưu ý ngữ pháp ở đoạn 2.',
-  ),
-  _Assignment(
-    title: 'Vẽ chu trình tế bào',
-    subject: 'Sinh học',
-    teacher: 'Trần Thị Bình',
-    deadline: '18/05 23:59',
-    status: 'GRADED',
-    score: 9.0,
-    feedback: 'Hình vẽ chi tiết, chú thích đầy đủ. Rất tốt!',
-  ),
-];
+/// Format an ISO-8601 deadline string into a short 'dd/MM HH:mm' label.
+/// Returns '—' for null/blank/unparseable values.
+String _formatDeadline(Object? raw) {
+  final s = (raw ?? '').toString();
+  if (s.isEmpty) return '—';
+  final dt = DateTime.tryParse(s);
+  if (dt == null) return s;
+  final local = dt.toLocal();
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${two(local.day)}/${two(local.month)} ${two(local.hour)}:${two(local.minute)}';
+}
 
-class _AssignmentsTab extends StatelessWidget {
+/// Map an API assignment status to the existing display-status vocabulary so
+/// the colour/label logic in [_AssignmentList] keeps working. The student's
+/// own submission state isn't part of /me/assignments, so we surface the
+/// assignment status: PUBLISHED -> PENDING (chưa nộp), CLOSED/DRAFT kept raw.
+String _mapAssignmentStatus(Object? raw) {
+  final s = (raw ?? '').toString();
+  return s == 'PUBLISHED' ? 'PENDING' : s;
+}
+
+_Assignment _assignmentFromJson(Map<String, dynamic> m) => _Assignment(
+      id: (m['id'] ?? '').toString(),
+      title: (m['title'] ?? '').toString(),
+      subject: (m['subjectName'] ?? '').toString(),
+      teacher: (m['teacherName'] ?? '').toString(),
+      deadline: _formatDeadline(m['deadline']),
+      status: _mapAssignmentStatus(m['status']),
+    );
+
+class _AssignmentsTab extends StatefulWidget {
   const _AssignmentsTab();
 
   @override
+  State<_AssignmentsTab> createState() => _AssignmentsTabState();
+}
+
+class _AssignmentsTabState extends State<_AssignmentsTab> {
+  late Future<List<Map<String, dynamic>>> _future = sl<ApiService>().myAssignments();
+
+  void _refresh() {
+    setState(() {
+      _future = sl<ApiService>().myAssignments();
+    });
+  }
+
+  Future<void> _submit(_Assignment a) async {
+    final id = a.id;
+    if (id == null || id.isEmpty) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await sl<ApiService>().submitAssignment(id, 'Bài làm của em (demo)');
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Đã nộp bài'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _refresh();
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Nộp bài thất bại: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final pending =
-        _assignments.where((a) => a.status == 'PENDING').toList();
-    final submitted = _assignments
-        .where((a) => a.status == 'SUBMITTED' || a.status == 'LATE')
-        .toList();
-    final graded = _assignments.where((a) => a.status == 'GRADED').toList();
-    return DefaultTabController(
-      length: 4,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Bài tập'),
-          backgroundColor: AppColors.studentAccent,
-          actions: const [_NotiAction()],
-          bottom: TabBar(
-            isScrollable: true,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white60,
-            indicatorColor: Colors.white,
-            tabs: [
-              Tab(text: 'Tất cả (${_assignments.length})'),
-              Tab(text: 'Chưa nộp (${pending.length})'),
-              Tab(text: 'Đã nộp (${submitted.length})'),
-              Tab(text: 'Đã chấm (${graded.length})'),
-            ],
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _future,
+      builder: (context, snap) {
+        final loading = snap.connectionState != ConnectionState.done;
+        final assignments = (snap.data ?? [])
+            .map(_assignmentFromJson)
+            .toList();
+        final pending =
+            assignments.where((a) => a.status == 'PENDING').toList();
+        final submitted = assignments
+            .where((a) => a.status == 'SUBMITTED' || a.status == 'LATE')
+            .toList();
+        final graded =
+            assignments.where((a) => a.status == 'GRADED').toList();
+        return DefaultTabController(
+          length: 4,
+          child: Scaffold(
+            appBar: AppBar(
+              title: const Text('Bài tập'),
+              backgroundColor: AppColors.studentAccent,
+              actions: const [_NotiAction()],
+              bottom: TabBar(
+                isScrollable: true,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white60,
+                indicatorColor: Colors.white,
+                tabs: [
+                  Tab(text: 'Tất cả (${assignments.length})'),
+                  Tab(text: 'Chưa nộp (${pending.length})'),
+                  Tab(text: 'Đã nộp (${submitted.length})'),
+                  Tab(text: 'Đã chấm (${graded.length})'),
+                ],
+              ),
+            ),
+            body: loading
+                ? const Center(child: CircularProgressIndicator())
+                : snap.hasError
+                    ? Center(
+                        child: Text('Lỗi: ${snap.error}',
+                            style: const TextStyle(
+                                color: AppColors.textSecondary)))
+                    : TabBarView(
+                        children: [
+                          _AssignmentList(items: assignments, onSubmit: _submit),
+                          _AssignmentList(items: pending, onSubmit: _submit),
+                          _AssignmentList(items: submitted, onSubmit: _submit),
+                          _AssignmentList(items: graded, onSubmit: _submit),
+                        ],
+                      ),
           ),
-        ),
-        body: TabBarView(
-          children: [
-            _AssignmentList(items: _assignments),
-            _AssignmentList(items: pending),
-            _AssignmentList(items: submitted),
-            _AssignmentList(items: graded),
-          ],
-        ),
-      ),
+        );
+      },
     );
   }
 }
 
 class _AssignmentList extends StatelessWidget {
-  const _AssignmentList({required this.items});
+  const _AssignmentList({required this.items, this.onSubmit});
   final List<_Assignment> items;
+  final void Function(_Assignment)? onSubmit;
 
   Color _statusColor(String status) => switch (status) {
         'GRADED' => AppColors.success,
@@ -1237,6 +1403,26 @@ class _AssignmentList extends StatelessWidget {
                               color: AppColors.textSecondary)),
                     ],
                   ),
+                  if (onSubmit != null &&
+                      a.status == 'PENDING' &&
+                      a.id != null) ...[
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: () => onSubmit!(a),
+                        icon: const Icon(Icons.upload_file_rounded, size: 16),
+                        label: const Text('Nộp bài'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.studentAccent,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 0),
+                          minimumSize: const Size(0, 32),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

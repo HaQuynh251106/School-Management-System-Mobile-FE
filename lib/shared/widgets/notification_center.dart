@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
+import '../../core/di/service_locator.dart';
+import '../../core/network/api_service.dart';
 import '../../core/theme/app_colors.dart';
 
 class NotificationItem {
   const NotificationItem({
+    this.id,
     required this.title,
     required this.body,
     required this.time,
@@ -11,22 +15,50 @@ class NotificationItem {
     this.read = false,
   });
 
+  /// Backend id (null cho mock data tĩnh).
+  final String? id;
   final String title;
   final String body;
   final String time;
   final String category;
   final bool read;
+
+  /// Map 1 notification từ REST backend sang model mà list row đang render.
+  /// API: {id, type, title, body, read(bool), createdAt(ISO String)}
+  factory NotificationItem.fromJson(Map<String, dynamic> json) {
+    return NotificationItem(
+      id: json['id']?.toString(),
+      title: (json['title'] ?? '').toString(),
+      body: (json['body'] ?? '').toString(),
+      category: (json['type'] ?? '').toString(),
+      time: _formatTime(json['createdAt']),
+      read: json['read'] == true,
+    );
+  }
+
+  static String _formatTime(Object? raw) {
+    if (raw == null) return '';
+    final dt = DateTime.tryParse(raw.toString());
+    if (dt == null) return raw.toString();
+    return DateFormat('dd/MM HH:mm').format(dt.toLocal());
+  }
 }
 
-class NotificationCenter extends StatelessWidget {
+class NotificationCenter extends StatefulWidget {
   const NotificationCenter({
     super.key,
     required this.accent,
-    required this.items,
+    this.items,
   });
 
   final Color accent;
-  final List<NotificationItem> items;
+
+  /// Giữ lại cho tương thích với caller cũ (vd: `items: mockNotifications`).
+  /// Widget BỎ QUA giá trị này và luôn lấy dữ liệu LIVE từ API.
+  final List<NotificationItem>? items;
+
+  @override
+  State<NotificationCenter> createState() => _NotificationCenterState();
 
   static (IconData, Color) _styleFor(String category) {
     switch (category) {
@@ -70,54 +102,134 @@ class NotificationCenter extends StatelessWidget {
     }
   }
 
+}
+
+class _NotificationCenterState extends State<NotificationCenter> {
+  late Future<List<Map<String, dynamic>>> _future = sl<ApiService>().notifications();
+
+  void _refresh() {
+    setState(() {
+      _future = sl<ApiService>().notifications();
+    });
+  }
+
+  Future<void> _markRead(NotificationItem item) async {
+    final id = item.id;
+    if (id == null || id.isEmpty || item.read) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await sl<ApiService>().markNotiRead(id);
+      if (!mounted) return;
+      _refresh();
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Lỗi: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _markAllRead(List<NotificationItem> items) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final unreadIds = items
+        .where((n) => !n.read && n.id != null && n.id!.isNotEmpty)
+        .map((n) => n.id!)
+        .toList();
+    if (unreadIds.isEmpty) return;
+    try {
+      final api = sl<ApiService>();
+      await Future.wait(unreadIds.map(api.markNotiRead));
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Đã đánh dấu tất cả là đã đọc'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _refresh();
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Lỗi: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final unread = items.where((n) => !n.read).toList();
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Thông báo'),
-          backgroundColor: accent,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.done_all_rounded),
-              tooltip: 'Đánh dấu tất cả đã đọc',
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Đã đánh dấu tất cả là đã đọc'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
+    final accent = widget.accent;
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _future,
+      builder: (context, snap) {
+        final loading = snap.connectionState != ConnectionState.done;
+        final items = (snap.data ?? [])
+            .map(NotificationItem.fromJson)
+            .toList();
+        final unread = items.where((n) => !n.read).toList();
+        return DefaultTabController(
+          length: 2,
+          child: Scaffold(
+            appBar: AppBar(
+              title: const Text('Thông báo'),
+              backgroundColor: accent,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.done_all_rounded),
+                  tooltip: 'Đánh dấu tất cả đã đọc',
+                  onPressed: () => _markAllRead(items),
+                ),
+              ],
+              bottom: TabBar(
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white60,
+                indicatorColor: Colors.white,
+                tabs: [
+                  Tab(text: 'Tất cả (${items.length})'),
+                  Tab(text: 'Chưa đọc (${unread.length})'),
+                ],
+              ),
             ),
-          ],
-          bottom: TabBar(
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white60,
-            indicatorColor: Colors.white,
-            tabs: [
-              Tab(text: 'Tất cả (${items.length})'),
-              Tab(text: 'Chưa đọc (${unread.length})'),
-            ],
+            body: loading
+                ? const Center(child: CircularProgressIndicator())
+                : snap.hasError
+                    ? Center(
+                        child: Text('Lỗi: ${snap.error}',
+                            style: const TextStyle(
+                                color: AppColors.textSecondary)))
+                    : TabBarView(
+                        children: [
+                          _NotiList(
+                              items: items,
+                              accent: accent,
+                              onTap: _markRead),
+                          _NotiList(
+                              items: unread,
+                              accent: accent,
+                              onTap: _markRead),
+                        ],
+                      ),
           ),
-        ),
-        body: TabBarView(
-          children: [
-            _NotiList(items: items, accent: accent),
-            _NotiList(items: unread, accent: accent),
-          ],
-        ),
-      ),
+        );
+      },
     );
   }
 }
 
 class _NotiList extends StatelessWidget {
-  const _NotiList({required this.items, required this.accent});
+  const _NotiList({
+    required this.items,
+    required this.accent,
+    required this.onTap,
+  });
   final List<NotificationItem> items;
   final Color accent;
+  final void Function(NotificationItem) onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -199,7 +311,7 @@ class _NotiList extends StatelessWidget {
               ],
             ),
             isThreeLine: true,
-            onTap: () {},
+            onTap: () => onTap(item),
           ),
         );
       },

@@ -3,6 +3,7 @@ import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../network/dio_client.dart';
+import '../network/api_service.dart';
 import '../storage/token_storage.dart';
 import '../../features/auth/data/auth_api.dart';
 import '../../features/auth/data/auth_repository.dart';
@@ -18,6 +19,7 @@ Future<void> setupServiceLocator() async {
 
   // Network
   sl.registerLazySingleton<Dio>(() => createDioClient(sl()));
+  sl.registerLazySingleton<ApiService>(() => ApiService(sl()));
 
   // Auth
   sl.registerLazySingleton<AuthApi>(() => AuthApi(sl()));
