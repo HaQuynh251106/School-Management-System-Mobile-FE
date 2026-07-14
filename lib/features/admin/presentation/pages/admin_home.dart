@@ -43,7 +43,7 @@ class _AdminHomeState extends State<AdminHome> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
-        indicatorColor: AppColors.adminAccent.withOpacity(0.15),
+        indicatorColor: AppColors.adminAccent.withValues(alpha: 0.15),
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.dashboard_outlined),
@@ -183,10 +183,8 @@ class _OverviewViewState extends State<_OverviewView> {
                 : const <Map<String, dynamic>>[];
             String count(int n) =>
                 snap.connectionState == ConnectionState.done ? '$n' : '—';
-            final students =
-                users.where((u) => u['role'] == 'STUDENT').length;
-            final teachers =
-                users.where((u) => u['role'] == 'TEACHER').length;
+            final students = users.where((u) => u['role'] == 'STUDENT').length;
+            final teachers = users.where((u) => u['role'] == 'TEACHER').length;
             final parents = users.where((u) => u['role'] == 'PARENT').length;
             return GridView.count(
               crossAxisCount: 2,
@@ -227,25 +225,24 @@ class _OverviewViewState extends State<_OverviewView> {
         const SizedBox(height: 20),
         const SectionHeader(title: 'Cảnh báo'),
         const SizedBox(height: 10),
-        _AlertCard(
+        const _AlertCard(
           color: AppColors.error,
           icon: Icons.warning_amber_rounded,
           title: '266 hóa đơn quá hạn',
           subtitle: 'Tổng ~ 1,2 tỷ đồng — cần gửi nhắc nợ',
         ),
         const SizedBox(height: 8),
-        _AlertCard(
+        const _AlertCard(
           color: AppColors.warning,
           icon: Icons.event_busy_rounded,
           title: '12 GV chưa nhập điểm GK',
           subtitle: 'Hạn chót 25/05',
         ),
         const SizedBox(height: 20),
-        const SectionHeader(
-            title: 'Hoạt động gần đây', action: 'Xem tất cả'),
+        const SectionHeader(title: 'Hoạt động gần đây', action: 'Xem tất cả'),
         const SizedBox(height: 12),
-        Column(
-          children: const [
+        const Column(
+          children: [
             _ActivityRow(
               icon: Icons.person_add_rounded,
               title: 'Thêm 15 HS vào lớp 10A1',
@@ -288,9 +285,9 @@ class _AlertCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -303,8 +300,7 @@ class _AlertCard extends StatelessWidget {
                 Text(title,
                     style: const TextStyle(
                         fontWeight: FontWeight.w600, fontSize: 13)),
-                Text(subtitle,
-                    style: TextStyle(fontSize: 11, color: color)),
+                Text(subtitle, style: TextStyle(fontSize: 11, color: color)),
               ],
             ),
           ),
@@ -334,13 +330,13 @@ class _ActivityRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.12),
+          backgroundColor: color.withValues(alpha: 0.12),
           child: Icon(icon, color: color, size: 20),
         ),
         title: Text(title, style: const TextStyle(fontSize: 13)),
         subtitle: Text(time,
-            style: const TextStyle(
-                fontSize: 11, color: AppColors.textSecondary)),
+            style:
+                const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
       ),
     );
   }
@@ -356,11 +352,11 @@ class _ReportsView extends StatelessWidget {
       children: [
         const SectionHeader(title: 'Phổ điểm toàn trường — HK1'),
         const SizedBox(height: 10),
-        Card(
+        const Card(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16),
             child: Column(
-              children: const [
+              children: [
                 _HistRow(
                   label: 'Yếu (<5)',
                   count: 45,
@@ -395,9 +391,9 @@ class _ReportsView extends StatelessWidget {
         const SizedBox(height: 20),
         const SectionHeader(title: 'Chuyên cần theo khối'),
         const SizedBox(height: 10),
-        Card(
+        const Card(
           child: Column(
-            children: const [
+            children: [
               _AttRow(grade: 'Khối 10', rate: 0.96),
               Divider(height: 0),
               _AttRow(grade: 'Khối 11', rate: 0.92),
@@ -430,7 +426,7 @@ class _ReportsView extends StatelessWidget {
                 const SizedBox(height: 12),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(6),
-                  child: LinearProgressIndicator(
+                  child: const LinearProgressIndicator(
                     value: 4419 / 5616,
                     color: AppColors.success,
                     backgroundColor: AppColors.divider,
@@ -508,7 +504,7 @@ class _HistRow extends StatelessWidget {
             child: LinearProgressIndicator(
               value: pct,
               color: color,
-              backgroundColor: color.withOpacity(0.12),
+              backgroundColor: color.withValues(alpha: 0.12),
               minHeight: 16,
             ),
           ),
@@ -546,7 +542,7 @@ class _AttRow extends StatelessWidget {
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: _color.withOpacity(0.12),
+          color: _color.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(6),
         ),
         child: Text('${(rate * 100).toStringAsFixed(0)}%',
@@ -658,14 +654,13 @@ class _AuditLogView extends StatelessWidget {
               return ListTile(
                 leading: CircleAvatar(
                   radius: 16,
-                  backgroundColor: color.withOpacity(0.12),
+                  backgroundColor: color.withValues(alpha: 0.12),
                   child: Icon(_actionIcon(action), color: color, size: 16),
                 ),
                 title: Text(msg,
                     style: const TextStyle(
                         fontSize: 13, fontWeight: FontWeight.w500)),
-                subtitle: Text(
-                    '@$actor • $module • $action',
+                subtitle: Text('@$actor • $module • $action',
                     style: const TextStyle(
                         fontSize: 11, color: AppColors.textSecondary)),
                 trailing: Text(time,
@@ -760,16 +755,13 @@ class _UsersTabState extends State<_UsersTab> {
               children: [
                 _UserList(users: all, onChanged: _refresh),
                 _UserList(
-                    users:
-                        all.where((u) => u['role'] == 'TEACHER').toList(),
+                    users: all.where((u) => u['role'] == 'TEACHER').toList(),
                     onChanged: _refresh),
                 _UserList(
-                    users:
-                        all.where((u) => u['role'] == 'STUDENT').toList(),
+                    users: all.where((u) => u['role'] == 'STUDENT').toList(),
                     onChanged: _refresh),
                 _UserList(
-                    users:
-                        all.where((u) => u['role'] == 'PARENT').toList(),
+                    users: all.where((u) => u['role'] == 'PARENT').toList(),
                     onChanged: _refresh),
               ],
             );
@@ -785,8 +777,7 @@ class _UserList extends StatelessWidget {
   final List<Map<String, dynamic>> users;
   final VoidCallback? onChanged;
 
-  Future<void> _toggleLock(
-      BuildContext context, String id, bool locked) async {
+  Future<void> _toggleLock(BuildContext context, String id, bool locked) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
       if (locked) {
@@ -828,10 +819,7 @@ class _UserList extends StatelessWidget {
         final name = (u['fullName'] ?? '').toString();
         final username = (u['username'] ?? '').toString();
         final role = (u['role'] ?? '').toString();
-        final code = (u['studentCode'] ??
-                u['teacherCode'] ??
-                '')
-            .toString();
+        final code = (u['studentCode'] ?? u['teacherCode'] ?? '').toString();
         final status = (u['status'] ?? '').toString().toUpperCase();
         final locked = status == 'LOCKED' || status == 'DISABLED';
         final color = _roleColor(role);
@@ -847,14 +835,13 @@ class _UserList extends StatelessWidget {
             ),
           ),
           leading: CircleAvatar(
-            backgroundColor: color.withOpacity(0.14),
+            backgroundColor: color.withValues(alpha: 0.14),
             child: Text(name.isEmpty ? '?' : name[0],
                 style: TextStyle(color: color, fontWeight: FontWeight.bold)),
           ),
-          title: Text(name,
-              style: const TextStyle(fontWeight: FontWeight.w500)),
-          subtitle: Text(
-              '@$username${code.isEmpty ? '' : ' • $code'}',
+          title:
+              Text(name, style: const TextStyle(fontWeight: FontWeight.w500)),
+          subtitle: Text('@$username${code.isEmpty ? '' : ' • $code'}',
               style: const TextStyle(
                   fontSize: 12, color: AppColors.textSecondary)),
           trailing: Row(
@@ -869,7 +856,7 @@ class _UserList extends StatelessWidget {
               Chip(
                 label: Text(_roleLabel(role),
                     style: TextStyle(fontSize: 11, color: color)),
-                backgroundColor: color.withOpacity(0.1),
+                backgroundColor: color.withValues(alpha: 0.1),
                 padding: EdgeInsets.zero,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 side: BorderSide.none,
@@ -1014,9 +1001,7 @@ class _AcademicYearViewState extends State<_AcademicYearView> {
               (y) => (y?['status'] ?? '').toString().toUpperCase() == 'ACTIVE',
               orElse: () => years.isNotEmpty ? years.first : null,
             );
-        final others = years
-            .where((y) => !identical(y, active))
-            .toList();
+        final others = years.where((y) => !identical(y, active)).toList();
 
         const semColors = [AppColors.success, AppColors.warning];
 
@@ -1046,7 +1031,7 @@ class _AcademicYearViewState extends State<_AcademicYearView> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: AppColors.success.withOpacity(0.12),
+                              color: AppColors.success.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
@@ -1067,8 +1052,7 @@ class _AcademicYearViewState extends State<_AcademicYearView> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                          (active['name'] ?? active['code'] ?? '').toString(),
+                      Text((active['name'] ?? active['code'] ?? '').toString(),
                           style: const TextStyle(
                               fontWeight: FontWeight.w700, fontSize: 15)),
                       if (semesters.isNotEmpty) ...[
@@ -1096,9 +1080,9 @@ class _AcademicYearViewState extends State<_AcademicYearView> {
             const SizedBox(height: 20),
             const SectionHeader(title: 'Ngày nghỉ trong năm', action: 'Thêm'),
             const SizedBox(height: 10),
-            Card(
+            const Card(
               child: Column(
-                children: const [
+                children: [
                   ListTile(
                     leading: Icon(Icons.celebration_rounded,
                         color: AppColors.warning),
@@ -1170,9 +1154,9 @@ class _SemChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1181,7 +1165,8 @@ class _SemChip extends StatelessWidget {
               style: TextStyle(
                   color: color, fontWeight: FontWeight.bold, fontSize: 12)),
           Text(dates,
-              style: TextStyle(color: color.withOpacity(0.8), fontSize: 10)),
+              style:
+                  TextStyle(color: color.withValues(alpha: 0.8), fontSize: 10)),
         ],
       ),
     );
@@ -1253,7 +1238,8 @@ class _ClassesViewState extends State<_ClassesView> {
                 ),
                 child: ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: AppColors.adminAccent.withOpacity(0.12),
+                    backgroundColor:
+                        AppColors.adminAccent.withValues(alpha: 0.12),
                     child: Text(name.isEmpty ? '?' : name,
                         style: const TextStyle(
                             color: AppColors.adminAccent,
@@ -1273,7 +1259,7 @@ class _ClassesViewState extends State<_ClassesView> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 3),
                         decoration: BoxDecoration(
-                          color: AppColors.adminAccent.withOpacity(0.1),
+                          color: AppColors.adminAccent.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text('$count HS',
@@ -1324,8 +1310,10 @@ class _SubjectsRoomsViewState extends State<_SubjectsRoomsView> {
           );
         }
         final data = snap.data ?? const [];
-        final subjects = data.isNotEmpty ? data[0] : const <Map<String, dynamic>>[];
-        final rooms = data.length > 1 ? data[1] : const <Map<String, dynamic>>[];
+        final subjects =
+            data.isNotEmpty ? data[0] : const <Map<String, dynamic>>[];
+        final rooms =
+            data.length > 1 ? data[1] : const <Map<String, dynamic>>[];
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
@@ -1337,8 +1325,8 @@ class _SubjectsRoomsViewState extends State<_SubjectsRoomsView> {
                       padding: EdgeInsets.all(16),
                       child: Center(
                           child: Text('Chưa có môn học',
-                              style: TextStyle(
-                                  color: AppColors.textSecondary))),
+                              style:
+                                  TextStyle(color: AppColors.textSecondary))),
                     )
                   : Column(
                       children: [
@@ -1350,8 +1338,7 @@ class _SubjectsRoomsViewState extends State<_SubjectsRoomsView> {
                                 .toString(),
                             code: (subjects[i]['code'] ?? '').toString(),
                           ),
-                          if (i < subjects.length - 1)
-                            const Divider(height: 0),
+                          if (i < subjects.length - 1) const Divider(height: 0),
                         ],
                       ],
                     ),
@@ -1365,8 +1352,8 @@ class _SubjectsRoomsViewState extends State<_SubjectsRoomsView> {
                       padding: EdgeInsets.all(16),
                       child: Center(
                           child: Text('Chưa có phòng học',
-                              style: TextStyle(
-                                  color: AppColors.textSecondary))),
+                              style:
+                                  TextStyle(color: AppColors.textSecondary))),
                     )
                   : Column(
                       children: [
@@ -1408,7 +1395,7 @@ class _SubjectRow extends StatelessWidget {
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: AppColors.adminAccent.withOpacity(0.12),
+          color: AppColors.adminAccent.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Center(
@@ -1419,11 +1406,10 @@ class _SubjectRow extends StatelessWidget {
                   color: AppColors.adminAccent)),
         ),
       ),
-      title:
-          Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+      title: Text(name,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
       subtitle: Text(code,
-          style: const TextStyle(
-              fontSize: 11, color: AppColors.textSecondary)),
+          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
     );
   }
 }
@@ -1441,10 +1427,9 @@ class _RoomRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: const Icon(Icons.meeting_room_outlined,
-          color: AppColors.adminAccent),
-      title: Text(code,
-          style: const TextStyle(fontWeight: FontWeight.w500)),
+      leading:
+          const Icon(Icons.meeting_room_outlined, color: AppColors.adminAccent),
+      title: Text(code, style: const TextStyle(fontWeight: FontWeight.w500)),
       subtitle: name.isEmpty
           ? null
           : Text(name,
@@ -1553,7 +1538,7 @@ class _FinanceViewState extends State<_FinanceView> {
                         backgroundColor: (isOpen
                                 ? AppColors.success
                                 : AppColors.textSecondary)
-                            .withOpacity(0.12),
+                            .withValues(alpha: 0.12),
                         child: Icon(
                           isOpen
                               ? Icons.receipt_long_rounded
@@ -1585,7 +1570,7 @@ class _FinanceViewState extends State<_FinanceView> {
                               color: (isOpen
                                       ? AppColors.success
                                       : AppColors.textSecondary)
-                                  .withOpacity(0.12),
+                                  .withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(status,
@@ -1649,8 +1634,7 @@ class _SettingsTab extends StatelessWidget {
                               fontWeight: FontWeight.bold, fontSize: 15)),
                       Text(user.email ?? user.username,
                           style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary)),
+                              fontSize: 12, color: AppColors.textSecondary)),
                     ],
                   ),
                 ),
@@ -1673,8 +1657,7 @@ class _SettingsTab extends StatelessWidget {
                 icon: Icons.assignment_outlined,
                 label: 'Cấu hình Khảo thí (A4)',
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                      builder: (_) => const ExamCategoriesPage()),
+                  MaterialPageRoute(builder: (_) => const ExamCategoriesPage()),
                 ),
               ),
               _AdminSettingsTile(
@@ -1707,11 +1690,9 @@ class _SettingsTab extends StatelessWidget {
               _SettingsItem(
                   icon: Icons.security_outlined, label: 'Phân quyền RBAC'),
               _SettingsItem(
-                  icon: Icons.vpn_key_outlined,
-                  label: 'JWT — Cấu hình token'),
+                  icon: Icons.vpn_key_outlined, label: 'JWT — Cấu hình token'),
               _SettingsItem(
-                  icon: Icons.shield_outlined,
-                  label: 'Chính sách mật khẩu'),
+                  icon: Icons.shield_outlined, label: 'Chính sách mật khẩu'),
             ],
           ),
           const SizedBox(height: 16),
@@ -1726,12 +1707,12 @@ class _SettingsTab extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          ListTile(
-            leading: const Icon(Icons.info_outline_rounded,
+          const ListTile(
+            leading: Icon(Icons.info_outline_rounded,
                 color: AppColors.textSecondary),
-            title: const Text('Phiên bản'),
-            trailing: const Text('0.1.0',
-                style: TextStyle(color: AppColors.textSecondary)),
+            title: Text('Phiên bản'),
+            trailing:
+                Text('0.1.0', style: TextStyle(color: AppColors.textSecondary)),
           ),
           ListTile(
             leading: const Icon(Icons.logout_rounded, color: AppColors.error),
@@ -1857,7 +1838,7 @@ class _TimetableHubView extends StatelessWidget {
               Text(
                 'Đã hoàn tất xếp 28/32 lớp — 4 lớp chưa xếp',
                 style: TextStyle(
-                    color: Colors.white.withOpacity(0.85), fontSize: 13),
+                    color: Colors.white.withValues(alpha: 0.85), fontSize: 13),
               ),
               const SizedBox(height: 14),
               SizedBox(
@@ -1882,7 +1863,7 @@ class _TimetableHubView extends StatelessWidget {
         const SizedBox(height: 20),
         const SectionHeader(title: 'Trạng thái xếp TKB'),
         const SizedBox(height: 10),
-        Card(
+        const Card(
           child: Column(
             children: [
               _StatusRow(
@@ -1890,19 +1871,19 @@ class _TimetableHubView extends StatelessWidget {
                   done: 6,
                   total: 6,
                   color: AppColors.success),
-              const Divider(height: 0),
+              Divider(height: 0),
               _StatusRow(
                   label: 'Khối 11',
                   done: 6,
                   total: 7,
                   color: AppColors.warning),
-              const Divider(height: 0),
+              Divider(height: 0),
               _StatusRow(
                   label: 'Khối 12',
                   done: 8,
                   total: 8,
                   color: AppColors.success),
-              const Divider(height: 0),
+              Divider(height: 0),
               _StatusRow(
                   label: 'Khối 6–9',
                   done: 8,
@@ -1914,20 +1895,20 @@ class _TimetableHubView extends StatelessWidget {
         const SizedBox(height: 16),
         const SectionHeader(title: 'Xung đột chờ giải quyết'),
         const SizedBox(height: 8),
-        Card(
+        const Card(
           child: Column(
-            children: const [
+            children: [
               ListTile(
-                leading: Icon(Icons.warning_amber_rounded,
-                    color: AppColors.error),
+                leading:
+                    Icon(Icons.warning_amber_rounded, color: AppColors.error),
                 title: Text('GV Trần Thị Hoa — trùng tiết 3 T2'),
                 subtitle: Text('10A1 vs 8A1 — cần đổi GV hoặc tiết',
                     style: TextStyle(fontSize: 11)),
               ),
               Divider(height: 0),
               ListTile(
-                leading: Icon(Icons.warning_amber_rounded,
-                    color: AppColors.error),
+                leading:
+                    Icon(Icons.warning_amber_rounded, color: AppColors.error),
                 title: Text('Phòng Lab 1 — trùng tiết 2 T4'),
                 subtitle: Text('11B1 (Vật lý) vs 12A1 (Sinh)',
                     style: TextStyle(fontSize: 11)),
@@ -1955,8 +1936,7 @@ class _StatusRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      title: Text(label,
-          style: const TextStyle(fontWeight: FontWeight.w500)),
+      title: Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
       subtitle: LinearProgressIndicator(
         value: done / total,
         color: color,
@@ -1966,7 +1946,7 @@ class _StatusRow extends StatelessWidget {
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
+          color: color.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(6),
         ),
         child: Text('$done/$total',
@@ -2032,44 +2012,7 @@ class _AdminNotiAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final unread = mockNotifications.where((n) => !n.read).length;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: Stack(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const NotificationCenter(
-                  accent: AppColors.adminAccent,
-                  items: mockNotifications,
-                ),
-              ),
-            ),
-          ),
-          if (unread > 0)
-            Positioned(
-              right: 8,
-              top: 8,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                decoration: BoxDecoration(
-                  color: AppColors.error,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                constraints: const BoxConstraints(minWidth: 14),
-                child: Text('$unread',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center),
-              ),
-            ),
-        ],
-      ),
-    );
+    return const LiveNotificationAction(
+        accent: AppColors.adminAccent, padding: 8);
   }
 }

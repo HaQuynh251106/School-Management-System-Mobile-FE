@@ -84,7 +84,8 @@ class _LoginPageState extends State<LoginPage> {
             color: AppColors.primary,
             borderRadius: BorderRadius.circular(18),
           ),
-          child: const Icon(Icons.school_rounded, color: Colors.white, size: 40),
+          child:
+              const Icon(Icons.school_rounded, color: Colors.white, size: 40),
         ),
         const SizedBox(height: 20),
         const Text(
@@ -116,8 +117,9 @@ class _LoginPageState extends State<LoginPage> {
               labelText: 'Tên đăng nhập',
               prefixIcon: Icon(Icons.person_outline_rounded),
             ),
-            validator: (v) =>
-                (v == null || v.trim().isEmpty) ? 'Vui lòng nhập tên đăng nhập' : null,
+            validator: (v) => (v == null || v.trim().isEmpty)
+                ? 'Vui lòng nhập tên đăng nhập'
+                : null,
           ),
           const SizedBox(height: 16),
           TextFormField(

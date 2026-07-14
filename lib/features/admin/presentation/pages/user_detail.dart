@@ -61,8 +61,7 @@ class AdminUserDetail extends StatelessWidget {
               PopupMenuItem(
                   value: 'delete',
                   child: ListTile(
-                    leading:
-                        Icon(Icons.delete_outline, color: AppColors.error),
+                    leading: Icon(Icons.delete_outline, color: AppColors.error),
                     title: Text('Xóa tài khoản',
                         style: TextStyle(color: AppColors.error)),
                     contentPadding: EdgeInsets.zero,
@@ -78,7 +77,7 @@ class AdminUserDetail extends StatelessWidget {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [_color, _color.withOpacity(0.7)],
+                colors: [_color, _color.withValues(alpha: 0.7)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -88,7 +87,7 @@ class AdminUserDetail extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 40,
-                  backgroundColor: Colors.white.withOpacity(0.2),
+                  backgroundColor: Colors.white.withValues(alpha: 0.2),
                   child: Text(
                     name[0],
                     style: const TextStyle(
@@ -115,7 +114,7 @@ class AdminUserDetail extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(_label,
@@ -129,7 +128,7 @@ class AdminUserDetail extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.success.withOpacity(0.9),
+                        color: AppColors.success.withValues(alpha: 0.9),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: const Text('ACTIVE',
@@ -153,16 +152,14 @@ class AdminUserDetail extends StatelessWidget {
                 const Divider(height: 0),
                 const _Row(label: 'Số điện thoại', value: '0900 000 010'),
                 const Divider(height: 0),
-                const _Row(
-                    label: 'Email', value: 'user@sse.edu.vn'),
+                const _Row(label: 'Email', value: 'user@sse.edu.vn'),
                 const Divider(height: 0),
                 const _Row(label: 'Ngày sinh', value: '15/08/2008'),
                 const Divider(height: 0),
                 const _Row(label: 'Giới tính', value: 'Nam'),
                 const Divider(height: 0),
                 const _Row(
-                    label: 'Địa chỉ',
-                    value: '123 Đường Lê Lợi, Q.1, TP.HCM'),
+                    label: 'Địa chỉ', value: '123 Đường Lê Lợi, Q.1, TP.HCM'),
               ],
             ),
           ),
@@ -170,9 +167,9 @@ class AdminUserDetail extends StatelessWidget {
             const SizedBox(height: 20),
             const SectionHeader(title: 'Học tập'),
             const SizedBox(height: 8),
-            Card(
+            const Card(
               child: Column(
-                children: const [
+                children: [
                   _Row(label: 'Lớp hiện tại', value: '10A1'),
                   Divider(height: 0),
                   _Row(label: 'Ngày nhập học', value: '05/09/2025'),
@@ -186,9 +183,9 @@ class AdminUserDetail extends StatelessWidget {
             const SizedBox(height: 20),
             const SectionHeader(title: 'Giảng dạy'),
             const SizedBox(height: 8),
-            Card(
+            const Card(
               child: Column(
-                children: const [
+                children: [
                   _Row(label: 'Môn chính', value: 'Toán'),
                   Divider(height: 0),
                   _Row(label: 'Bằng cấp', value: 'Thạc sĩ Toán học'),
@@ -206,14 +203,13 @@ class AdminUserDetail extends StatelessWidget {
             const SizedBox(height: 20),
             const SectionHeader(title: 'Học sinh liên kết'),
             const SizedBox(height: 8),
-            Card(
+            const Card(
               child: Column(
-                children: const [
+                children: [
                   ListTile(
                     leading: CircleAvatar(
                       backgroundColor: AppColors.studentAccent,
-                      child: Text('A',
-                          style: TextStyle(color: Colors.white)),
+                      child: Text('A', style: TextStyle(color: Colors.white)),
                     ),
                     title: Text('Phạm Hoài An'),
                     subtitle: Text('Lớp 10A1 • Bố (Primary)'),
@@ -222,8 +218,7 @@ class AdminUserDetail extends StatelessWidget {
                   ListTile(
                     leading: CircleAvatar(
                       backgroundColor: AppColors.teacherAccent,
-                      child: Text('B',
-                          style: TextStyle(color: Colors.white)),
+                      child: Text('B', style: TextStyle(color: Colors.white)),
                     ),
                     title: Text('Phạm Hoài Bình'),
                     subtitle: Text('Lớp 8A1 • Bố'),
@@ -235,9 +230,9 @@ class AdminUserDetail extends StatelessWidget {
           const SizedBox(height: 20),
           const SectionHeader(title: 'Lịch sử đăng nhập'),
           const SizedBox(height: 8),
-          Card(
+          const Card(
             child: Column(
-              children: const [
+              children: [
                 _LoginRow(
                     time: '22/05 09:15',
                     device: 'iPhone 14 Pro',
@@ -289,11 +284,9 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       title: Text(label,
-          style:
-              const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
       subtitle: Text(value,
-          style:
-              const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
     );
   }
 }
@@ -319,8 +312,7 @@ class _LoginRow extends StatelessWidget {
       title: Text(device,
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
       subtitle: Text(time,
-          style:
-              const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
     );
   }
 }

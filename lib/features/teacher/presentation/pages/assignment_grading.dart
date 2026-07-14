@@ -52,29 +52,15 @@ class _TeacherAssignmentGradingState extends State<TeacherAssignmentGrading> {
         score: 8.5,
         feedback: 'Đúng phần lớn, có 1 ý sai nhỏ.'),
     _Submission(
-        name: 'Trần Thị Dung',
-        submittedAt: '23/05 08:00',
-        status: 'SUBMITTED'),
+        name: 'Trần Thị Dung', submittedAt: '23/05 08:00', status: 'SUBMITTED'),
     _Submission(
-        name: 'Lê Quang Huy',
-        submittedAt: '22/05 23:55',
-        status: 'SUBMITTED'),
+        name: 'Lê Quang Huy', submittedAt: '22/05 23:55', status: 'SUBMITTED'),
+    _Submission(name: 'Võ Thị Kim', submittedAt: '24/05 09:12', status: 'LATE'),
+    _Submission(name: 'Đỗ Văn Long', submittedAt: '—', status: 'NOT_SUBMITTED'),
     _Submission(
-        name: 'Võ Thị Kim',
-        submittedAt: '24/05 09:12',
-        status: 'LATE'),
+        name: 'Hoàng Thị Mai', submittedAt: '—', status: 'NOT_SUBMITTED'),
     _Submission(
-        name: 'Đỗ Văn Long',
-        submittedAt: '—',
-        status: 'NOT_SUBMITTED'),
-    _Submission(
-        name: 'Hoàng Thị Mai',
-        submittedAt: '—',
-        status: 'NOT_SUBMITTED'),
-    _Submission(
-        name: 'Bùi Ngọc Nam',
-        submittedAt: '22/05 11:10',
-        status: 'SUBMITTED'),
+        name: 'Bùi Ngọc Nam', submittedAt: '22/05 11:10', status: 'SUBMITTED'),
   ];
 
   Color _statusColor(String status) => switch (status) {
@@ -96,8 +82,7 @@ class _TeacherAssignmentGradingState extends State<TeacherAssignmentGrading> {
     final pending = _submissions
         .where((s) => s.status == 'SUBMITTED' || s.status == 'LATE')
         .length;
-    final graded =
-        _submissions.where((s) => s.status == 'GRADED').length;
+    final graded = _submissions.where((s) => s.status == 'GRADED').length;
     final missing =
         _submissions.where((s) => s.status == 'NOT_SUBMITTED').length;
 
@@ -109,7 +94,7 @@ class _TeacherAssignmentGradingState extends State<TeacherAssignmentGrading> {
       body: Column(
         children: [
           Container(
-            color: AppColors.teacherAccent.withOpacity(0.06),
+            color: AppColors.teacherAccent.withValues(alpha: 0.06),
             padding: const EdgeInsets.all(14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -157,7 +142,7 @@ class _TeacherAssignmentGradingState extends State<TeacherAssignmentGrading> {
                 return ListTile(
                   leading: CircleAvatar(
                     backgroundColor:
-                        AppColors.teacherAccent.withOpacity(0.12),
+                        AppColors.teacherAccent.withValues(alpha: 0.12),
                     radius: 18,
                     child: Text('${i + 1}',
                         style: const TextStyle(
@@ -174,7 +159,7 @@ class _TeacherAssignmentGradingState extends State<TeacherAssignmentGrading> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: color.withOpacity(0.12),
+                          color: color.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(_statusLabel(s.status),
@@ -186,8 +171,7 @@ class _TeacherAssignmentGradingState extends State<TeacherAssignmentGrading> {
                       const SizedBox(width: 6),
                       Text(s.submittedAt,
                           style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondary)),
+                              fontSize: 11, color: AppColors.textSecondary)),
                     ],
                   ),
                   trailing: s.status == 'NOT_SUBMITTED'
@@ -200,7 +184,7 @@ class _TeacherAssignmentGradingState extends State<TeacherAssignmentGrading> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: color.withOpacity(0.1),
+                                  color: color.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
@@ -354,7 +338,7 @@ class _StatBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [

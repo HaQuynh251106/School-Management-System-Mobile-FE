@@ -42,7 +42,7 @@ class _TeacherHomeState extends State<TeacherHome> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
-        indicatorColor: AppColors.teacherAccent.withOpacity(0.15),
+        indicatorColor: AppColors.teacherAccent.withValues(alpha: 0.15),
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.calendar_today_outlined),
@@ -64,8 +64,8 @@ class _TeacherHomeState extends State<TeacherHome> {
           ),
           NavigationDestination(
             icon: Icon(Icons.assignment_outlined),
-            selectedIcon: Icon(Icons.assignment_rounded,
-                color: AppColors.teacherAccent),
+            selectedIcon:
+                Icon(Icons.assignment_rounded, color: AppColors.teacherAccent),
             label: 'Bài tập',
           ),
           NavigationDestination(
@@ -132,7 +132,8 @@ class _TimetableTab extends StatefulWidget {
 class _TimetableTabState extends State<_TimetableTab> {
   static const _days = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
   static const _dayCodes = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-  late final Future<List<Map<String, dynamic>>> _future = sl<ApiService>().myTimetable();
+  late final Future<List<Map<String, dynamic>>> _future =
+      sl<ApiService>().myTimetable();
 
   @override
   Widget build(BuildContext context) {
@@ -253,8 +254,7 @@ class _SlotCard extends StatelessWidget {
                         const Spacer(),
                         Text(slot.time,
                             style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary)),
+                                fontSize: 12, color: AppColors.textSecondary)),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -319,7 +319,8 @@ class _TodayAttendance extends StatefulWidget {
 
 class _TodayAttendanceState extends State<_TodayAttendance> {
   final _api = sl<ApiService>();
-  late final Future<List<Map<String, dynamic>>> _slotsFuture = _api.myTimetable();
+  late final Future<List<Map<String, dynamic>>> _slotsFuture =
+      _api.myTimetable();
   String? _slotId;
   Map<String, dynamic>? _slot;
   List<Map<String, dynamic>> _students = [];
@@ -328,10 +329,18 @@ class _TodayAttendanceState extends State<_TodayAttendance> {
   bool _submitting = false;
 
   String _dayVi(String? code) =>
-      const {'MON': 'T2', 'TUE': 'T3', 'WED': 'T4', 'THU': 'T5', 'FRI': 'T6', 'SAT': 'T7'}[code] ??
+      const {
+        'MON': 'T2',
+        'TUE': 'T3',
+        'WED': 'T4',
+        'THU': 'T5',
+        'FRI': 'T6',
+        'SAT': 'T7'
+      }[code] ??
       (code ?? '');
 
-  Future<void> _selectSlot(String? slotId, List<Map<String, dynamic>> slots) async {
+  Future<void> _selectSlot(
+      String? slotId, List<Map<String, dynamic>> slots) async {
     if (slotId == null) return;
     final slot = slots.firstWhere((s) => s['id'] == slotId);
     setState(() {
@@ -353,7 +362,8 @@ class _TodayAttendanceState extends State<_TodayAttendance> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _loadingStudents = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi tải HS: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Lỗi tải HS: $e')));
     }
   }
 
@@ -362,14 +372,16 @@ class _TodayAttendanceState extends State<_TodayAttendance> {
     setState(() => _submitting = true);
     final date = DateFormat('yyyy-MM-dd').format(DateTime.now());
     final marks = _students
-        .map((s) => {'studentId': s['id'], 'status': _status[s['id']] ?? 'PRESENT'})
+        .map((s) =>
+            {'studentId': s['id'], 'status': _status[s['id']] ?? 'PRESENT'})
         .toList();
     try {
       await _api.bulkAttendance(slotId: _slotId!, date: date, marks: marks);
       final absent = _status.values.where((v) => v != 'PRESENT').length;
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Đã lưu điểm danh. $absent vắng/muộn → đã gửi cảnh báo phụ huynh.'),
+        content: Text(
+            'Đã lưu điểm danh. $absent vắng/muộn → đã gửi cảnh báo phụ huynh.'),
         backgroundColor: AppColors.success,
         behavior: SnackBarBehavior.floating,
       ));
@@ -384,7 +396,8 @@ class _TodayAttendanceState extends State<_TodayAttendance> {
 
   @override
   Widget build(BuildContext context) {
-    final today = DateFormat('EEEE, dd/MM/yyyy', 'vi_VN').format(DateTime.now());
+    final today =
+        DateFormat('EEEE, dd/MM/yyyy', 'vi_VN').format(DateTime.now());
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: _slotsFuture,
       builder: (context, snap) {
@@ -401,7 +414,8 @@ class _TodayAttendanceState extends State<_TodayAttendance> {
                 initialValue: _slotId,
                 isExpanded: true,
                 isDense: true,
-                decoration: const InputDecoration(labelText: 'Chọn tiết', isDense: true),
+                decoration: const InputDecoration(
+                    labelText: 'Chọn tiết', isDense: true),
                 items: slots
                     .map((s) => DropdownMenuItem(
                           value: s['id'] as String,
@@ -417,14 +431,17 @@ class _TodayAttendanceState extends State<_TodayAttendance> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: AppColors.primary.withOpacity(0.06),
+              color: AppColors.primary.withValues(alpha: 0.06),
               child: Row(
                 children: [
-                  const Icon(Icons.event_rounded, size: 14, color: AppColors.textSecondary),
+                  const Icon(Icons.event_rounded,
+                      size: 14, color: AppColors.textSecondary),
                   const SizedBox(width: 6),
                   Text(today,
                       style: const TextStyle(
-                          fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500)),
                   const Spacer(),
                   if (_students.isNotEmpty)
                     TextButton.icon(
@@ -439,7 +456,8 @@ class _TodayAttendanceState extends State<_TodayAttendance> {
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       icon: const Icon(Icons.done_all_rounded, size: 14),
-                      label: const Text('Tất cả có mặt', style: TextStyle(fontSize: 11)),
+                      label: const Text('Tất cả có mặt',
+                          style: TextStyle(fontSize: 11)),
                     ),
                 ],
               ),
@@ -454,16 +472,19 @@ class _TodayAttendanceState extends State<_TodayAttendance> {
                       : _students.isEmpty
                           ? const Center(
                               child: Text('Lớp chưa có học sinh',
-                                  style: TextStyle(color: AppColors.textSecondary)))
+                                  style: TextStyle(
+                                      color: AppColors.textSecondary)))
                           : ListView.separated(
                               itemCount: _students.length,
-                              separatorBuilder: (_, __) => const Divider(height: 0),
+                              separatorBuilder: (_, __) =>
+                                  const Divider(height: 0),
                               itemBuilder: (_, i) {
                                 final s = _students[i];
                                 final id = s['id'] as String;
                                 return ListTile(
                                   leading: CircleAvatar(
-                                    backgroundColor: AppColors.teacherAccent.withOpacity(0.12),
+                                    backgroundColor: AppColors.teacherAccent
+                                        .withValues(alpha: 0.12),
                                     radius: 18,
                                     child: Text('${i + 1}',
                                         style: const TextStyle(
@@ -473,10 +494,12 @@ class _TodayAttendanceState extends State<_TodayAttendance> {
                                   ),
                                   title: Text(s['fullName']?.toString() ?? '',
                                       style: const TextStyle(
-                                          fontWeight: FontWeight.w500, fontSize: 14)),
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 14)),
                                   trailing: _StatusSelector(
                                     value: _status[id] ?? 'PRESENT',
-                                    onChanged: (v) => setState(() => _status[id] = v),
+                                    onChanged: (v) =>
+                                        setState(() => _status[id] = v),
                                   ),
                                 );
                               },
@@ -489,8 +512,10 @@ class _TodayAttendanceState extends State<_TodayAttendance> {
                 child: SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
-                    onPressed: (_slotId == null || _submitting) ? null : _submit,
-                    style: FilledButton.styleFrom(backgroundColor: AppColors.teacherAccent),
+                    onPressed:
+                        (_slotId == null || _submitting) ? null : _submit,
+                    style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.teacherAccent),
                     icon: const Icon(Icons.save_rounded),
                     label: Text(_submitting ? 'Đang lưu...' : 'Lưu điểm danh'),
                   ),
@@ -581,7 +606,7 @@ class _AttendanceHistory extends StatelessWidget {
                     width: 50,
                     height: 50,
                     decoration: BoxDecoration(
-                      color: AppColors.teacherAccent.withOpacity(0.08),
+                      color: AppColors.teacherAccent.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Center(
@@ -595,8 +620,7 @@ class _AttendanceHistory extends StatelessWidget {
                                   color: AppColors.teacherAccent)),
                           Text(date.split('/').last,
                               style: const TextStyle(
-                                  fontSize: 9,
-                                  color: AppColors.teacherAccent)),
+                                  fontSize: 9, color: AppColors.teacherAccent)),
                         ],
                       ),
                     ),
@@ -616,18 +640,17 @@ class _AttendanceHistory extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(period,
                             style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary)),
+                                fontSize: 12, color: AppColors.textSecondary)),
                       ],
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: absent == 0
-                          ? AppColors.success.withOpacity(0.12)
-                          : AppColors.warning.withOpacity(0.12),
+                          ? AppColors.success.withValues(alpha: 0.12)
+                          : AppColors.warning.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -712,7 +735,7 @@ class _GradeBookViewState extends State<_GradeBookView> {
   final _api = sl<ApiService>();
 
   // Danh mục lấy từ API (mỗi phần tử là JSON {id, code, name, ...}).
-  late Future<void> _initFuture = _loadStructure();
+  late final Future<void> _initFuture = _loadStructure();
   List<Map<String, dynamic>> _classes = [];
   List<Map<String, dynamic>> _subjects = [];
   List<Map<String, dynamic>> _semesters = [];
@@ -829,8 +852,7 @@ class _GradeBookViewState extends State<_GradeBookView> {
           children: [
             Container(
               color: AppColors.surface,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Row(
                 children: [
                   Expanded(
@@ -886,8 +908,8 @@ class _GradeBookViewState extends State<_GradeBookView> {
                       initialValue: _semesterId,
                       isDense: true,
                       isExpanded: true,
-                      decoration: const InputDecoration(
-                          labelText: 'HK', isDense: true),
+                      decoration:
+                          const InputDecoration(labelText: 'HK', isDense: true),
                       items: _semesters
                           .map((c) => DropdownMenuItem(
                                 value: c['id']?.toString(),
@@ -938,7 +960,7 @@ class _GradeBookViewState extends State<_GradeBookView> {
         ),
         child: DataTable(
           headingRowColor: WidgetStateProperty.all(
-              AppColors.teacherAccent.withOpacity(0.08)),
+              AppColors.teacherAccent.withValues(alpha: 0.08)),
           columns: const [
             DataColumn(label: Text('Học sinh')),
             DataColumn(label: Text('Miệng')),
@@ -1006,8 +1028,8 @@ class _GradeBookViewState extends State<_GradeBookView> {
     final subjectId = _subjectId;
     final semesterId = _semesterId;
     if (subjectId == null || semesterId == null) return;
-    final ctrl = TextEditingController(
-        text: g.scores[index]?.toStringAsFixed(1) ?? '');
+    final ctrl =
+        TextEditingController(text: g.scores[index]?.toStringAsFixed(1) ?? '');
     final reasonCtrl = TextEditingController();
     final isEdit = g.scores[index] != null;
     final result = await showDialog<double?>(
@@ -1053,8 +1075,7 @@ class _GradeBookViewState extends State<_GradeBookView> {
               if (v == null || v < 0 || v > 10) return;
               if (isEdit && reasonCtrl.text.trim().isEmpty) {
                 ScaffoldMessenger.of(ctx).showSnackBar(
-                  const SnackBar(
-                      content: Text('Vui lòng nhập lý do sửa điểm')),
+                  const SnackBar(content: Text('Vui lòng nhập lý do sửa điểm')),
                 );
                 return;
               }
@@ -1090,7 +1111,9 @@ class _GradeBookViewState extends State<_GradeBookView> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi lưu điểm: $e'), backgroundColor: AppColors.error),
+        SnackBar(
+            content: Text('Lỗi lưu điểm: $e'),
+            backgroundColor: AppColors.error),
       );
     }
   }
@@ -1116,7 +1139,7 @@ class _GradeDistributionView extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: AppColors.teacherAccent.withOpacity(0.08),
+            color: AppColors.teacherAccent.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -1152,8 +1175,7 @@ class _GradeDistributionView extends StatelessWidget {
                     children: [
                       SizedBox(
                         width: 110,
-                        child: Text(r.$1,
-                            style: const TextStyle(fontSize: 12)),
+                        child: Text(r.$1, style: const TextStyle(fontSize: 12)),
                       ),
                       Expanded(
                         child: ClipRRect(
@@ -1161,7 +1183,7 @@ class _GradeDistributionView extends StatelessWidget {
                           child: LinearProgressIndicator(
                             value: r.$2 / total,
                             color: r.$3,
-                            backgroundColor: r.$3.withOpacity(0.15),
+                            backgroundColor: r.$3.withValues(alpha: 0.15),
                             minHeight: 16,
                           ),
                         ),
@@ -1189,9 +1211,9 @@ class _GradeDistributionView extends StatelessWidget {
         const SizedBox(height: 16),
         const SectionHeader(title: 'Top 5 HS điểm cao nhất'),
         const SizedBox(height: 10),
-        Card(
+        const Card(
           child: Column(
-            children: const [
+            children: [
               _TopStudentRow(rank: 1, name: 'Lê Quang Huy', avg: 9.05),
               Divider(height: 0),
               _TopStudentRow(rank: 2, name: 'Hoàng Thị Mai', avg: 8.85),
@@ -1228,12 +1250,10 @@ class _TopStudentRow extends StatelessWidget {
     return ListTile(
       leading: CircleAvatar(
         radius: 16,
-        backgroundColor: _rankColor.withOpacity(0.15),
+        backgroundColor: _rankColor.withValues(alpha: 0.15),
         child: Text('$rank',
             style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: _rankColor,
-                fontSize: 12)),
+                fontWeight: FontWeight.bold, color: _rankColor, fontSize: 12)),
       ),
       title: Text(name, style: const TextStyle(fontSize: 14)),
       trailing: Text(avg.toStringAsFixed(2),
@@ -1306,8 +1326,8 @@ class _GradeChangeLogView extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(name,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w600)),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w600)),
                           Text(label,
                               style: const TextStyle(
                                   fontSize: 12,
@@ -1320,7 +1340,7 @@ class _GradeChangeLogView extends StatelessWidget {
                           horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: (up ? AppColors.success : AppColors.error)
-                            .withOpacity(0.1),
+                            .withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -1337,8 +1357,7 @@ class _GradeChangeLogView extends StatelessWidget {
                                 ? Icons.arrow_upward_rounded
                                 : Icons.arrow_downward_rounded,
                             size: 14,
-                            color:
-                                up ? AppColors.success : AppColors.error,
+                            color: up ? AppColors.success : AppColors.error,
                           ),
                           const SizedBox(width: 4),
                           Text(newV.toStringAsFixed(1),
@@ -1369,13 +1388,11 @@ class _GradeChangeLogView extends StatelessWidget {
                       Expanded(
                         child: Text(reason,
                             style: const TextStyle(
-                                fontSize: 12,
-                                fontStyle: FontStyle.italic)),
+                                fontSize: 12, fontStyle: FontStyle.italic)),
                       ),
                       Text(time,
                           style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondary)),
+                              fontSize: 11, color: AppColors.textSecondary)),
                     ],
                   ),
                 ),
@@ -1413,7 +1430,7 @@ class _ProfileTab extends StatelessWidget {
                   CircleAvatar(
                     radius: 36,
                     backgroundColor:
-                        AppColors.teacherAccent.withOpacity(0.15),
+                        AppColors.teacherAccent.withValues(alpha: 0.15),
                     child: Text(
                       user.fullName[0],
                       style: const TextStyle(
@@ -1439,8 +1456,8 @@ class _ProfileTab extends StatelessWidget {
             child: Column(
               children: [
                 const ListTile(
-                  leading: Icon(Icons.class_rounded,
-                      color: AppColors.teacherAccent),
+                  leading:
+                      Icon(Icons.class_rounded, color: AppColors.teacherAccent),
                   title: Text('Lớp chủ nhiệm'),
                   subtitle: Text('10A1'),
                   trailing: Icon(Icons.chevron_right_rounded,
@@ -1466,7 +1483,7 @@ class _ProfileTab extends StatelessWidget {
                       color: AppColors.textSecondary),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => ChatListPage(
+                      builder: (_) => const ChatListPage(
                         accent: AppColors.teacherAccent,
                         allowBroadcast: true,
                         threads: _teacherThreads,
@@ -1485,7 +1502,6 @@ class _ProfileTab extends StatelessWidget {
                     MaterialPageRoute(
                       builder: (_) => const NotificationCenter(
                         accent: AppColors.teacherAccent,
-                        items: mockNotifications,
                       ),
                     ),
                   ),
@@ -1700,8 +1716,8 @@ class _AssignmentsTabState extends State<_AssignmentsTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('Tạo bài tập mới',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16)),
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 const SizedBox(height: 12),
                 TextField(
                   controller: titleCtrl,
@@ -1719,8 +1735,8 @@ class _AssignmentsTabState extends State<_AssignmentsTab> {
                         decoration: const InputDecoration(
                             labelText: 'Lớp', isDense: true),
                         items: ['10A1', '10A2', '8A1']
-                            .map((c) => DropdownMenuItem(
-                                value: c, child: Text(c)))
+                            .map((c) =>
+                                DropdownMenuItem(value: c, child: Text(c)))
                             .toList(),
                         onChanged: (v) => setState(() => cls = v!),
                       ),
@@ -1732,8 +1748,8 @@ class _AssignmentsTabState extends State<_AssignmentsTab> {
                         decoration: const InputDecoration(
                             labelText: 'Môn', isDense: true),
                         items: ['Toán', 'Vật lý', 'Hoá học']
-                            .map((c) => DropdownMenuItem(
-                                value: c, child: Text(c)))
+                            .map((c) =>
+                                DropdownMenuItem(value: c, child: Text(c)))
                             .toList(),
                         onChanged: (v) => setState(() => subj = v!),
                       ),
@@ -1784,8 +1800,8 @@ class _AssignmentsTabState extends State<_AssignmentsTab> {
                           Navigator.pop(ctx);
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content:
-                                  Text('Đã phát hành. Học sinh nhận thông báo.'),
+                              content: Text(
+                                  'Đã phát hành. Học sinh nhận thông báo.'),
                               backgroundColor: AppColors.success,
                               behavior: SnackBarBehavior.floating,
                             ),
@@ -1894,7 +1910,8 @@ class _TAssignmentList extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: AppColors.teacherAccent.withOpacity(0.08),
+                          color:
+                              AppColors.teacherAccent.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text('${a.className} • ${a.subject}',
@@ -1920,8 +1937,7 @@ class _TAssignmentList extends StatelessWidget {
                       const SizedBox(width: 4),
                       Text('Hạn: ${a.deadline}',
                           style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondary)),
+                              fontSize: 11, color: AppColors.textSecondary)),
                     ],
                   ),
                   if (!isDraft && a.total > 0) ...[
@@ -2005,45 +2021,7 @@ class _NotiAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final unread = mockNotifications.where((n) => !n.read).length;
-    return Padding(
-      padding: const EdgeInsets.only(right: 4),
-      child: Stack(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const NotificationCenter(
-                  accent: AppColors.teacherAccent,
-                  items: mockNotifications,
-                ),
-              ),
-            ),
-          ),
-          if (unread > 0)
-            Positioned(
-              right: 8,
-              top: 8,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                decoration: BoxDecoration(
-                  color: AppColors.error,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                constraints: const BoxConstraints(minWidth: 14),
-                child: Text('$unread',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center),
-              ),
-            ),
-        ],
-      ),
-    );
+    return const LiveNotificationAction(accent: AppColors.teacherAccent);
   }
 }
 
@@ -2052,8 +2030,7 @@ class _ChatAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final unread =
-        _teacherThreads.fold<int>(0, (s, t) => s + t.unread);
+    final unread = _teacherThreads.fold<int>(0, (s, t) => s + t.unread);
     return Padding(
       padding: const EdgeInsets.only(right: 0),
       child: Stack(
@@ -2075,8 +2052,7 @@ class _ChatAction extends StatelessWidget {
               right: 8,
               top: 8,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                 decoration: BoxDecoration(
                   color: AppColors.error,
                   borderRadius: BorderRadius.circular(8),

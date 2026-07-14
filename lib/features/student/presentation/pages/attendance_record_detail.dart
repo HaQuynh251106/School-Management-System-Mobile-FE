@@ -59,9 +59,9 @@ class AttendanceRecordDetail extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: _statusColor.withOpacity(0.1),
+              color: _statusColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _statusColor.withOpacity(0.3)),
+              border: Border.all(color: _statusColor.withValues(alpha: 0.3)),
             ),
             child: Column(
               children: [
@@ -69,7 +69,7 @@ class AttendanceRecordDetail extends StatelessWidget {
                   width: 64,
                   height: 64,
                   decoration: BoxDecoration(
-                    color: _statusColor.withOpacity(0.2),
+                    color: _statusColor.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -108,12 +108,12 @@ class AttendanceRecordDetail extends StatelessWidget {
                 _InfoRow(
                     icon: Icons.book_rounded, label: 'Môn học', value: subject),
                 const Divider(height: 0),
-                _InfoRow(
+                const _InfoRow(
                     icon: Icons.access_time_rounded,
                     label: 'Tiết',
                     value: 'Tiết 2 • 07:50–08:35'),
                 const Divider(height: 0),
-                _InfoRow(
+                const _InfoRow(
                     icon: Icons.person_outline_rounded,
                     label: 'Giáo viên',
                     value: 'Trần Thị Bình'),
@@ -122,8 +122,8 @@ class AttendanceRecordDetail extends StatelessWidget {
                   leading: const Icon(Icons.flag_outlined,
                       color: AppColors.textSecondary, size: 20),
                   title: const Text('Trạng thái',
-                      style:
-                          TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      style: TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary)),
                   trailing: AttendanceBadge(status),
                 ),
               ],
@@ -157,8 +157,8 @@ class AttendanceRecordDetail extends StatelessWidget {
               onPressed: () {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text(
-                        'Đã gửi yêu cầu PH cung cấp đơn xin phép cho GV.'),
+                    content:
+                        Text('Đã gửi yêu cầu PH cung cấp đơn xin phép cho GV.'),
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
@@ -188,11 +188,9 @@ class _InfoRow extends StatelessWidget {
     return ListTile(
       leading: Icon(icon, color: AppColors.textSecondary, size: 20),
       title: Text(label,
-          style:
-              const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
       subtitle: Text(value,
-          style:
-              const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
     );
   }
 }

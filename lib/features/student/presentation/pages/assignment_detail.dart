@@ -84,7 +84,7 @@ class _StudentAssignmentDetailState extends State<StudentAssignmentDetail> {
                 const SizedBox(height: 16),
                 const SectionHeader(title: 'Tài liệu kèm theo'),
                 const SizedBox(height: 8),
-                Card(
+                const Card(
                   child: Column(
                     children: [
                       _AttachmentTile(
@@ -123,7 +123,7 @@ class _StudentAssignmentDetailState extends State<StudentAssignmentDetail> {
               top: false,
               child: Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppColors.surface,
                   border: Border(
                       top: BorderSide(color: AppColors.divider, width: 0.5)),
@@ -154,7 +154,7 @@ class _StudentAssignmentDetailState extends State<StudentAssignmentDetail> {
         gradient: LinearGradient(
           colors: [
             AppColors.studentAccent,
-            AppColors.studentAccent.withOpacity(0.7),
+            AppColors.studentAccent.withValues(alpha: 0.7),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -184,7 +184,7 @@ class _StudentAssignmentDetailState extends State<StudentAssignmentDetail> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(widget.subject,
@@ -204,12 +204,10 @@ class _StudentAssignmentDetailState extends State<StudentAssignmentDetail> {
           const SizedBox(height: 6),
           Row(
             children: [
-              const Icon(Icons.person_rounded,
-                  color: Colors.white70, size: 14),
+              const Icon(Icons.person_rounded, color: Colors.white70, size: 14),
               const SizedBox(width: 4),
               Text(widget.teacher,
-                  style:
-                      const TextStyle(color: Colors.white70, fontSize: 12)),
+                  style: const TextStyle(color: Colors.white70, fontSize: 12)),
             ],
           ),
           const SizedBox(height: 4),
@@ -219,8 +217,7 @@ class _StudentAssignmentDetailState extends State<StudentAssignmentDetail> {
                   color: Colors.white70, size: 14),
               const SizedBox(width: 4),
               Text('Hạn: ${widget.deadline}',
-                  style:
-                      const TextStyle(color: Colors.white70, fontSize: 12)),
+                  style: const TextStyle(color: Colors.white70, fontSize: 12)),
             ],
           ),
         ],
@@ -238,9 +235,9 @@ class _StudentAssignmentDetailState extends State<StudentAssignmentDetail> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -248,15 +245,12 @@ class _StudentAssignmentDetailState extends State<StudentAssignmentDetail> {
           Row(
             children: [
               const Text('Điểm bài tập',
-                  style:
-                      TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
               const Spacer(),
               Text(
                 '${score.toStringAsFixed(1)} / 10',
                 style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: color),
+                    fontSize: 24, fontWeight: FontWeight.bold, color: color),
               ),
             ],
           ),
@@ -315,10 +309,10 @@ class _UploadBox extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: AppColors.studentAccent.withOpacity(0.05),
+          color: AppColors.studentAccent.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: AppColors.studentAccent.withOpacity(0.3),
+            color: AppColors.studentAccent.withValues(alpha: 0.3),
             style: BorderStyle.solid,
           ),
         ),
@@ -330,14 +324,12 @@ class _UploadBox extends StatelessWidget {
             Text(
               'Tap để chọn file',
               style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.studentAccent),
+                  fontWeight: FontWeight.w600, color: AppColors.studentAccent),
             ),
             SizedBox(height: 4),
             Text(
               'PDF, DOCX, JPG, PNG — tối đa 10 MB',
-              style: TextStyle(
-                  fontSize: 11, color: AppColors.textSecondary),
+              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -358,8 +350,7 @@ class _SubmissionView extends StatelessWidget {
         leading: const Icon(Icons.picture_as_pdf_rounded,
             color: AppColors.studentAccent, size: 28),
         title: Text(fileName,
-            style:
-                const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
         subtitle: Text(
           status == 'PENDING'
               ? 'Đã chọn, sẵn sàng nộp'
@@ -394,11 +385,9 @@ class _AttachmentTile extends StatelessWidget {
     return ListTile(
       leading: Icon(icon, color: AppColors.studentAccent),
       title: Text(name,
-          style:
-              const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
       subtitle: Text(size,
-          style: const TextStyle(
-              fontSize: 11, color: AppColors.textSecondary)),
+          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
       trailing: const Icon(Icons.download_rounded, size: 20),
       onTap: () {},
     );

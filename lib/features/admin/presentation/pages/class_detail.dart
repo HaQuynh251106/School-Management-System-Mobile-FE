@@ -88,7 +88,7 @@ class _InfoTab extends StatelessWidget {
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Center(
@@ -125,33 +125,27 @@ class _InfoTab extends StatelessWidget {
         const SizedBox(height: 20),
         const SectionHeader(title: 'Thống kê'),
         const SizedBox(height: 10),
-        Row(
-          children: const [
+        const Row(
+          children: [
             Expanded(
                 child: _StatCard(
-                    label: 'TB lớp',
-                    value: '7.8',
-                    color: AppColors.success)),
+                    label: 'TB lớp', value: '7.8', color: AppColors.success)),
             SizedBox(width: 10),
             Expanded(
                 child: _StatCard(
-                    label: 'Tỉ lệ CC',
-                    value: '94%',
-                    color: AppColors.primary)),
+                    label: 'Tỉ lệ CC', value: '94%', color: AppColors.primary)),
             SizedBox(width: 10),
             Expanded(
                 child: _StatCard(
-                    label: 'Vắng KP',
-                    value: '3',
-                    color: AppColors.error)),
+                    label: 'Vắng KP', value: '3', color: AppColors.error)),
           ],
         ),
         const SizedBox(height: 20),
         const SectionHeader(title: 'GV bộ môn'),
         const SizedBox(height: 8),
-        Card(
+        const Card(
           child: Column(
-            children: const [
+            children: [
               ListTile(
                 leading: Icon(Icons.functions_rounded,
                     color: AppColors.teacherAccent),
@@ -260,7 +254,8 @@ class _StudentsTabState extends State<_StudentsTab> {
             children: [
               Expanded(
                 child: TextField(
-                  onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
+                  onChanged: (v) =>
+                      setState(() => _query = v.trim().toLowerCase()),
                   decoration: InputDecoration(
                     hintText: 'Tìm HS...',
                     prefixIcon: const Icon(Icons.search, size: 18),
@@ -298,7 +293,8 @@ class _StudentsTabState extends State<_StudentsTab> {
               final students = _query.isEmpty
                   ? all
                   : all.where((s) {
-                      final name = (s['fullName'] ?? '').toString().toLowerCase();
+                      final name =
+                          (s['fullName'] ?? '').toString().toLowerCase();
                       final code =
                           (s['studentCode'] ?? '').toString().toLowerCase();
                       return name.contains(_query) || code.contains(_query);
@@ -319,7 +315,7 @@ class _StudentsTabState extends State<_StudentsTab> {
                     leading: CircleAvatar(
                       radius: 18,
                       backgroundColor:
-                          AppColors.studentAccent.withOpacity(0.14),
+                          AppColors.studentAccent.withValues(alpha: 0.14),
                       child: Text('${i + 1}',
                           style: const TextStyle(
                               fontSize: 12,
@@ -366,11 +362,11 @@ class _TimetableSummaryTab extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppColors.success.withOpacity(0.08),
+            color: AppColors.success.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Row(
-            children: const [
+          child: const Row(
+            children: [
               Icon(Icons.check_circle_outline_rounded,
                   color: AppColors.success, size: 18),
               SizedBox(width: 8),
@@ -399,7 +395,7 @@ class _TimetableSummaryTab extends StatelessWidget {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: AppColors.adminAccent.withOpacity(0.12),
+                        color: AppColors.adminAccent.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Center(
@@ -414,8 +410,7 @@ class _TimetableSummaryTab extends StatelessWidget {
                             fontSize: 13, fontWeight: FontWeight.w500)),
                     subtitle: Text('Tiết ${e.key + 1}',
                         style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textSecondary)),
+                            fontSize: 11, color: AppColors.textSecondary)),
                   ),
                 ),
               ),

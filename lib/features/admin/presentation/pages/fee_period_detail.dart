@@ -38,8 +38,7 @@ class AdminFeePeriodDetail extends StatelessWidget {
         backgroundColor: AppColors.adminAccent,
         actions: [
           IconButton(
-              icon: const Icon(Icons.file_download_outlined),
-              onPressed: () {}),
+              icon: const Icon(Icons.file_download_outlined), onPressed: () {}),
         ],
       ),
       body: ListView(
@@ -48,10 +47,10 @@ class AdminFeePeriodDetail extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.adminAccent.withOpacity(0.08),
+              color: AppColors.adminAccent.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(14),
-              border:
-                  Border.all(color: AppColors.adminAccent.withOpacity(0.3)),
+              border: Border.all(
+                  color: AppColors.adminAccent.withValues(alpha: 0.3)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -93,7 +92,7 @@ class AdminFeePeriodDetail extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(
+              const Expanded(
                 child: _StatBox(
                   label: 'Đã thu',
                   value: '$totalPaid/$totalIssued HS',
@@ -104,7 +103,8 @@ class AdminFeePeriodDetail extends StatelessWidget {
               Expanded(
                 child: _StatBox(
                   label: 'Tỉ lệ',
-                  value: '${(totalPaid * 100 / totalIssued).toStringAsFixed(0)}%',
+                  value:
+                      '${(totalPaid * 100 / totalIssued).toStringAsFixed(0)}%',
                   color: AppColors.primary,
                 ),
               ),
@@ -128,7 +128,7 @@ class AdminFeePeriodDetail extends StatelessWidget {
                   const SizedBox(height: 12),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
+                    child: const LinearProgressIndicator(
                       value: paidAmount / totalAmount,
                       color: AppColors.success,
                       backgroundColor: AppColors.divider,
@@ -176,10 +176,11 @@ class AdminFeePeriodDetail extends StatelessWidget {
           const SizedBox(height: 20),
           const SectionHeader(title: 'Định mức theo khối'),
           const SizedBox(height: 8),
-          Card(
+          const Card(
             child: Column(
               children: [
-                _FeeRow(name: 'Học phí', grades: 'K10/K11/K12', amount: 3500000),
+                _FeeRow(
+                    name: 'Học phí', grades: 'K10/K11/K12', amount: 3500000),
                 Divider(height: 0),
                 _FeeRow(name: 'Tiền ăn trưa', grades: 'Tất cả', amount: 800000),
                 Divider(height: 0),
@@ -190,7 +191,7 @@ class AdminFeePeriodDetail extends StatelessWidget {
           const SizedBox(height: 20),
           const SectionHeader(title: 'Top 5 HS nợ học phí'),
           const SizedBox(height: 8),
-          Card(
+          const Card(
             child: Column(
               children: [
                 _DebtorRow(name: 'Nguyễn Văn Hùng', cls: '10A2', days: 12),
@@ -249,16 +250,16 @@ class _StatBox extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
-              style:
-                  const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+              style: const TextStyle(
+                  fontSize: 11, color: AppColors.textSecondary)),
           const SizedBox(height: 4),
           Text(value,
               style: TextStyle(
@@ -294,11 +295,9 @@ class _FeeRow extends StatelessWidget {
     return ListTile(
       leading: const Icon(Icons.receipt_outlined, color: AppColors.adminAccent),
       title: Text(name,
-          style:
-              const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
       subtitle: Text(grades,
-          style: const TextStyle(
-              fontSize: 11, color: AppColors.textSecondary)),
+          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
       trailing: Text(_formatVnd(amount),
           style: const TextStyle(
               fontWeight: FontWeight.bold,
@@ -323,20 +322,18 @@ class _DebtorRow extends StatelessWidget {
     return ListTile(
       leading: CircleAvatar(
         radius: 16,
-        backgroundColor: AppColors.error.withOpacity(0.12),
+        backgroundColor: AppColors.error.withValues(alpha: 0.12),
         child: const Icon(Icons.priority_high_rounded,
             color: AppColors.error, size: 16),
       ),
       title: Text(name,
-          style:
-              const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
       subtitle: Text('Lớp $cls',
-          style: const TextStyle(
-              fontSize: 11, color: AppColors.textSecondary)),
+          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: AppColors.error.withOpacity(0.1),
+          color: AppColors.error.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(6),
         ),
         child: Text('Trễ $days ngày',

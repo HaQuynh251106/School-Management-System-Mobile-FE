@@ -69,7 +69,8 @@ class ChatListPage extends StatefulWidget {
 }
 
 class _ChatListPageState extends State<ChatListPage> {
-  late Future<List<Map<String, dynamic>>> _future = sl<ApiService>().chatThreads();
+  late final Future<List<Map<String, dynamic>>> _future =
+      sl<ApiService>().chatThreads();
 
   @override
   Widget build(BuildContext context) {
@@ -78,9 +79,7 @@ class _ChatListPageState extends State<ChatListPage> {
       future: _future,
       builder: (context, snap) {
         final loading = snap.connectionState != ConnectionState.done;
-        final threads = (snap.data ?? [])
-            .map(ChatThread.fromJson)
-            .toList();
+        final threads = (snap.data ?? []).map(ChatThread.fromJson).toList();
         final dms = threads.where((t) => !t.isBroadcast).toList();
         final broadcasts = threads.where((t) => t.isBroadcast).toList();
         return DefaultTabController(
@@ -144,13 +143,12 @@ class _ChatListPageState extends State<ChatListPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('Broadcast tới lớp',
-                  style:
-                      TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 initialValue: target,
-                decoration: const InputDecoration(
-                    labelText: 'Lớp nhận', isDense: true),
+                decoration:
+                    const InputDecoration(labelText: 'Lớp nhận', isDense: true),
                 items: ['10A1', '10A2', '8A1']
                     .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                     .toList(),
@@ -179,8 +177,7 @@ class _ChatListPageState extends State<ChatListPage> {
                       ),
                     );
                   },
-                  style:
-                      FilledButton.styleFrom(backgroundColor: widget.accent),
+                  style: FilledButton.styleFrom(backgroundColor: widget.accent),
                   icon: const Icon(Icons.send_rounded),
                   label: const Text('Gửi'),
                 ),
@@ -213,11 +210,9 @@ class _ThreadList extends StatelessWidget {
         return ListTile(
           leading: CircleAvatar(
             radius: 22,
-            backgroundColor: accent.withOpacity(0.14),
+            backgroundColor: accent.withValues(alpha: 0.14),
             child: Icon(
-              t.isBroadcast
-                  ? Icons.campaign_rounded
-                  : Icons.person_rounded,
+              t.isBroadcast ? Icons.campaign_rounded : Icons.person_rounded,
               color: accent,
             ),
           ),
@@ -226,9 +221,8 @@ class _ThreadList extends StatelessWidget {
               Expanded(
                 child: Text(t.name,
                     style: TextStyle(
-                        fontWeight: t.unread > 0
-                            ? FontWeight.bold
-                            : FontWeight.w500,
+                        fontWeight:
+                            t.unread > 0 ? FontWeight.bold : FontWeight.w500,
                         fontSize: 14)),
               ),
               Text(t.lastTime,
@@ -256,8 +250,8 @@ class _ThreadList extends StatelessWidget {
               if (t.unread > 0)
                 Container(
                   margin: const EdgeInsets.only(left: 6),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 6, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: accent,
                     borderRadius: BorderRadius.circular(8),
@@ -420,11 +414,10 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             top: false,
             child: Container(
               padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppColors.surface,
                 border: Border(
-                    top: BorderSide(
-                        color: AppColors.divider, width: 0.5)),
+                    top: BorderSide(color: AppColors.divider, width: 0.5)),
               ),
               child: Row(
                 children: [
@@ -474,15 +467,13 @@ class _Bubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        mainAxisAlignment: message.fromMe
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
+        mainAxisAlignment:
+            message.fromMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
           Container(
             constraints: BoxConstraints(
                 maxWidth: MediaQuery.of(context).size.width * 0.72),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: message.fromMe ? accent : AppColors.surface,
               borderRadius: BorderRadius.only(
@@ -491,9 +482,8 @@ class _Bubble extends StatelessWidget {
                 bottomLeft: Radius.circular(message.fromMe ? 14 : 4),
                 bottomRight: Radius.circular(message.fromMe ? 4 : 14),
               ),
-              border: message.fromMe
-                  ? null
-                  : Border.all(color: AppColors.divider),
+              border:
+                  message.fromMe ? null : Border.all(color: AppColors.divider),
             ),
             child: Column(
               crossAxisAlignment: message.fromMe
@@ -515,9 +505,8 @@ class _Bubble extends StatelessWidget {
                   message.text,
                   style: TextStyle(
                     fontSize: 14,
-                    color: message.fromMe
-                        ? Colors.white
-                        : AppColors.textPrimary,
+                    color:
+                        message.fromMe ? Colors.white : AppColors.textPrimary,
                     height: 1.35,
                   ),
                 ),
@@ -634,8 +623,7 @@ class _ChatThreadPageState extends State<_ChatThreadPage> {
             Text(widget.title, style: const TextStyle(fontSize: 15)),
             if (widget.subtitle.isNotEmpty)
               Text(widget.subtitle,
-                  style:
-                      const TextStyle(fontSize: 11, color: Colors.white70)),
+                  style: const TextStyle(fontSize: 11, color: Colors.white70)),
           ],
         ),
         backgroundColor: widget.accent,
@@ -656,8 +644,7 @@ class _ChatThreadPageState extends State<_ChatThreadPage> {
                 if (snap.hasError) {
                   return Center(
                     child: Text('Lỗi: ${snap.error}',
-                        style: const TextStyle(
-                            color: AppColors.textSecondary)),
+                        style: const TextStyle(color: AppColors.textSecondary)),
                   );
                 }
                 final messages = (snap.data ?? [])
@@ -670,8 +657,8 @@ class _ChatThreadPageState extends State<_ChatThreadPage> {
                   );
                 }
                 return ListView.builder(
-                  padding: const EdgeInsets.symmetric(
-                      vertical: 16, horizontal: 12),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
                   itemCount: messages.length,
                   itemBuilder: (_, i) => _Bubble(
                     message: messages[i],

@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../network/dio_client.dart';
 import '../network/api_service.dart';
@@ -13,8 +13,11 @@ final sl = GetIt.instance;
 
 Future<void> setupServiceLocator() async {
   // Storage
-  final prefs = await SharedPreferences.getInstance();
-  sl.registerLazySingleton<SharedPreferences>(() => prefs);
+  sl.registerLazySingleton<FlutterSecureStorage>(
+    () => const FlutterSecureStorage(
+      aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    ),
+  );
   sl.registerLazySingleton<TokenStorage>(() => TokenStorage(sl()));
 
   // Network

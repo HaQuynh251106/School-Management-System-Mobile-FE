@@ -201,14 +201,13 @@ class _ParentHomeState extends State<ParentHome> {
           _AttendanceTab(child: child),
           _GradesTab(child: child),
           _InvoicesTab(child: child),
-          _ProfileTab(
-              activeChild: child, onSwitchChild: _showChildSwitcher),
+          _ProfileTab(activeChild: child, onSwitchChild: _showChildSwitcher),
         ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
-        indicatorColor: AppColors.parentAccent.withOpacity(0.15),
+        indicatorColor: AppColors.parentAccent.withValues(alpha: 0.15),
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.monitor_heart_outlined),
@@ -218,8 +217,8 @@ class _ParentHomeState extends State<ParentHome> {
           ),
           NavigationDestination(
             icon: Icon(Icons.event_note_outlined),
-            selectedIcon: Icon(Icons.event_note_rounded,
-                color: AppColors.parentAccent),
+            selectedIcon:
+                Icon(Icons.event_note_rounded, color: AppColors.parentAccent),
             label: 'Chuyên cần',
           ),
           NavigationDestination(
@@ -230,8 +229,8 @@ class _ParentHomeState extends State<ParentHome> {
           ),
           NavigationDestination(
             icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long_rounded,
-                color: AppColors.parentAccent),
+            selectedIcon:
+                Icon(Icons.receipt_long_rounded, color: AppColors.parentAccent),
             label: 'Hóa đơn',
           ),
           NavigationDestination(
@@ -266,7 +265,7 @@ class _ParentHomeState extends State<ParentHome> {
               return ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: CircleAvatar(
-                  backgroundColor: c.avatarColor.withOpacity(0.14),
+                  backgroundColor: c.avatarColor.withValues(alpha: 0.14),
                   child: Text(c.name[0],
                       style: TextStyle(
                           color: c.avatarColor, fontWeight: FontWeight.bold)),
@@ -373,8 +372,8 @@ class _MonitorTabState extends State<_MonitorTab> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   child: Center(
                       child: Text('Lỗi: ${snap.error}',
-                          style: const TextStyle(
-                              color: AppColors.textSecondary))),
+                          style:
+                              const TextStyle(color: AppColors.textSecondary))),
                 );
               }
               final data = snap.data ?? const <List<Map<String, dynamic>>>[];
@@ -407,9 +406,8 @@ class _RecentAttendanceSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Sort by date descending so the newest records show first.
-    final sorted = [...records]
-      ..sort((a, b) =>
-          (b['date'] ?? '').toString().compareTo((a['date'] ?? '').toString()));
+    final sorted = [...records]..sort((a, b) =>
+        (b['date'] ?? '').toString().compareTo((a['date'] ?? '').toString()));
     final recent = sorted.take(4).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -480,9 +478,7 @@ class _RecentGradesSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Only entries with a real score, newest (by recordedAt) first.
-    final scored = grades
-        .where((g) => g['score'] is num)
-        .toList()
+    final scored = grades.where((g) => g['score'] is num).toList()
       ..sort((a, b) => (b['recordedAt'] ?? '')
           .toString()
           .compareTo((a['recordedAt'] ?? '').toString()));
@@ -545,7 +541,7 @@ class _RecentGradeRow extends StatelessWidget {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: _color.withOpacity(0.12),
+          color: _color.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Center(
@@ -557,8 +553,7 @@ class _RecentGradeRow extends StatelessWidget {
       title: Text(subject,
           style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
       subtitle: Text(note,
-          style: const TextStyle(
-              fontSize: 12, color: AppColors.textSecondary)),
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
     );
   }
 }
@@ -569,21 +564,20 @@ class _AlertBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.absentUnexcused.withOpacity(0.08),
+        color: AppColors.absentUnexcused.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
         border:
-            Border.all(color: AppColors.absentUnexcused.withOpacity(0.3)),
+            Border.all(color: AppColors.absentUnexcused.withValues(alpha: 0.3)),
       ),
-      child: Row(
-        children: const [
+      child: const Row(
+        children: [
           Icon(Icons.warning_amber_rounded,
               color: AppColors.absentUnexcused, size: 22),
           SizedBox(width: 10),
           Expanded(
             child: Text(
               'Con vắng mặt không phép ngày 19/05 — Tiếng Anh tiết 1',
-              style:
-                  TextStyle(fontSize: 13, color: AppColors.absentUnexcused),
+              style: TextStyle(fontSize: 13, color: AppColors.absentUnexcused),
             ),
           ),
         ],
@@ -620,9 +614,9 @@ class _InvoiceBanner extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: AppColors.warning.withOpacity(0.1),
+            color: AppColors.warning.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.warning.withOpacity(0.3)),
+            border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
           ),
           child: Row(
             children: [
@@ -645,8 +639,7 @@ class _InvoiceBanner extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded,
-                  color: AppColors.warning),
+              const Icon(Icons.chevron_right_rounded, color: AppColors.warning),
             ],
           ),
         ),
@@ -673,7 +666,8 @@ class _SummaryRow extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: _SummaryCard(
-            value: '${child.presentCount}/${child.presentCount + child.absentCount}',
+            value:
+                '${child.presentCount}/${child.presentCount + child.absentCount}',
             label: 'Có mặt',
             color: AppColors.primary,
           ),
@@ -741,7 +735,7 @@ class _ChildCard extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 26,
-                backgroundColor: child.avatarColor.withOpacity(0.14),
+                backgroundColor: child.avatarColor.withValues(alpha: 0.14),
                 child: Text(child.name[0],
                     style: TextStyle(
                         fontWeight: FontWeight.bold,
@@ -764,10 +758,9 @@ class _ChildCard extends StatelessWidget {
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.parentAccent.withOpacity(0.1),
+                  color: AppColors.parentAccent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Row(
@@ -955,8 +948,7 @@ class _StatsRow extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(entry.key,
                       style: const TextStyle(
-                          fontSize: 10,
-                          color: AppColors.textSecondary),
+                          fontSize: 10, color: AppColors.textSecondary),
                       textAlign: TextAlign.center),
                 ],
               ),
@@ -985,9 +977,9 @@ class _RateBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: _color.withOpacity(0.1),
+        color: _color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _color.withOpacity(0.3)),
+        border: Border.all(color: _color.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -1000,7 +992,7 @@ class _RateBanner extends StatelessWidget {
                 CircularProgressIndicator(
                   value: rate,
                   color: _color,
-                  backgroundColor: _color.withOpacity(0.18),
+                  backgroundColor: _color.withValues(alpha: 0.18),
                   strokeWidth: 5,
                 ),
                 Text('$percent%',
@@ -1080,9 +1072,8 @@ class _GradesTabState extends State<_GradesTab> {
         if (score is num) scores[idx] = score.toDouble();
       }
     }
-    final result = bySubject.entries
-        .map((e) => _SubjectGrade(e.key, e.value))
-        .toList();
+    final result =
+        bySubject.entries.map((e) => _SubjectGrade(e.key, e.value)).toList();
     result.sort((a, b) => a.subject.compareTo(b.subject));
     return result;
   }
@@ -1166,7 +1157,7 @@ class _SemesterGrades extends StatelessWidget {
             gradient: LinearGradient(
               colors: [
                 AppColors.parentAccent,
-                AppColors.parentAccent.withOpacity(0.7),
+                AppColors.parentAccent.withValues(alpha: 0.7),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -1192,8 +1183,8 @@ class _SemesterGrades extends StatelessWidget {
                       overall == null
                           ? 'Chưa có điểm'
                           : 'TB: ${overall.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                          color: Colors.white70, fontSize: 12),
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 12),
                     ),
                   ],
                 ),
@@ -1227,8 +1218,9 @@ class _SemesterGrades extends StatelessWidget {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: (avg != null ? _avgColor(avg) : AppColors.divider)
-                            .withOpacity(0.12),
+                        color:
+                            (avg != null ? _avgColor(avg) : AppColors.divider)
+                                .withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Center(
@@ -1258,8 +1250,7 @@ class _SemesterGrades extends StatelessWidget {
                             'GK: ${sg.scores[2]?.toStringAsFixed(1) ?? "—"} • '
                             'CK: ${sg.scores[3]?.toStringAsFixed(1) ?? "—"}',
                             style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textSecondary),
+                                fontSize: 11, color: AppColors.textSecondary),
                           ),
                         ],
                       ),
@@ -1276,7 +1267,6 @@ class _SemesterGrades extends StatelessWidget {
     );
   }
 }
-
 
 // =================== TAB 4: INVOICES ===================
 
@@ -1333,6 +1323,41 @@ class _InvoicesTabState extends State<_InvoicesTab> {
     }
   }
 
+  Future<void> _openDetail(Map<String, dynamic> summary) async {
+    try {
+      final detail =
+          await sl<ApiService>().invoiceDetail(summary['id'].toString());
+      if (!mounted) return;
+      final invoice = (detail['invoice'] as Map).cast<String, dynamic>();
+      final items = (detail['items'] as List? ?? const [])
+          .map((raw) => (raw as Map).cast<String, dynamic>())
+          .map((item) => InvoiceLineItem(
+                (item['name'] ?? '').toString(),
+                (item['amount'] as num?)?.toInt() ?? 0,
+              ))
+          .toList();
+      final payments = (detail['payments'] as List? ?? const [])
+          .map((raw) => (raw as Map).cast<String, dynamic>())
+          .toList();
+      await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => InvoiceDetailPage(
+          invoiceCode: (invoice['code'] ?? '').toString(),
+          childName: (invoice['studentName'] ?? widget.child.name).toString(),
+          semester: (invoice['feePeriodId'] ?? 'Hóa đơn học phí').toString(),
+          dueDate: (invoice['dueDate'] ?? '').toString(),
+          status: (invoice['status'] ?? '').toString(),
+          paidAt: payments.isEmpty ? null : payments.last['paidAt']?.toString(),
+          items: items,
+        ),
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Không thể tải chi tiết: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1378,41 +1403,61 @@ class _InvoicesTabState extends State<_InvoicesTab> {
                     children: [
                       Row(children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                              color: color, borderRadius: BorderRadius.circular(6)),
+                              color: color,
+                              borderRadius: BorderRadius.circular(6)),
                           child: Text(
-                              paid ? 'Đã thanh toán' : (status == 'PARTIAL' ? 'Một phần' : 'Chưa TT'),
+                              paid
+                                  ? 'Đã thanh toán'
+                                  : (status == 'PARTIAL'
+                                      ? 'Một phần'
+                                      : 'Chưa TT'),
                               style: const TextStyle(
-                                  color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold)),
                         ),
                         const Spacer(),
                         Text((inv['code'] ?? '').toString(),
-                            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            style: const TextStyle(
+                                fontSize: 11, color: AppColors.textSecondary)),
                       ]),
                       const SizedBox(height: 8),
                       Text('HS: ${inv['studentName'] ?? ''}',
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 14)),
                       const SizedBox(height: 6),
                       Row(children: [
                         Text(_vnd((inv['totalAmount'] ?? 0) as num),
-                            style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 16)),
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: color,
+                                fontSize: 16)),
                         const Spacer(),
+                        TextButton(
+                          onPressed: () => _openDetail(inv),
+                          child: const Text('Chi tiết'),
+                        ),
                         if (!paid)
                           FilledButton.icon(
                             onPressed: () => _pay(inv),
                             style: FilledButton.styleFrom(
                               backgroundColor: AppColors.parentAccent,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
                               minimumSize: Size.zero,
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                             icon: const Icon(Icons.payment_rounded, size: 16),
-                            label: const Text('Thanh toán', style: TextStyle(fontSize: 12)),
+                            label: const Text('Thanh toán',
+                                style: TextStyle(fontSize: 12)),
                           )
                         else
                           const Text('Đã thanh toán',
-                              style: TextStyle(fontSize: 12, color: AppColors.success)),
+                              style: TextStyle(
+                                  fontSize: 12, color: AppColors.success)),
                       ]),
                     ],
                   ),
@@ -1462,8 +1507,8 @@ class _InvoiceList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (invoices.isEmpty) {
       return Center(
-        child: Text(empty,
-            style: const TextStyle(color: AppColors.textSecondary)),
+        child:
+            Text(empty, style: const TextStyle(color: AppColors.textSecondary)),
       );
     }
     return ListView.separated(
@@ -1515,8 +1560,7 @@ class _InvoiceList extends StatelessWidget {
                       const Spacer(),
                       Text(inv.code,
                           style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondary)),
+                              fontSize: 11, color: AppColors.textSecondary)),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -1620,10 +1664,10 @@ class _ProfileTab extends StatelessWidget {
                           color: AppColors.textSecondary, fontSize: 13)),
                   const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppColors.parentAccent.withOpacity(0.1),
+                      color: AppColors.parentAccent.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -1731,15 +1775,15 @@ class _ProfileTab extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(20),
+      builder: (ctx) => const Padding(
+        padding: EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Khóa ngoại khóa đang mở',
+            Text('Khóa ngoại khóa đang mở',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             _ExtraCourseTile(
               name: 'Robotics — Trình độ cơ bản',
               schedule: 'T7 14:00–16:00',
@@ -1747,7 +1791,7 @@ class _ProfileTab extends StatelessWidget {
               spots: 12,
               total: 20,
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _ExtraCourseTile(
               name: 'Vẽ truyện tranh',
               schedule: 'T7 09:00–11:00',
@@ -1755,7 +1799,7 @@ class _ProfileTab extends StatelessWidget {
               spots: 18,
               total: 25,
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _ExtraCourseTile(
               name: 'STEM — Lập trình Python',
               schedule: 'CN 14:00–16:00',
@@ -1798,7 +1842,7 @@ class _ExtraCourseTile extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: AppColors.parentAccent.withOpacity(0.12),
+              color: AppColors.parentAccent.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(Icons.sports_basketball_rounded,
@@ -1836,8 +1880,7 @@ class _ExtraCourseTile extends StatelessWidget {
             },
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.parentAccent,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
@@ -1888,45 +1931,7 @@ class _PNotiAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final unread = mockNotifications.where((n) => !n.read).length;
-    return Padding(
-      padding: const EdgeInsets.only(right: 4),
-      child: Stack(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const NotificationCenter(
-                  accent: AppColors.parentAccent,
-                  items: mockNotifications,
-                ),
-              ),
-            ),
-          ),
-          if (unread > 0)
-            Positioned(
-              right: 8,
-              top: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 4, vertical: 1),
-                decoration: BoxDecoration(
-                  color: AppColors.error,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                constraints: const BoxConstraints(minWidth: 14),
-                child: Text('$unread',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center),
-              ),
-            ),
-        ],
-      ),
-    );
+    return const LiveNotificationAction(accent: AppColors.parentAccent);
   }
 }
 
@@ -1935,8 +1940,7 @@ class _PChatAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final unread =
-        _parentThreads.fold<int>(0, (s, t) => s + t.unread);
+    final unread = _parentThreads.fold<int>(0, (s, t) => s + t.unread);
     return Padding(
       padding: const EdgeInsets.only(right: 0),
       child: Stack(
@@ -1957,8 +1961,7 @@ class _PChatAction extends StatelessWidget {
               right: 8,
               top: 8,
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 4, vertical: 1),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                 decoration: BoxDecoration(
                   color: AppColors.error,
                   borderRadius: BorderRadius.circular(8),

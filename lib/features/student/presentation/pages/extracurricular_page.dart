@@ -79,8 +79,7 @@ class _StudentExtracurricularPageState
                 child: Text('Lỗi: ${snap.error}',
                     style: const TextStyle(color: AppColors.textSecondary)));
           }
-          final clubs =
-              (snap.data ?? []).map(_Course.fromJson).toList();
+          final clubs = (snap.data ?? []).map(_Course.fromJson).toList();
           return _buildList(clubs);
         },
       ),
@@ -115,7 +114,8 @@ class _StudentExtracurricularPageState
                         width: 50,
                         height: 50,
                         decoration: BoxDecoration(
-                          color: AppColors.studentAccent.withOpacity(0.12),
+                          color:
+                              AppColors.studentAccent.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(Icons.sports_basketball_rounded,
@@ -181,8 +181,8 @@ class _StudentExtracurricularPageState
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.studentAccent,
                       ),
-                      icon: const Icon(Icons.app_registration_rounded,
-                          size: 16),
+                      icon:
+                          const Icon(Icons.app_registration_rounded, size: 16),
                       label: Text(c.isOpen ? 'Đăng ký' : 'Đã đóng'),
                     ),
                   ),
@@ -202,8 +202,8 @@ class _StudentExtracurricularPageState
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text(
-              'Đã đăng ký ${c.name}. Hóa đơn sẽ gửi cho PH trong 24h.'),
+          content:
+              Text('Đã đăng ký ${c.name}. Hóa đơn sẽ gửi cho PH trong 24h.'),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
         ),

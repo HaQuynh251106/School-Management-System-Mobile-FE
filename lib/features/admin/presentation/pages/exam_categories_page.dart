@@ -94,7 +94,7 @@ class _ExamCategoriesPageState extends State<ExamCategoriesPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.adminAccent.withOpacity(0.08),
+                color: AppColors.adminAccent.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Row(
@@ -112,7 +112,7 @@ class _ExamCategoriesPageState extends State<ExamCategoriesPage> {
               ),
             ),
             const SizedBox(height: 16),
-            SectionHeader(
+            const SectionHeader(
               title: 'Năm học 2025-2026',
               action: 'Thêm loại điểm',
             ),
@@ -135,7 +135,8 @@ class _ExamCategoriesPageState extends State<ExamCategoriesPage> {
                           width: 36,
                           height: 36,
                           decoration: BoxDecoration(
-                            color: AppColors.adminAccent.withOpacity(0.12),
+                            color:
+                                AppColors.adminAccent.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Center(
@@ -152,31 +153,29 @@ class _ExamCategoriesPageState extends State<ExamCategoriesPage> {
                         subtitle: Text(
                             'Hệ số: ${categories[i].weight.toStringAsFixed(1)}',
                             style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textSecondary)),
+                                fontSize: 11, color: AppColors.textSecondary)),
                         trailing: const Icon(Icons.edit_outlined,
                             size: 18, color: AppColors.textSecondary),
                         onTap: () {},
                       ),
-                      if (i < categories.length - 1)
-                        const Divider(height: 0),
+                      if (i < categories.length - 1) const Divider(height: 0),
                     ],
                   ],
                 ),
               ),
             const SizedBox(height: 16),
-            SectionHeader(title: 'Công thức tính TB môn'),
+            const SectionHeader(title: 'Công thức tính TB môn'),
             const SizedBox(height: 8),
-            Card(
+            const Card(
               child: Padding(
-                padding: const EdgeInsets.all(14),
+                padding: EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
+                  children: [
                     Text(
                       'TB môn = (ΣM + Σ15p + 2×GK + 3×CK) / (số bài + 2 + 3)',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 13),
+                      style:
+                          TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                     ),
                     SizedBox(height: 6),
                     Text(
@@ -197,7 +196,7 @@ class _ExamCategoriesPageState extends State<ExamCategoriesPage> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        SectionHeader(title: 'Hệ số môn — Năm 2025-2026'),
+        const SectionHeader(title: 'Hệ số môn — Năm 2025-2026'),
         const SizedBox(height: 10),
         Card(
           child: Column(
@@ -209,8 +208,8 @@ class _ExamCategoriesPageState extends State<ExamCategoriesPage> {
                     height: 36,
                     decoration: BoxDecoration(
                       color: _coefficients[i].$2 >= 1.5
-                          ? AppColors.adminAccent.withOpacity(0.12)
-                          : AppColors.textSecondary.withOpacity(0.08),
+                          ? AppColors.adminAccent.withValues(alpha: 0.12)
+                          : AppColors.textSecondary.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Center(
@@ -229,9 +228,7 @@ class _ExamCategoriesPageState extends State<ExamCategoriesPage> {
                       style: const TextStyle(
                           fontWeight: FontWeight.w500, fontSize: 14)),
                   subtitle: Text(
-                    _coefficients[i].$2 >= 1.5
-                        ? 'Môn chính'
-                        : 'Môn phụ',
+                    _coefficients[i].$2 >= 1.5 ? 'Môn chính' : 'Môn phụ',
                     style: const TextStyle(
                         fontSize: 11, color: AppColors.textSecondary),
                   ),

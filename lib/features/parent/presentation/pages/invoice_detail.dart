@@ -78,8 +78,8 @@ class InvoiceDetailPage extends StatelessWidget {
                               width: 36,
                               height: 36,
                               decoration: BoxDecoration(
-                                color:
-                                    AppColors.parentAccent.withOpacity(0.12),
+                                color: AppColors.parentAccent
+                                    .withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: const Icon(Icons.receipt_outlined,
@@ -148,7 +148,7 @@ class InvoiceDetailPage extends StatelessWidget {
               top: false,
               child: Container(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppColors.surface,
                   border: Border(
                       top: BorderSide(color: AppColors.divider, width: 0.5)),
@@ -176,9 +176,9 @@ class InvoiceDetailPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _statusColor.withOpacity(0.08),
+        color: _statusColor.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _statusColor.withOpacity(0.3)),
+        border: Border.all(color: _statusColor.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -186,8 +186,8 @@ class InvoiceDetailPage extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: _statusColor,
                   borderRadius: BorderRadius.circular(6),
@@ -325,7 +325,7 @@ class _PaymentMethodTile extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, color: color),
@@ -369,11 +369,9 @@ class _InfoRow extends StatelessWidget {
     return ListTile(
       leading: Icon(icon, color: AppColors.textSecondary, size: 20),
       title: Text(label,
-          style:
-              const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
       subtitle: Text(value,
-          style:
-              const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
     );
   }
 }

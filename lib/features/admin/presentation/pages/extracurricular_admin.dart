@@ -127,7 +127,7 @@ class _ExtracurricularAdminPageState extends State<ExtracurricularAdminPage> {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: AppColors.adminAccent.withOpacity(0.12),
+                        color: AppColors.adminAccent.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(Icons.sports_basketball_rounded,
@@ -140,8 +140,7 @@ class _ExtracurricularAdminPageState extends State<ExtracurricularAdminPage> {
                         children: [
                           Text(c.name,
                               style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14)),
+                                  fontWeight: FontWeight.bold, fontSize: 14)),
                           const SizedBox(height: 2),
                           Text(
                               c.schedule.isEmpty
@@ -233,11 +232,11 @@ class _ExtracurricularAdminPageState extends State<ExtracurricularAdminPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('Tạo khóa ngoại khóa',
-                  style:
-                      TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 12),
               const TextField(
-                decoration: InputDecoration(labelText: 'Tên khóa', isDense: true),
+                decoration:
+                    InputDecoration(labelText: 'Tên khóa', isDense: true),
               ),
               const SizedBox(height: 10),
               const Row(
@@ -266,8 +265,7 @@ class _ExtracurricularAdminPageState extends State<ExtracurricularAdminPage> {
               ),
               const SizedBox(height: 10),
               const TextField(
-                decoration:
-                    InputDecoration(labelText: 'Mô tả', isDense: true),
+                decoration: InputDecoration(labelText: 'Mô tả', isDense: true),
                 maxLines: 2,
               ),
               const SizedBox(height: 16),
@@ -278,8 +276,7 @@ class _ExtracurricularAdminPageState extends State<ExtracurricularAdminPage> {
                     Navigator.pop(ctx);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content:
-                            Text('Đã tạo khóa. PH có thể đăng ký ngay.'),
+                        content: Text('Đã tạo khóa. PH có thể đăng ký ngay.'),
                         backgroundColor: AppColors.success,
                         behavior: SnackBarBehavior.floating,
                       ),

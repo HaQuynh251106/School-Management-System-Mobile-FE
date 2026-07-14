@@ -42,12 +42,12 @@ class _StudentHomeState extends State<StudentHome> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
-        indicatorColor: AppColors.studentAccent.withOpacity(0.15),
+        indicatorColor: AppColors.studentAccent.withValues(alpha: 0.15),
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.calendar_month_outlined),
-            selectedIcon:
-                Icon(Icons.calendar_month_rounded, color: AppColors.studentAccent),
+            selectedIcon: Icon(Icons.calendar_month_rounded,
+                color: AppColors.studentAccent),
             label: 'TKB',
           ),
           NavigationDestination(
@@ -64,8 +64,8 @@ class _StudentHomeState extends State<StudentHome> {
           ),
           NavigationDestination(
             icon: Icon(Icons.assignment_outlined),
-            selectedIcon: Icon(Icons.assignment_rounded,
-                color: AppColors.studentAccent),
+            selectedIcon:
+                Icon(Icons.assignment_rounded, color: AppColors.studentAccent),
             label: 'Bài tập',
           ),
           NavigationDestination(
@@ -171,73 +171,73 @@ class _TimetableTabState extends State<_TimetableTab>
           }
           final all = snap.data ?? [];
           return TabBarView(
-        controller: _ctrl,
-        children: List.generate(5, (i) {
-          final slots = all
-              .where((s) => s['dayOfWeek'] == _dayCodes[i])
-              .map((s) => _TSlot(
-                    (s['subjectName'] ?? '').toString(),
-                    'Tiết ${s['periodNo']}',
-                    '${s['startTime'] ?? ''}–${s['endTime'] ?? ''}',
-                    (s['roomCode'] ?? '').toString(),
-                  ))
-              .toList()
-            ..sort((a, b) => a.period.compareTo(b.period));
-          if (slots.isEmpty) {
-            return const Center(
-              child: Text('Không có tiết học',
-                  style: TextStyle(color: AppColors.textSecondary)),
-            );
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: slots.length,
-            itemBuilder: (_, j) {
-              final s = slots[j];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 10),
-                child: ListTile(
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => StudentTimetableSlotDetail(
-                        subject: s.subject,
-                        period: s.period,
-                        time: s.time,
-                        room: s.room,
-                        dayLabel: _dayLabels[i],
-                      ),
-                    ),
-                  ),
-                  leading: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: AppColors.studentAccent.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '${j + 1}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.studentAccent,
-                          fontSize: 16,
+            controller: _ctrl,
+            children: List.generate(5, (i) {
+              final slots = all
+                  .where((s) => s['dayOfWeek'] == _dayCodes[i])
+                  .map((s) => _TSlot(
+                        (s['subjectName'] ?? '').toString(),
+                        'Tiết ${s['periodNo']}',
+                        '${s['startTime'] ?? ''}–${s['endTime'] ?? ''}',
+                        (s['roomCode'] ?? '').toString(),
+                      ))
+                  .toList()
+                ..sort((a, b) => a.period.compareTo(b.period));
+              if (slots.isEmpty) {
+                return const Center(
+                  child: Text('Không có tiết học',
+                      style: TextStyle(color: AppColors.textSecondary)),
+                );
+              }
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: slots.length,
+                itemBuilder: (_, j) {
+                  final s = slots[j];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    child: ListTile(
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => StudentTimetableSlotDetail(
+                            subject: s.subject,
+                            period: s.period,
+                            time: s.time,
+                            room: s.room,
+                            dayLabel: _dayLabels[i],
+                          ),
                         ),
                       ),
+                      leading: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: AppColors.studentAccent.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${j + 1}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.studentAccent,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                      title: Text(s.subject,
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text('${s.period} • ${s.time} • ${s.room}',
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.textSecondary)),
+                      trailing: const Icon(Icons.chevron_right_rounded,
+                          color: AppColors.textSecondary),
                     ),
-                  ),
-                  title: Text(s.subject,
-                      style: const TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: Text('${s.period} • ${s.time} • ${s.room}',
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.textSecondary)),
-                  trailing: const Icon(Icons.chevron_right_rounded,
-                      color: AppColors.textSecondary),
-                ),
+                  );
+                },
               );
-            },
-          );
-        }),
+            }),
           );
         },
       ),
@@ -301,7 +301,8 @@ class _GradesTabState extends State<_GradesTab> {
     final ids = semesters
         .where((s) =>
             (s['code'] ?? '').toString() == code ||
-            (s['sequence'] is num && (s['sequence'] as num).toInt() == sequence))
+            (s['sequence'] is num &&
+                (s['sequence'] as num).toInt() == sequence))
         .map((s) => (s['id'] ?? '').toString())
         .toSet();
     return grades
@@ -341,14 +342,15 @@ class _GradesTabState extends State<_GradesTab> {
                       style: const TextStyle(color: AppColors.textSecondary)));
             }
             final data = snap.data ?? const [];
-            final grades = data.isNotEmpty ? data[0] : const <Map<String, dynamic>>[];
+            final grades =
+                data.isNotEmpty ? data[0] : const <Map<String, dynamic>>[];
             final semesters =
                 data.length > 1 ? data[1] : const <Map<String, dynamic>>[];
 
-            final hk1 = _subjectsFor(
-                _gradesForSemester(grades, semesters, 'HK1', 1));
-            final hk2 = _subjectsFor(
-                _gradesForSemester(grades, semesters, 'HK2', 2));
+            final hk1 =
+                _subjectsFor(_gradesForSemester(grades, semesters, 'HK1', 1));
+            final hk2 =
+                _subjectsFor(_gradesForSemester(grades, semesters, 'HK2', 2));
 
             return TabBarView(
               children: [
@@ -421,7 +423,7 @@ class _SemesterGrades extends StatelessWidget {
         gradient: LinearGradient(
           colors: [
             AppColors.studentAccent,
-            AppColors.studentAccent.withOpacity(0.7),
+            AppColors.studentAccent.withValues(alpha: 0.7),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -430,8 +432,7 @@ class _SemesterGrades extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.auto_graph_rounded,
-              color: Colors.white70, size: 36),
+          const Icon(Icons.auto_graph_rounded, color: Colors.white70, size: 36),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -447,8 +448,7 @@ class _SemesterGrades extends StatelessWidget {
                   overall == null
                       ? 'Chưa có điểm'
                       : 'Trung bình: ${overall.toStringAsFixed(2)} • ${_classify(overall)}',
-                  style:
-                      const TextStyle(color: Colors.white70, fontSize: 12),
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
               ],
             ),
@@ -495,7 +495,7 @@ class _SemesterGrades extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 3),
                       decoration: BoxDecoration(
-                        color: _avgColor(avg).withOpacity(0.12),
+                        color: _avgColor(avg).withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -599,9 +599,7 @@ class _YearlyGradesView extends StatelessWidget {
     final hk2Avg = {for (final sg in hk2) sg.subject: _avg(sg.scores)};
     final subjects = <String>[
       ...hk1.map((sg) => sg.subject),
-      ...hk2
-          .map((sg) => sg.subject)
-          .where((s) => !hk1Avg.containsKey(s)),
+      ...hk2.map((sg) => sg.subject).where((s) => !hk1Avg.containsKey(s)),
     ];
 
     return ListView(
@@ -610,7 +608,7 @@ class _YearlyGradesView extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: AppColors.studentAccent.withOpacity(0.08),
+            color: AppColors.studentAccent.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(12),
           ),
           child: const Row(
@@ -664,10 +662,10 @@ class _YearlyGradesView extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.w600)),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                   decoration: BoxDecoration(
-                    color: AppColors.studentAccent.withOpacity(0.12),
+                    color: AppColors.studentAccent.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -765,7 +763,8 @@ const _attMonth = <_ARecord>[
 const _attSemester = <_ARecord>[
   _ARecord('Toán', '15/09', 'PRESENT', null),
   _ARecord('Vật lý', '22/09', 'LATE', 'Muộn 3 phút'),
-  _ARecord('Tiếng Anh', '10/10', 'ABSENT_EXCUSED', 'Tham gia thi học sinh giỏi'),
+  _ARecord(
+      'Tiếng Anh', '10/10', 'ABSENT_EXCUSED', 'Tham gia thi học sinh giỏi'),
   _ARecord('Sinh học', '25/10', 'ABSENT_UNEXCUSED', 'Trốn tiết'),
   _ARecord('Ngữ văn', '08/11', 'PRESENT', null),
   _ARecord('Toán', '12/11', 'PRESENT', null),
@@ -787,7 +786,8 @@ class _AttendanceTab extends StatefulWidget {
 }
 
 class _AttendanceTabState extends State<_AttendanceTab> {
-  late final Future<List<Map<String, dynamic>>> _future = sl<ApiService>().attendance();
+  late final Future<List<Map<String, dynamic>>> _future =
+      sl<ApiService>().attendance();
 
   @override
   Widget build(BuildContext context) {
@@ -948,9 +948,9 @@ class _RateBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: _color.withOpacity(0.1),
+        color: _color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _color.withOpacity(0.3)),
+        border: Border.all(color: _color.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -963,15 +963,13 @@ class _RateBanner extends StatelessWidget {
                 CircularProgressIndicator(
                   value: rate,
                   color: _color,
-                  backgroundColor: _color.withOpacity(0.18),
+                  backgroundColor: _color.withValues(alpha: 0.18),
                   strokeWidth: 5,
                 ),
                 Text(
                   '$percent%',
                   style: TextStyle(
-                      color: _color,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11),
+                      color: _color, fontWeight: FontWeight.bold, fontSize: 11),
                 ),
               ],
             ),
@@ -1028,7 +1026,8 @@ class _ProfileTab extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 36,
-                    backgroundColor: AppColors.studentAccent.withOpacity(0.12),
+                    backgroundColor:
+                        AppColors.studentAccent.withValues(alpha: 0.12),
                     child: Text(
                       user.fullName[0],
                       style: const TextStyle(
@@ -1047,10 +1046,10 @@ class _ProfileTab extends StatelessWidget {
                           color: AppColors.textSecondary, fontSize: 13)),
                   const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppColors.studentAccent.withOpacity(0.1),
+                      color: AppColors.studentAccent.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -1092,7 +1091,6 @@ class _ProfileTab extends StatelessWidget {
                     MaterialPageRoute(
                       builder: (_) => const NotificationCenter(
                         accent: AppColors.studentAccent,
-                        items: mockNotifications,
                       ),
                     ),
                   ),
@@ -1192,7 +1190,8 @@ class _AssignmentsTab extends StatefulWidget {
 }
 
 class _AssignmentsTabState extends State<_AssignmentsTab> {
-  late Future<List<Map<String, dynamic>>> _future = sl<ApiService>().myAssignments();
+  late Future<List<Map<String, dynamic>>> _future =
+      sl<ApiService>().myAssignments();
 
   void _refresh() {
     setState(() {
@@ -1203,9 +1202,41 @@ class _AssignmentsTabState extends State<_AssignmentsTab> {
   Future<void> _submit(_Assignment a) async {
     final id = a.id;
     if (id == null || id.isEmpty) return;
+    final controller = TextEditingController();
+    final content = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(a.title),
+        content: TextField(
+          controller: controller,
+          minLines: 4,
+          maxLines: 10,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Nội dung bài làm',
+            hintText: 'Nhập nội dung hoặc đường dẫn bài làm',
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Hủy')),
+          FilledButton(
+            onPressed: () {
+              final value = controller.text.trim();
+              if (value.isNotEmpty) Navigator.pop(dialogContext, value);
+            },
+            child: const Text('Nộp bài'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (content == null) return;
+    if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await sl<ApiService>().submitAssignment(id, 'Bài làm của em (demo)');
+      await sl<ApiService>().submitAssignment(id, content);
       if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(
@@ -1231,16 +1262,13 @@ class _AssignmentsTabState extends State<_AssignmentsTab> {
       future: _future,
       builder: (context, snap) {
         final loading = snap.connectionState != ConnectionState.done;
-        final assignments = (snap.data ?? [])
-            .map(_assignmentFromJson)
-            .toList();
+        final assignments = (snap.data ?? []).map(_assignmentFromJson).toList();
         final pending =
             assignments.where((a) => a.status == 'PENDING').toList();
         final submitted = assignments
             .where((a) => a.status == 'SUBMITTED' || a.status == 'LATE')
             .toList();
-        final graded =
-            assignments.where((a) => a.status == 'GRADED').toList();
+        final graded = assignments.where((a) => a.status == 'GRADED').toList();
         return DefaultTabController(
           length: 4,
           child: Scaffold(
@@ -1270,7 +1298,8 @@ class _AssignmentsTabState extends State<_AssignmentsTab> {
                                 color: AppColors.textSecondary)))
                     : TabBarView(
                         children: [
-                          _AssignmentList(items: assignments, onSubmit: _submit),
+                          _AssignmentList(
+                              items: assignments, onSubmit: _submit),
                           _AssignmentList(items: pending, onSubmit: _submit),
                           _AssignmentList(items: submitted, onSubmit: _submit),
                           _AssignmentList(items: graded, onSubmit: _submit),
@@ -1359,7 +1388,7 @@ class _AssignmentList extends StatelessWidget {
                             horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
                           color:
-                              AppColors.studentAccent.withOpacity(0.08),
+                              AppColors.studentAccent.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(a.subject,
@@ -1391,16 +1420,14 @@ class _AssignmentList extends StatelessWidget {
                       const SizedBox(width: 4),
                       Text(a.teacher,
                           style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondary)),
+                              fontSize: 11, color: AppColors.textSecondary)),
                       const Spacer(),
                       const Icon(Icons.access_time_rounded,
                           size: 12, color: AppColors.textSecondary),
                       const SizedBox(width: 4),
                       Text(a.deadline,
                           style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondary)),
+                              fontSize: 11, color: AppColors.textSecondary)),
                     ],
                   ),
                   if (onSubmit != null &&
@@ -1440,47 +1467,7 @@ class _NotiAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final unreadCount =
-        mockNotifications.where((n) => !n.read).length;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: Stack(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const NotificationCenter(
-                  accent: AppColors.studentAccent,
-                  items: mockNotifications,
-                ),
-              ),
-            ),
-          ),
-          if (unreadCount > 0)
-            Positioned(
-              right: 8,
-              top: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 4, vertical: 1),
-                decoration: BoxDecoration(
-                  color: AppColors.error,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                constraints: const BoxConstraints(minWidth: 14),
-                child: Text(
-                  '$unreadCount',
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
+    return const LiveNotificationAction(
+        accent: AppColors.studentAccent, padding: 8);
   }
 }

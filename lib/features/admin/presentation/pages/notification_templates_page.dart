@@ -79,8 +79,7 @@ class _NotificationTemplatesPageState extends State<NotificationTemplatesPage> {
                 child: Text('Lỗi: ${snap.error}',
                     style: const TextStyle(color: AppColors.textSecondary)));
           }
-          final templates =
-              (snap.data ?? []).map(_Template.fromJson).toList();
+          final templates = (snap.data ?? []).map(_Template.fromJson).toList();
           if (templates.isEmpty) {
             return const Center(
                 child: Text('Chưa có template',
@@ -109,7 +108,7 @@ class _NotificationTemplatesPageState extends State<NotificationTemplatesPage> {
                               width: 36,
                               height: 36,
                               decoration: BoxDecoration(
-                                color: color.withOpacity(0.12),
+                                color: color.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Icon(icon, color: color, size: 18),
@@ -117,8 +116,7 @@ class _NotificationTemplatesPageState extends State<NotificationTemplatesPage> {
                             const SizedBox(width: 10),
                             Expanded(
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(t.name,
                                       style: const TextStyle(
@@ -277,7 +275,7 @@ class _Chip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(label,

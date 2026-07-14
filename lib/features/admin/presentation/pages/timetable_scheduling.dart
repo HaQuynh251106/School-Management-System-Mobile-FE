@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../../../shared/widgets/section_header.dart';
 
 class TimetableSchedulingPage extends StatefulWidget {
   const TimetableSchedulingPage({super.key});
@@ -26,7 +25,7 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
   static const _days = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
   static const _periods = ['T1', 'T2', 'T3', 'T4', 'T5'];
 
-  late Map<String, _Cell> _slots = {
+  late final Map<String, _Cell> _slots = {
     'T2-T1': _Cell(subject: 'Toán', teacher: 'Hoa', room: 'P201'),
     'T2-T2': _Cell(subject: 'Vật lý', teacher: 'Minh', room: 'P201'),
     'T2-T3': _Cell(subject: 'Ngữ văn', teacher: 'Hồng', room: 'P201'),
@@ -70,8 +69,8 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     initialValue: _class,
-                    decoration: const InputDecoration(
-                        labelText: 'Lớp', isDense: true),
+                    decoration:
+                        const InputDecoration(labelText: 'Lớp', isDense: true),
                     items: ['10A1', '10A2', '8A1']
                         .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                         .toList(),
@@ -94,9 +93,8 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
             ),
           ),
           Container(
-            color: AppColors.adminAccent.withOpacity(0.06),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            color: AppColors.adminAccent.withValues(alpha: 0.06),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
               children: [
                 const Icon(Icons.info_outline_rounded,
@@ -131,9 +129,9 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
                             width: 40,
                             height: 64,
                             decoration: BoxDecoration(
-                              color: AppColors.adminAccent.withOpacity(0.06),
-                              border:
-                                  Border.all(color: AppColors.divider),
+                              color:
+                                  AppColors.adminAccent.withValues(alpha: 0.06),
+                              border: Border.all(color: AppColors.divider),
                             ),
                             child: Center(
                               child: Text(p,
@@ -165,8 +163,8 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
               padding: const EdgeInsets.all(12),
               decoration: const BoxDecoration(
                 color: AppColors.surface,
-                border:
-                    Border(top: BorderSide(color: AppColors.divider, width: 0.5)),
+                border: Border(
+                    top: BorderSide(color: AppColors.divider, width: 0.5)),
               ),
               child: Row(
                 children: [
@@ -229,16 +227,11 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 initialValue: subject,
-                decoration: const InputDecoration(
-                    labelText: 'Môn', isDense: true),
-                items: [
-                  'Toán',
-                  'Vật lý',
-                  'Hóa học',
-                  'Ngữ văn',
-                  'T.Anh',
-                  'Sinh'
-                ].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                decoration:
+                    const InputDecoration(labelText: 'Môn', isDense: true),
+                items: ['Toán', 'Vật lý', 'Hóa học', 'Ngữ văn', 'T.Anh', 'Sinh']
+                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                    .toList(),
                 onChanged: (v) => setState(() => subject = v),
               ),
               const SizedBox(height: 10),
@@ -254,8 +247,8 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
               const SizedBox(height: 10),
               DropdownButtonFormField<String>(
                 initialValue: room,
-                decoration: const InputDecoration(
-                    labelText: 'Phòng', isDense: true),
+                decoration:
+                    const InputDecoration(labelText: 'Phòng', isDense: true),
                 items: ['P201', 'P202', 'P105', 'Lab 1', 'Gym']
                     .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                     .toList(),
@@ -266,7 +259,7 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppColors.success.withOpacity(0.1),
+                    color: AppColors.success.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Row(
@@ -275,8 +268,7 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
                           size: 16, color: AppColors.success),
                       SizedBox(width: 8),
                       Expanded(
-                        child: Text(
-                            'Không có xung đột GV/phòng/lớp ở slot này',
+                        child: Text('Không có xung đột GV/phòng/lớp ở slot này',
                             style: TextStyle(fontSize: 12)),
                       ),
                     ],
@@ -303,9 +295,7 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
                       onPressed: () => Navigator.pop(
                           ctx,
                           _Cell(
-                              subject: subject,
-                              teacher: teacher,
-                              room: room)),
+                              subject: subject, teacher: teacher, room: room)),
                       style: FilledButton.styleFrom(
                           backgroundColor: AppColors.adminAccent),
                       child: const Text('Lưu'),
@@ -371,7 +361,7 @@ class _GridCell extends StatelessWidget {
         decoration: BoxDecoration(
           color: isEmpty
               ? AppColors.background
-              : AppColors.adminAccent.withOpacity(0.08),
+              : AppColors.adminAccent.withValues(alpha: 0.08),
           border: Border.all(color: AppColors.divider),
         ),
         child: isEmpty

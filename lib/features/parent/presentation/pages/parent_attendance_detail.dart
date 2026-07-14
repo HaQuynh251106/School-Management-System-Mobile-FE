@@ -49,9 +49,9 @@ class ParentAttendanceDetail extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: _statusColor.withOpacity(0.1),
+              color: _statusColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _statusColor.withOpacity(0.3)),
+              border: Border.all(color: _statusColor.withValues(alpha: 0.3)),
             ),
             child: Column(
               children: [
@@ -59,7 +59,7 @@ class ParentAttendanceDetail extends StatelessWidget {
                   width: 64,
                   height: 64,
                   decoration: BoxDecoration(
-                    color: _statusColor.withOpacity(0.2),
+                    color: _statusColor.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -98,12 +98,12 @@ class ParentAttendanceDetail extends StatelessWidget {
                 _InfoRow(
                     icon: Icons.book_rounded, label: 'Môn học', value: subject),
                 const Divider(height: 0),
-                _InfoRow(
+                const _InfoRow(
                     icon: Icons.access_time_rounded,
                     label: 'Tiết',
                     value: 'Tiết 2 • 07:50–08:35'),
                 const Divider(height: 0),
-                _InfoRow(
+                const _InfoRow(
                     icon: Icons.person_outline_rounded,
                     label: 'GV bộ môn',
                     value: 'Trần Thị Bình'),
@@ -237,11 +237,9 @@ class _InfoRow extends StatelessWidget {
     return ListTile(
       leading: Icon(icon, color: AppColors.textSecondary, size: 20),
       title: Text(label,
-          style:
-              const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
       subtitle: Text(value,
-          style:
-              const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
     );
   }
 }

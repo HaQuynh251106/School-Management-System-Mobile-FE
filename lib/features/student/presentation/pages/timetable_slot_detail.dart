@@ -35,7 +35,7 @@ class StudentTimetableSlotDetail extends StatelessWidget {
               gradient: LinearGradient(
                 colors: [
                   AppColors.studentAccent,
-                  AppColors.studentAccent.withOpacity(0.7),
+                  AppColors.studentAccent.withValues(alpha: 0.7),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -59,8 +59,8 @@ class StudentTimetableSlotDetail extends StatelessWidget {
                         size: 14, color: Colors.white70),
                     const SizedBox(width: 4),
                     Text('$dayLabel • $period • $time',
-                        style:
-                            const TextStyle(color: Colors.white70, fontSize: 13)),
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 13)),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -70,8 +70,8 @@ class StudentTimetableSlotDetail extends StatelessWidget {
                         size: 14, color: Colors.white70),
                     const SizedBox(width: 4),
                     Text(room,
-                        style:
-                            const TextStyle(color: Colors.white70, fontSize: 13)),
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 13)),
                   ],
                 ),
               ],
@@ -83,7 +83,8 @@ class StudentTimetableSlotDetail extends StatelessWidget {
           Card(
             child: ListTile(
               leading: CircleAvatar(
-                backgroundColor: AppColors.studentAccent.withOpacity(0.15),
+                backgroundColor:
+                    AppColors.studentAccent.withValues(alpha: 0.15),
                 child: const Icon(Icons.person_rounded,
                     color: AppColors.studentAccent),
               ),
@@ -97,9 +98,9 @@ class StudentTimetableSlotDetail extends StatelessWidget {
           const SizedBox(height: 16),
           const SectionHeader(title: 'Nội dung bài học'),
           const SizedBox(height: 8),
-          Card(
+          const Card(
             child: Padding(
-              padding: const EdgeInsets.all(14),
+              padding: EdgeInsets.all(14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -125,9 +126,9 @@ class StudentTimetableSlotDetail extends StatelessWidget {
           const SizedBox(height: 16),
           const SectionHeader(title: 'Học liệu'),
           const SizedBox(height: 8),
-          Card(
+          const Card(
             child: Column(
-              children: const [
+              children: [
                 _AttachmentTile(
                   icon: Icons.picture_as_pdf_rounded,
                   name: 'Slide_HamSoBacHai.pdf',
@@ -216,8 +217,8 @@ class _AttachmentTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: Icon(icon, color: AppColors.studentAccent),
-      title:
-          Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+      title: Text(name,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
       subtitle: Text(size,
           style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
       trailing: const Icon(Icons.download_rounded, size: 20),

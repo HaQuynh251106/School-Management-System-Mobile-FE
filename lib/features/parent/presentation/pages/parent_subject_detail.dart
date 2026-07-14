@@ -63,7 +63,7 @@ class ParentSubjectDetail extends StatelessWidget {
               gradient: LinearGradient(
                 colors: [
                   AppColors.parentAccent,
-                  AppColors.parentAccent.withOpacity(0.75),
+                  AppColors.parentAccent.withValues(alpha: 0.75),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -76,7 +76,7 @@ class ParentSubjectDetail extends StatelessWidget {
                   width: 64,
                   height: 64,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Center(
@@ -124,7 +124,8 @@ class ParentSubjectDetail extends StatelessWidget {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: _scoreColor(_scores[i].score).withOpacity(0.12),
+                        color: _scoreColor(_scores[i].score)
+                            .withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Center(
@@ -154,22 +155,22 @@ class ParentSubjectDetail extends StatelessWidget {
           const SizedBox(height: 20),
           const SectionHeader(title: 'Nhận xét của GVCN'),
           const SizedBox(height: 8),
-          Card(
+          const Card(
             child: Padding(
-              padding: const EdgeInsets.all(14),
+              padding: EdgeInsets.all(14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      const CircleAvatar(
+                      CircleAvatar(
                         radius: 16,
                         backgroundColor: AppColors.parentAccent,
                         child: Icon(Icons.person_rounded,
                             color: Colors.white, size: 18),
                       ),
-                      const SizedBox(width: 10),
-                      const Column(
+                      SizedBox(width: 10),
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Trần Thị Hoa',
@@ -181,14 +182,14 @@ class ParentSubjectDetail extends StatelessWidget {
                                   color: AppColors.textSecondary)),
                         ],
                       ),
-                      const Spacer(),
-                      const Text('20/12',
+                      Spacer(),
+                      Text('20/12',
                           style: TextStyle(
                               fontSize: 11, color: AppColors.textSecondary)),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  const Text(
+                  SizedBox(height: 12),
+                  Text(
                     'Em An có nhiều tiến bộ ở giữa kỳ, đặc biệt phần hình học. '
                     'Cần luyện thêm bài tập đại số. Nhờ phụ huynh nhắc em ôn '
                     'thêm chương 4 vào dịp cuối tuần.',

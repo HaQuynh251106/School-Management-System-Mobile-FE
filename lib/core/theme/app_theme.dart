@@ -26,18 +26,18 @@ class AppTheme {
           ),
         ),
         cardTheme: CardThemeData(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: AppColors.divider),
-          ),
-          color: AppColors.surface,
-          margin: EdgeInsets.zero
-        ),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: AppColors.divider),
+            ),
+            color: AppColors.surface,
+            margin: EdgeInsets.zero),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: AppColors.surface,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide: const BorderSide(color: AppColors.divider),
@@ -61,8 +61,10 @@ class AppTheme {
             foregroundColor: AppColors.onPrimary,
             elevation: 0,
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            textStyle:
+                const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
         ),
         textButtonTheme: TextButtonThemeData(

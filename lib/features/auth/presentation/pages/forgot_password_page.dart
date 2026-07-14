@@ -79,8 +79,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     labelText: 'Email / Tên đăng nhập',
                     prefixIcon: Icon(Icons.email_outlined),
                   ),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Vui lòng nhập email' : null,
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Vui lòng nhập email'
+                      : null,
                 ),
                 const SizedBox(height: 24),
                 BlocBuilder<AuthBloc, AuthState>(

@@ -31,12 +31,9 @@ class TeacherAttendanceSessionDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final present =
-        _records.where((r) => r.$2 == 'PRESENT').length;
-    final excused =
-        _records.where((r) => r.$2 == 'ABSENT_EXCUSED').length;
-    final unexcused =
-        _records.where((r) => r.$2 == 'ABSENT_UNEXCUSED').length;
+    final present = _records.where((r) => r.$2 == 'PRESENT').length;
+    final excused = _records.where((r) => r.$2 == 'ABSENT_EXCUSED').length;
+    final unexcused = _records.where((r) => r.$2 == 'ABSENT_UNEXCUSED').length;
     final late = _records.where((r) => r.$2 == 'LATE').length;
 
     return Scaffold(
@@ -49,7 +46,7 @@ class TeacherAttendanceSessionDetail extends StatelessWidget {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
-            color: AppColors.teacherAccent.withOpacity(0.06),
+            color: AppColors.teacherAccent.withValues(alpha: 0.06),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -96,17 +93,15 @@ class TeacherAttendanceSessionDetail extends StatelessWidget {
                     const SizedBox(width: 6),
                     Expanded(
                         child: _StatBox(
-                            value: late,
-                            label: 'Muộn',
-                            color: AppColors.late)),
+                            value: late, label: 'Muộn', color: AppColors.late)),
                   ],
                 ),
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-            child: const Row(
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+            child: Row(
               children: [
                 SectionHeader(title: 'Danh sách học sinh'),
               ],
@@ -123,7 +118,7 @@ class TeacherAttendanceSessionDetail extends StatelessWidget {
                   leading: CircleAvatar(
                     radius: 18,
                     backgroundColor:
-                        AppColors.teacherAccent.withOpacity(0.12),
+                        AppColors.teacherAccent.withValues(alpha: 0.12),
                     child: Text(
                       '${i + 1}',
                       style: const TextStyle(
@@ -170,7 +165,7 @@ class _StatBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [

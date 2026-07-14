@@ -34,8 +34,9 @@ class AuthRepository {
   Future<void> forgotPassword(String email) => api.forgotPassword(email);
 
   Future<void> logout() async {
+    final refreshToken = await storage.getRefreshToken();
     try {
-      await api.logout();
+      await api.logout(refreshToken);
     } catch (_) {}
     await storage.clearAll();
   }

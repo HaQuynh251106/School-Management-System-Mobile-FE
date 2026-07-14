@@ -37,7 +37,10 @@ class _AuthInterceptor extends QueuedInterceptor {
     DioException err,
     ErrorInterceptorHandler handler,
   ) async {
-    if (err.response?.statusCode != 401) {
+    final request = err.requestOptions;
+    if (err.response?.statusCode != 401 ||
+        request.path == '/auth/refresh' ||
+        request.extra['retriedAfterRefresh'] == true) {
       return handler.next(err);
     }
 
@@ -60,6 +63,7 @@ class _AuthInterceptor extends QueuedInterceptor {
         refreshToken: newRefresh,
       );
       final retryOpts = err.requestOptions;
+      retryOpts.extra['retriedAfterRefresh'] = true;
       retryOpts.headers['Authorization'] = 'Bearer $newAccess';
       final retryResp = await _dio.fetch(retryOpts);
       return handler.resolve(retryResp);

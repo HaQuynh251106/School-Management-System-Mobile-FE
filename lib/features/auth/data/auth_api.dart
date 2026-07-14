@@ -33,7 +33,7 @@ class AuthApi {
     return UserModel.fromJson(resp.data as Map<String, dynamic>);
   }
 
-  Future<void> logout() async {
-    await _dio.post('/auth/logout');
+  Future<void> logout(String? refreshToken) async {
+    await _dio.post('/auth/logout', data: {'refreshToken': refreshToken});
   }
 }

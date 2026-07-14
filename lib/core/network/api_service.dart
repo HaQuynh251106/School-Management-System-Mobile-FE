@@ -10,7 +10,8 @@ class ApiService {
       (r.data as List).cast<Map<String, dynamic>>();
 
   // ---------- Admin: users ----------
-  Future<List<Map<String, dynamic>>> users({String? role, String? q, String? classId}) async {
+  Future<List<Map<String, dynamic>>> users(
+      {String? role, String? q, String? classId}) async {
     final p = <String, dynamic>{};
     if (role != null) p['role'] = role;
     if (q != null) p['q'] = q;
@@ -22,31 +23,42 @@ class ApiService {
   Future<void> unlockUser(String id) async => _dio.post('/users/$id/unlock');
 
   // ---------- Admin: structure extras ----------
-  Future<List<Map<String, dynamic>>> academicYears() async => _list(await _dio.get('/academicYears'));
-  Future<List<Map<String, dynamic>>> rooms() async => _list(await _dio.get('/rooms'));
+  Future<List<Map<String, dynamic>>> academicYears() async =>
+      _list(await _dio.get('/academicYears'));
+  Future<List<Map<String, dynamic>>> rooms() async =>
+      _list(await _dio.get('/rooms'));
 
   // ---------- Admin: finance / templates ----------
-  Future<List<Map<String, dynamic>>> feePeriods() async => _list(await _dio.get('/fee-periods'));
-  Future<List<Map<String, dynamic>>> generateInvoices(String feePeriodId) async =>
+  Future<List<Map<String, dynamic>>> feePeriods() async =>
+      _list(await _dio.get('/fee-periods'));
+  Future<List<Map<String, dynamic>>> generateInvoices(
+          String feePeriodId) async =>
       _list(await _dio.post('/fee-periods/$feePeriodId/generate-invoices'));
   Future<List<Map<String, dynamic>>> notificationTemplates() async =>
       _list(await _dio.get('/notification-templates'));
 
   // ---------- Academic structure ----------
-  Future<List<Map<String, dynamic>>> classes() async => _list(await _dio.get('/classes'));
-  Future<List<Map<String, dynamic>>> subjects() async => _list(await _dio.get('/subjects'));
-  Future<List<Map<String, dynamic>>> semesters() async => _list(await _dio.get('/semesters'));
-  Future<List<Map<String, dynamic>>> examCategories() async => _list(await _dio.get('/exam-categories'));
+  Future<List<Map<String, dynamic>>> classes() async =>
+      _list(await _dio.get('/classes'));
+  Future<List<Map<String, dynamic>>> subjects() async =>
+      _list(await _dio.get('/subjects'));
+  Future<List<Map<String, dynamic>>> semesters() async =>
+      _list(await _dio.get('/semesters'));
+  Future<List<Map<String, dynamic>>> examCategories() async =>
+      _list(await _dio.get('/exam-categories'));
   Future<List<Map<String, dynamic>>> classStudents(String classId) async =>
       _list(await _dio.get('/classes/$classId/students'));
 
   // ---------- Timetable ----------
-  Future<List<Map<String, dynamic>>> myTimetable() async => _list(await _dio.get('/me/timetable'));
+  Future<List<Map<String, dynamic>>> myTimetable() async =>
+      _list(await _dio.get('/me/timetable'));
   Future<List<Map<String, dynamic>>> timetableOfClass(String classId) async =>
-      _list(await _dio.get('/timetableSlots', queryParameters: {'classId': classId}));
+      _list(await _dio
+          .get('/timetableSlots', queryParameters: {'classId': classId}));
 
   // ---------- Attendance ----------
-  Future<List<Map<String, dynamic>>> attendance({String? studentId, String? classId, String? date}) async {
+  Future<List<Map<String, dynamic>>> attendance(
+      {String? studentId, String? classId, String? date}) async {
     final q = <String, dynamic>{};
     if (studentId != null) q['studentId'] = studentId;
     if (classId != null) q['classId'] = classId;
@@ -59,11 +71,16 @@ class ApiService {
     required String date,
     required List<Map<String, dynamic>> marks,
   }) async =>
-      _list(await _dio.post('/attendance/bulk', data: {'slotId': slotId, 'date': date, 'marks': marks}));
+      _list(await _dio.post('/attendance/bulk',
+          data: {'slotId': slotId, 'date': date, 'marks': marks}));
 
   // ---------- Grades ----------
   Future<List<Map<String, dynamic>>> grades({
-    String? studentId, String? classId, String? subjectId, String? semesterId, String? category,
+    String? studentId,
+    String? classId,
+    String? subjectId,
+    String? semesterId,
+    String? category,
   }) async {
     final q = <String, dynamic>{};
     if (studentId != null) q['studentId'] = studentId;
@@ -82,12 +99,16 @@ class ApiService {
     required List<Map<String, dynamic>> entries,
   }) async =>
       _list(await _dio.post('/grades/bulk', data: {
-        'subjectId': subjectId, 'semesterId': semesterId, 'category': category,
-        'reason': reason, 'entries': entries,
+        'subjectId': subjectId,
+        'semesterId': semesterId,
+        'category': category,
+        'reason': reason,
+        'entries': entries,
       }));
 
   // ---------- Parent ----------
-  Future<List<Map<String, dynamic>>> children() async => _list(await _dio.get('/me/children'));
+  Future<List<Map<String, dynamic>>> children() async =>
+      _list(await _dio.get('/me/children'));
 
   Future<List<Map<String, dynamic>>> invoices({String? studentId}) async {
     final q = <String, dynamic>{};
@@ -95,37 +116,62 @@ class ApiService {
     return _list(await _dio.get('/invoices', queryParameters: q));
   }
 
-  Future<Map<String, dynamic>> pay(String invoiceId, {String method = 'VNPAY'}) async {
-    final r = await _dio.post('/payments', data: {'invoiceId': invoiceId, 'method': method});
+  Future<Map<String, dynamic>> invoiceDetail(String id) async {
+    final response = await _dio.get('/invoices/$id');
+    return (response.data as Map).cast<String, dynamic>();
+  }
+
+  Future<Map<String, dynamic>> pay(String invoiceId,
+      {String method = 'VNPAY'}) async {
+    final r = await _dio
+        .post('/payments', data: {'invoiceId': invoiceId, 'method': method});
     return (r.data as Map).cast<String, dynamic>();
   }
 
   // ---------- Notifications / Announcements ----------
-  Future<List<Map<String, dynamic>>> notifications() async => _list(await _dio.get('/notifications'));
-  Future<void> markNotiRead(String id) async => _dio.post('/notifications/$id/read');
-  Future<List<Map<String, dynamic>>> announcements() async => _list(await _dio.get('/announcements'));
+  Future<List<Map<String, dynamic>>> notifications() async =>
+      _list(await _dio.get('/notifications'));
+  Future<int> notificationUnreadCount() async {
+    final response = await _dio.get('/notifications/unread-count');
+    return (response.data['count'] as num?)?.toInt() ?? 0;
+  }
+
+  Future<void> markNotiRead(String id) async =>
+      _dio.post('/notifications/$id/read');
+  Future<List<Map<String, dynamic>>> announcements() async =>
+      _list(await _dio.get('/announcements'));
 
   // ---------- Chat (B6/D3) ----------
-  Future<List<Map<String, dynamic>>> chatThreads() async => _list(await _dio.get('/chat/threads'));
+  Future<List<Map<String, dynamic>>> chatThreads() async =>
+      _list(await _dio.get('/chat/threads'));
   Future<List<Map<String, dynamic>>> chatMessages(String withUserId) async =>
-      _list(await _dio.get('/chat/messages', queryParameters: {'withUserId': withUserId}));
+      _list(await _dio
+          .get('/chat/messages', queryParameters: {'withUserId': withUserId}));
   Future<Map<String, dynamic>> sendChat(String toUserId, String body) async {
-    final r = await _dio.post('/chat/messages', data: {'toUserId': toUserId, 'body': body});
+    final r = await _dio
+        .post('/chat/messages', data: {'toUserId': toUserId, 'body': body});
     return (r.data as Map).cast<String, dynamic>();
   }
 
   // ---------- Assignments ----------
-  Future<List<Map<String, dynamic>>> myAssignments() async => _list(await _dio.get('/me/assignments'));
-  Future<List<Map<String, dynamic>>> teacherAssignments() async => _list(await _dio.get('/assignments'));
-  Future<Map<String, dynamic>> submitAssignment(String id, String content) async {
-    final r = await _dio.post('/assignments/$id/submit', data: {'content': content});
+  Future<List<Map<String, dynamic>>> myAssignments() async =>
+      _list(await _dio.get('/me/assignments'));
+  Future<List<Map<String, dynamic>>> teacherAssignments() async =>
+      _list(await _dio.get('/assignments'));
+  Future<Map<String, dynamic>> submitAssignment(
+      String id, String content) async {
+    final r =
+        await _dio.post('/assignments/$id/submit', data: {'content': content});
     return (r.data as Map).cast<String, dynamic>();
   }
 
   // ---------- Extracurricular ----------
-  Future<List<Map<String, dynamic>>> clubs() async => _list(await _dio.get('/clubs'));
-  Future<Map<String, dynamic>> registerClub(String clubId, {String? studentId}) async {
-    final r = await _dio.post('/clubs/$clubId/register', data: studentId != null ? {'studentId': studentId} : {});
+  Future<List<Map<String, dynamic>>> clubs() async =>
+      _list(await _dio.get('/clubs'));
+  Future<Map<String, dynamic>> registerClub(String clubId,
+      {String? studentId}) async {
+    final r = await _dio.post('/clubs/$clubId/register',
+        data: studentId != null ? {'studentId': studentId} : {});
     return (r.data as Map).cast<String, dynamic>();
   }
 }

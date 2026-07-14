@@ -6,7 +6,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/section_header.dart';
 
 class _ExamScore {
-  const _ExamScore(this.category, this.label, this.score, this.weight, this.date);
+  const _ExamScore(
+      this.category, this.label, this.score, this.weight, this.date);
   final String category;
   final String label;
   final double score;
@@ -91,7 +92,8 @@ class _SubjectGradeDetailState extends State<SubjectGradeDetail> {
                     style: const TextStyle(color: AppColors.textSecondary)));
           }
           final scores = (snap.data ?? [])
-              .where((g) => (g['subjectName'] ?? '').toString() == widget.subject)
+              .where(
+                  (g) => (g['subjectName'] ?? '').toString() == widget.subject)
               .map(_examScoreFromJson)
               .toList();
           return _SubjectGradeView(
@@ -174,9 +176,9 @@ class _SubjectGradeView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _FormulaRow('Miệng & 15p', 'hệ số 1'),
-                _FormulaRow('Giữa kỳ', 'hệ số 2'),
-                _FormulaRow('Cuối kỳ', 'hệ số 3'),
+                const _FormulaRow('Miệng & 15p', 'hệ số 1'),
+                const _FormulaRow('Giữa kỳ', 'hệ số 2'),
+                const _FormulaRow('Cuối kỳ', 'hệ số 3'),
                 const Divider(),
                 Row(
                   children: [
@@ -208,7 +210,7 @@ class _SubjectGradeView extends StatelessWidget {
         gradient: LinearGradient(
           colors: [
             AppColors.studentAccent,
-            AppColors.studentAccent.withOpacity(0.7),
+            AppColors.studentAccent.withValues(alpha: 0.7),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -221,7 +223,7 @@ class _SubjectGradeView extends StatelessWidget {
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.18),
+              color: Colors.white.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Center(
@@ -253,10 +255,10 @@ class _SubjectGradeView extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.18),
+                    color: Colors.white.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -283,11 +285,11 @@ class _SubjectGradeView extends StatelessWidget {
 
   Widget _buildCategorySection(String category, List<_ExamScore> scores) {
     final categoryName = const {
-      'ORAL': 'Điểm miệng',
-      '15M': 'Điểm 15 phút',
-      'MID': 'Điểm giữa kỳ',
-      'FINAL': 'Điểm cuối kỳ',
-    }[category] ??
+          'ORAL': 'Điểm miệng',
+          '15M': 'Điểm 15 phút',
+          'MID': 'Điểm giữa kỳ',
+          'FINAL': 'Điểm cuối kỳ',
+        }[category] ??
         (category.isEmpty ? 'Khác' : category);
 
     return Padding(
@@ -306,7 +308,8 @@ class _SubjectGradeView extends StatelessWidget {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: _scoreColor(scores[i].score).withOpacity(0.12),
+                        color: _scoreColor(scores[i].score)
+                            .withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Center(
@@ -351,7 +354,8 @@ class _FormulaRow extends StatelessWidget {
       child: Row(
         children: [
           Text(label,
-              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              style: const TextStyle(
+                  fontSize: 12, color: AppColors.textSecondary)),
           const Spacer(),
           Text(value,
               style: const TextStyle(
@@ -377,7 +381,7 @@ class _LineChartPainter extends CustomPainter {
       ..color = AppColors.divider
       ..strokeWidth = 0.5;
 
-    final axisStyle = TextStyle(
+    const axisStyle = TextStyle(
       color: AppColors.textSecondary,
       fontSize: 10,
     );
@@ -408,8 +412,8 @@ class _LineChartPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          AppColors.studentAccent.withOpacity(0.25),
-          AppColors.studentAccent.withOpacity(0.0),
+          AppColors.studentAccent.withValues(alpha: 0.25),
+          AppColors.studentAccent.withValues(alpha: 0.0),
         ],
       ).createShader(Rect.fromLTWH(28, 0, w - 28, h));
 

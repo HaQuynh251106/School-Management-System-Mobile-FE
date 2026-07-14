@@ -71,7 +71,7 @@ class _TeacherClassSlotDetailState extends State<TeacherClassSlotDetail> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -161,8 +161,8 @@ class _TeacherClassSlotDetailState extends State<TeacherClassSlotDetail> {
                 if (snap.hasError) {
                   return Center(
                       child: Text('Lỗi: ${snap.error}',
-                          style: const TextStyle(
-                              color: AppColors.textSecondary)));
+                          style:
+                              const TextStyle(color: AppColors.textSecondary)));
                 }
                 final students = snap.data ?? [];
                 return Column(
@@ -215,7 +215,7 @@ class _TeacherClassSlotDetailState extends State<TeacherClassSlotDetail> {
                                   leading: CircleAvatar(
                                     radius: 18,
                                     backgroundColor: AppColors.teacherAccent
-                                        .withOpacity(0.12),
+                                        .withValues(alpha: 0.12),
                                     child: Text(
                                       '${i + 1}',
                                       style: const TextStyle(
@@ -266,7 +266,7 @@ class _ActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white.withOpacity(0.15),
+      color: Colors.white.withValues(alpha: 0.15),
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onTap,

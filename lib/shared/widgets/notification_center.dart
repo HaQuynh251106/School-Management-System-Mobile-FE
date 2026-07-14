@@ -48,14 +48,9 @@ class NotificationCenter extends StatefulWidget {
   const NotificationCenter({
     super.key,
     required this.accent,
-    this.items,
   });
 
   final Color accent;
-
-  /// Giữ lại cho tương thích với caller cũ (vd: `items: mockNotifications`).
-  /// Widget BỎ QUA giá trị này và luôn lấy dữ liệu LIVE từ API.
-  final List<NotificationItem>? items;
 
   @override
   State<NotificationCenter> createState() => _NotificationCenterState();
@@ -101,11 +96,68 @@ class NotificationCenter extends StatefulWidget {
         return category;
     }
   }
+}
 
+class LiveNotificationAction extends StatefulWidget {
+  const LiveNotificationAction(
+      {super.key, required this.accent, this.padding = 4});
+  final Color accent;
+  final double padding;
+
+  @override
+  State<LiveNotificationAction> createState() => _LiveNotificationActionState();
+}
+
+class _LiveNotificationActionState extends State<LiveNotificationAction> {
+  late Future<int> _count = sl<ApiService>().notificationUnreadCount();
+
+  Future<void> _open() async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => NotificationCenter(accent: widget.accent),
+    ));
+    if (mounted) {
+      setState(() => _count = sl<ApiService>().notificationUnreadCount());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: EdgeInsets.only(right: widget.padding),
+        child: FutureBuilder<int>(
+          future: _count,
+          builder: (context, snapshot) {
+            final count = snapshot.data ?? 0;
+            return Stack(children: [
+              IconButton(
+                  icon: const Icon(Icons.notifications_outlined),
+                  onPressed: _open),
+              if (count > 0)
+                Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 1),
+                      constraints: const BoxConstraints(minWidth: 14),
+                      decoration: BoxDecoration(
+                          color: AppColors.error,
+                          borderRadius: BorderRadius.circular(8)),
+                      child: Text(count > 99 ? '99+' : '$count',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold)),
+                    )),
+            ]);
+          },
+        ),
+      );
 }
 
 class _NotificationCenterState extends State<NotificationCenter> {
-  late Future<List<Map<String, dynamic>>> _future = sl<ApiService>().notifications();
+  late Future<List<Map<String, dynamic>>> _future =
+      sl<ApiService>().notifications();
 
   void _refresh() {
     setState(() {
@@ -168,9 +220,7 @@ class _NotificationCenterState extends State<NotificationCenter> {
       future: _future,
       builder: (context, snap) {
         final loading = snap.connectionState != ConnectionState.done;
-        final items = (snap.data ?? [])
-            .map(NotificationItem.fromJson)
-            .toList();
+        final items = (snap.data ?? []).map(NotificationItem.fromJson).toList();
         final unread = items.where((n) => !n.read).toList();
         return DefaultTabController(
           length: 2,
@@ -205,13 +255,9 @@ class _NotificationCenterState extends State<NotificationCenter> {
                     : TabBarView(
                         children: [
                           _NotiList(
-                              items: items,
-                              accent: accent,
-                              onTap: _markRead),
+                              items: items, accent: accent, onTap: _markRead),
                           _NotiList(
-                              items: unread,
-                              accent: accent,
-                              onTap: _markRead),
+                              items: unread, accent: accent, onTap: _markRead),
                         ],
                       ),
           ),
@@ -245,13 +291,13 @@ class _NotiList extends StatelessWidget {
         final item = items[i];
         final (icon, color) = NotificationCenter._styleFor(item.category);
         return Container(
-          color: item.read ? null : color.withOpacity(0.04),
+          color: item.read ? null : color.withValues(alpha: 0.04),
           child: ListTile(
             leading: Stack(
               children: [
                 CircleAvatar(
                   radius: 20,
-                  backgroundColor: color.withOpacity(0.12),
+                  backgroundColor: color.withValues(alpha: 0.12),
                   child: Icon(icon, color: color, size: 20),
                 ),
                 if (!item.read)
@@ -291,7 +337,7 @@ class _NotiList extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: color.withOpacity(0.08),
+                        color: color.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
