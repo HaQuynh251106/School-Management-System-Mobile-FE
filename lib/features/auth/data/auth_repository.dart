@@ -21,12 +21,14 @@ class AuthRepository {
   }
 
   Future<UserModel?> tryRestoreSession() async {
-    final token = await storage.getAccessToken();
-    if (token == null) return null;
     try {
+      final token = await storage.getAccessToken();
+      if (token == null) return null;
       return await api.getMe();
     } catch (_) {
-      await storage.clearAll();
+      try {
+        await storage.clearAll();
+      } catch (_) {}
       return null;
     }
   }
