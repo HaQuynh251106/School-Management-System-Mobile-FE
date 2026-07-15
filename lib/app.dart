@@ -30,7 +30,7 @@ class _SseAppState extends State<SseApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Smart School',
+      title: 'Trường học số',
       theme: AppTheme.light,
       debugShowCheckedModeBanner: false,
       routerConfig: _router.config,

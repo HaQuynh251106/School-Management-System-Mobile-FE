@@ -91,7 +91,17 @@ class ApiService {
     return _list(await _dio.get('/grades', queryParameters: q));
   }
 
+  Future<Map<String, dynamic>> teacherGradebookContext({
+    required String classId,
+    required String semesterId,
+  }) async {
+    final response = await _dio.get('/me/gradebook-context',
+        queryParameters: {'classId': classId, 'semesterId': semesterId});
+    return (response.data as Map).cast<String, dynamic>();
+  }
+
   Future<List<Map<String, dynamic>>> bulkGrades({
+    required String classId,
     required String subjectId,
     required String semesterId,
     required String category,
@@ -99,12 +109,25 @@ class ApiService {
     required List<Map<String, dynamic>> entries,
   }) async =>
       _list(await _dio.post('/grades/bulk', data: {
+        'classId': classId,
         'subjectId': subjectId,
         'semesterId': semesterId,
         'category': category,
         'reason': reason,
         'entries': entries,
       }));
+
+  Future<Map<String, dynamic>> assignHomeroomTeacher(
+      String classId, String teacherId) async {
+    final response = await _dio.put('/classes/$classId/homeroom-teacher',
+        data: {'teacherId': teacherId});
+    return (response.data as Map).cast<String, dynamic>();
+  }
+
+  Future<Map<String, dynamic>> clearHomeroomTeacher(String classId) async {
+    final response = await _dio.delete('/classes/$classId/homeroom-teacher');
+    return (response.data as Map).cast<String, dynamic>();
+  }
 
   // ---------- Parent ----------
   Future<List<Map<String, dynamic>>> children() async =>

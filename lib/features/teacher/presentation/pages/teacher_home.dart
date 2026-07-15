@@ -737,38 +737,89 @@ class _GradeBookViewState extends State<_GradeBookView> {
   // Danh mục lấy từ API (mỗi phần tử là JSON {id, code, name, ...}).
   late final Future<void> _initFuture = _loadStructure();
   List<Map<String, dynamic>> _classes = [];
-  List<Map<String, dynamic>> _subjects = [];
+  List<Map<String, dynamic>> _subjectOptions = [];
   List<Map<String, dynamic>> _semesters = [];
 
   String? _classId;
   String? _subjectId;
   String? _semesterId;
+  bool _isHomeroomTeacher = false;
+  bool _canEdit = false;
 
   List<_StudentGrade> _grades = [];
   bool _loadingGrades = false;
   String? _gradesError;
 
   Future<void> _loadStructure() async {
+    final user = (context.read<AuthBloc>().state as AuthAuthenticated).user;
     final results = await Future.wait([
       _api.classes(),
-      _api.subjects(),
+      _api.myTimetable(),
       _api.semesters(),
     ]);
-    _classes = results[0];
-    _subjects = results[1];
+    final allClasses = results[0];
+    final timetable = results[1];
     _semesters = results[2];
+    final mainSubject = user.mainSubject?.trim().toLowerCase();
+    final accessibleClassIds = <String>{
+      ...timetable
+          .where((slot) =>
+              mainSubject != null &&
+              mainSubject.isNotEmpty &&
+              ((slot['subjectId'] ?? '').toString().trim().toLowerCase() ==
+                      mainSubject ||
+                  (slot['subjectName'] ?? '').toString().trim().toLowerCase() ==
+                      mainSubject))
+          .map((slot) => (slot['classId'] ?? '').toString()),
+      ...allClasses
+          .where((schoolClass) =>
+              (schoolClass['homeroomTeacherId'] ?? '').toString() == user.id)
+          .map((schoolClass) => (schoolClass['id'] ?? '').toString()),
+    }..remove('');
+    _classes = allClasses
+        .where((schoolClass) =>
+            accessibleClassIds.contains((schoolClass['id'] ?? '').toString()))
+        .toList();
     if (_classes.isNotEmpty) _classId = _classes.first['id']?.toString();
-    if (_subjects.isNotEmpty) _subjectId = _subjects.first['id']?.toString();
     if (_semesters.isNotEmpty) {
-      _semesterId = _semesters.first['id']?.toString();
+      final active = _semesters.where((item) => item['status'] == 'ACTIVE');
+      _semesterId = (active.isNotEmpty ? active.first : _semesters.first)['id']
+          ?.toString();
     }
-    // Tải bảng điểm cho lựa chọn mặc định ngay trong future khởi tạo
-    // (không gọi setState ở đây vì widget chưa build lần đầu).
     try {
+      await _loadGradebookContext();
       _grades = await _fetchGrades();
     } catch (e) {
       _gradesError = '$e';
     }
+  }
+
+  Future<void> _loadGradebookContext() async {
+    final classId = _classId;
+    final semesterId = _semesterId;
+    if (classId == null || semesterId == null) {
+      _subjectOptions = [];
+      _subjectId = null;
+      _isHomeroomTeacher = false;
+      _canEdit = false;
+      return;
+    }
+    final contextData = await _api.teacherGradebookContext(
+        classId: classId, semesterId: semesterId);
+    _subjectOptions = ((contextData['subjects'] as List?) ?? const [])
+        .map((item) => (item as Map).cast<String, dynamic>())
+        .toList();
+    _isHomeroomTeacher = contextData['homeroomTeacher'] == true;
+    final currentExists = _subjectOptions
+        .any((subject) => subject['subjectId']?.toString() == _subjectId);
+    if (!currentExists) _subjectId = contextData['subjectId']?.toString();
+    _syncSelectedSubjectAccess();
+  }
+
+  void _syncSelectedSubjectAccess() {
+    final selected = _subjectOptions
+        .where((subject) => subject['subjectId']?.toString() == _subjectId);
+    _canEdit = selected.isNotEmpty && selected.first['editable'] == true;
   }
 
   /// Tải HS + điểm cho lựa chọn hiện tại và gom thành danh sách _StudentGrade.
@@ -806,12 +857,13 @@ class _GradeBookViewState extends State<_GradeBookView> {
     }).toList();
   }
 
-  Future<void> _loadGrades() async {
+  Future<void> _loadGrades({bool reloadContext = false}) async {
     setState(() {
       _loadingGrades = true;
       _gradesError = null;
     });
     try {
+      if (reloadContext) await _loadGradebookContext();
       final list = await _fetchGrades();
       if (!mounted) return;
       setState(() {
@@ -874,30 +926,36 @@ class _GradeBookViewState extends State<_GradeBookView> {
                       onChanged: (v) {
                         if (v == null) return;
                         setState(() => _classId = v);
-                        _loadGrades();
+                        _loadGrades(reloadContext: true);
                       },
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: DropdownButtonFormField<String>(
+                      key: ValueKey(
+                          'grade-subject-$_classId-$_semesterId-$_subjectId'),
                       initialValue: _subjectId,
                       isDense: true,
                       isExpanded: true,
-                      decoration: const InputDecoration(
-                          labelText: 'Môn', isDense: true),
-                      items: _subjects
+                      decoration: InputDecoration(
+                          labelText: _canEdit ? 'Môn học' : 'Môn học · Chỉ xem',
+                          isDense: true),
+                      items: _subjectOptions
                           .map((c) => DropdownMenuItem(
-                                value: c['id']?.toString(),
+                                value: c['subjectId']?.toString(),
                                 child: Text(
-                                  (c['name'] ?? c['code'] ?? '').toString(),
+                                  '${(c['subjectName'] ?? '').toString()}${c['editable'] == true ? '' : ' · Chỉ xem'}',
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ))
                           .toList(),
                       onChanged: (v) {
                         if (v == null) return;
-                        setState(() => _subjectId = v);
+                        setState(() {
+                          _subjectId = v;
+                          _syncSelectedSubjectAccess();
+                        });
                         _loadGrades();
                       },
                     ),
@@ -922,13 +980,46 @@ class _GradeBookViewState extends State<_GradeBookView> {
                       onChanged: (v) {
                         if (v == null) return;
                         setState(() => _semesterId = v);
-                        _loadGrades();
+                        _loadGrades(reloadContext: true);
                       },
                     ),
                   ),
                 ],
               ),
             ),
+            if (_isHomeroomTeacher)
+              Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                color: (_canEdit ? AppColors.success : AppColors.warning)
+                    .withValues(alpha: 0.1),
+                child: Row(
+                  children: [
+                    Icon(
+                        _canEdit
+                            ? Icons.verified_user_outlined
+                            : Icons.lock_outline,
+                        size: 17,
+                        color:
+                            _canEdit ? AppColors.success : AppColors.warning),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _canEdit
+                            ? 'Lớp chủ nhiệm · Bạn có thể sửa môn thuộc chuyên ngành.'
+                            : 'Lớp chủ nhiệm · Môn ngoài chuyên ngành chỉ được xem.',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: _canEdit
+                                ? AppColors.success
+                                : AppColors.warning),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             Expanded(child: _buildBody(context)),
           ],
         );
@@ -980,7 +1071,8 @@ class _GradeBookViewState extends State<_GradeBookView> {
                 sumW += weights[i];
               }
             }
-            final avg = sumW == 0 ? null : sum / sumW;
+            final hasAllScores = scores.every((score) => score != null);
+            final avg = hasAllScores && sumW > 0 ? sum / sumW : null;
             return DataRow(cells: [
               DataCell(Text(g.name,
                   style: const TextStyle(
@@ -988,7 +1080,7 @@ class _GradeBookViewState extends State<_GradeBookView> {
               for (var i = 0; i < scores.length; i++)
                 DataCell(
                   InkWell(
-                    onTap: () => _editScore(g, i),
+                    onTap: _canEdit ? () => _editScore(g, i) : null,
                     child: SizedBox(
                       width: 40,
                       child: Text(
@@ -1025,9 +1117,16 @@ class _GradeBookViewState extends State<_GradeBookView> {
   }
 
   Future<void> _editScore(_StudentGrade g, int index) async {
+    if (!_canEdit) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Bạn chỉ được xem điểm môn ngoài chuyên ngành.'),
+      ));
+      return;
+    }
+    final classId = _classId;
     final subjectId = _subjectId;
     final semesterId = _semesterId;
-    if (subjectId == null || semesterId == null) return;
+    if (classId == null || subjectId == null || semesterId == null) return;
     final ctrl =
         TextEditingController(text: g.scores[index]?.toStringAsFixed(1) ?? '');
     final reasonCtrl = TextEditingController();
@@ -1090,6 +1189,7 @@ class _GradeBookViewState extends State<_GradeBookView> {
     final reason = reasonCtrl.text.trim();
     try {
       await _api.bulkGrades(
+        classId: classId,
         subjectId: subjectId,
         semesterId: semesterId,
         category: _gradeCategoryCodes[index],

@@ -15,7 +15,7 @@ class SplashPage extends StatelessWidget {
             Icon(Icons.school_rounded, size: 72, color: Colors.white),
             SizedBox(height: 16),
             Text(
-              'Smart School',
+              'Trường học số',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 26,

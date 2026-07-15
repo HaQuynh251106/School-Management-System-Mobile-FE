@@ -1380,7 +1380,7 @@ class _InvoicesTabState extends State<_InvoicesTab> {
           final invoices = snap.data ?? [];
           if (invoices.isEmpty) {
             return const Center(
-                child: Text('Chưa có hóa đơn (Admin sinh hóa đơn ở mục A7)',
+                child: Text('Chưa có hóa đơn. Vui lòng liên hệ nhà trường.',
                     style: TextStyle(color: AppColors.textSecondary)));
           }
           return ListView.separated(

@@ -89,7 +89,7 @@ class _LoginPageState extends State<LoginPage> {
         ),
         const SizedBox(height: 20),
         const Text(
-          'Smart School',
+          'Trường học số',
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
@@ -181,7 +181,7 @@ class _LoginPageState extends State<LoginPage> {
 
   Widget _buildDemoAccounts() {
     final accounts = [
-      ('Admin', 'admin', 'admin@123', AppColors.adminAccent),
+      ('Quản trị', 'admin', 'admin@123', AppColors.adminAccent),
       ('Giáo viên', 'gv.hoa', 'teacher@123', AppColors.teacherAccent),
       ('Học sinh', 'hs.an', 'student@123', AppColors.studentAccent),
       ('Phụ huynh', 'ph.pham', 'parent@123', AppColors.parentAccent),
@@ -192,12 +192,12 @@ class _LoginPageState extends State<LoginPage> {
         const Divider(),
         const SizedBox(height: 12),
         const Text(
-          'Tài khoản demo',
+          'Đăng nhập nhanh',
           style: TextStyle(
             fontSize: 12,
             color: AppColors.textSecondary,
             fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
+            letterSpacing: 0,
           ),
         ),
         const SizedBox(height: 10),

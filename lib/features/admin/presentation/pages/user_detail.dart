@@ -28,7 +28,7 @@ class AdminUserDetail extends StatelessWidget {
         'TEACHER' => 'Giáo viên',
         'STUDENT' => 'Học sinh',
         'PARENT' => 'Phụ huynh',
-        _ => 'Admin',
+        _ => 'Quản trị viên',
       };
 
   @override

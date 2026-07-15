@@ -907,7 +907,7 @@ class _UserList extends StatelessWidget {
         'TEACHER' => 'GV',
         'STUDENT' => 'HS',
         'PARENT' => 'PH',
-        _ => 'Admin',
+        _ => 'Quản trị',
       };
 }
 
@@ -1181,8 +1181,98 @@ class _ClassesView extends StatefulWidget {
 }
 
 class _ClassesViewState extends State<_ClassesView> {
-  late final Future<List<Map<String, dynamic>>> _future =
-      sl<ApiService>().classes();
+  final _api = sl<ApiService>();
+  late Future<List<Map<String, dynamic>>> _future;
+  late Future<List<Map<String, dynamic>>> _teachersFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _api.classes();
+    _teachersFuture = _api.users(role: 'TEACHER');
+  }
+
+  void _reloadClasses() {
+    setState(() => _future = _api.classes());
+  }
+
+  Future<void> _assignHomeroomTeacher(Map<String, dynamic> schoolClass) async {
+    final teachers = await _teachersFuture;
+    if (!mounted) return;
+    String selectedTeacherId =
+        (schoolClass['homeroomTeacherId'] ?? '').toString();
+    final activeTeachers =
+        teachers.where((teacher) => teacher['status'] == 'ACTIVE').toList();
+    if (!activeTeachers
+        .any((teacher) => teacher['id']?.toString() == selectedTeacherId)) {
+      selectedTeacherId = '';
+    }
+    final shouldSave = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Phân công GVCN · ${schoolClass['code'] ?? ''}'),
+          content: DropdownButtonFormField<String>(
+            initialValue: selectedTeacherId.isEmpty ? null : selectedTeacherId,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Giáo viên chủ nhiệm'),
+            items: activeTeachers
+                .map((teacher) => DropdownMenuItem(
+                      value: teacher['id']?.toString(),
+                      child: Text(
+                        '${teacher['fullName'] ?? ''} · ${teacher['mainSubject'] ?? 'Chưa có chuyên ngành'}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ))
+                .toList(),
+            onChanged: (value) =>
+                setDialogState(() => selectedTeacherId = value ?? ''),
+          ),
+          actions: [
+            if ((schoolClass['homeroomTeacherId'] ?? '').toString().isNotEmpty)
+              TextButton(
+                onPressed: () {
+                  selectedTeacherId = '';
+                  Navigator.pop(dialogContext, true);
+                },
+                child: const Text('Bỏ phân công'),
+              ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              onPressed: selectedTeacherId.isEmpty
+                  ? null
+                  : () => Navigator.pop(dialogContext, true),
+              child: const Text('Lưu'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (shouldSave != true) return;
+    try {
+      if (selectedTeacherId.isEmpty) {
+        await _api.clearHomeroomTeacher(schoolClass['id'].toString());
+      } else {
+        await _api.assignHomeroomTeacher(
+            schoolClass['id'].toString(), selectedTeacherId);
+      }
+      if (!mounted) return;
+      _reloadClasses();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Đã cập nhật giáo viên chủ nhiệm.'),
+        behavior: SnackBarBehavior.floating,
+      ));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Không thể cập nhật: $error'),
+        backgroundColor: AppColors.error,
+      ));
+    }
+  }
 
   String _gradeName(Object? gradeLevel) {
     final g = (gradeLevel ?? '').toString();
@@ -1218,7 +1308,9 @@ class _ClassesViewState extends State<_ClassesView> {
             final c = classes[i];
             final name = (c['name'] ?? c['code'] ?? '').toString();
             final gradeName = _gradeName(c['gradeLevel']);
-            final homeroom = (c['homeroomTeacherId'] ?? '').toString();
+            final homeroom =
+                (c['homeroomTeacherName'] ?? c['homeroomTeacherId'] ?? '')
+                    .toString();
             final count = (c['studentCount'] is num)
                 ? (c['studentCount'] as num).toInt()
                 : 0;
@@ -1267,6 +1359,12 @@ class _ClassesViewState extends State<_ClassesView> {
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.adminAccent)),
+                      ),
+                      IconButton(
+                        tooltip: 'Phân công giáo viên chủ nhiệm',
+                        onPressed: () => _assignHomeroomTeacher(c),
+                        icon: const Icon(Icons.manage_accounts_outlined,
+                            color: AppColors.adminAccent, size: 20),
                       ),
                       const Icon(Icons.chevron_right_rounded,
                           color: AppColors.textSecondary, size: 18),
