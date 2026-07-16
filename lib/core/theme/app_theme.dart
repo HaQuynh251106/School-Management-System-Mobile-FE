@@ -8,17 +8,40 @@ class AppTheme {
         useMaterial3: true,
         fontFamily: 'Roboto',
         textTheme: const TextTheme(
-          displaySmall: TextStyle(fontSize: 30, fontWeight: FontWeight.w700, height: 1.25, letterSpacing: -0.6),
-          headlineLarge: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, height: 1.3, letterSpacing: -0.4),
-          headlineMedium: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, height: 1.35, letterSpacing: -0.3),
-          titleLarge: TextStyle(fontSize: 19, fontWeight: FontWeight.w700, height: 1.35, letterSpacing: -0.2),
-          titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, height: 1.4),
-          titleSmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, height: 1.4),
-          bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, height: 1.5),
-          bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, height: 1.5),
-          bodySmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, height: 1.45),
-          labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, height: 1.35),
-          labelMedium: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, height: 1.35),
+          displaySmall: TextStyle(
+              fontSize: 30,
+              fontWeight: FontWeight.w700,
+              height: 1.25,
+              letterSpacing: -0.6),
+          headlineLarge: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+              height: 1.3,
+              letterSpacing: -0.4),
+          headlineMedium: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              height: 1.35,
+              letterSpacing: -0.3),
+          titleLarge: TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w700,
+              height: 1.35,
+              letterSpacing: -0.2),
+          titleMedium:
+              TextStyle(fontSize: 16, fontWeight: FontWeight.w600, height: 1.4),
+          titleSmall:
+              TextStyle(fontSize: 14, fontWeight: FontWeight.w600, height: 1.4),
+          bodyLarge:
+              TextStyle(fontSize: 16, fontWeight: FontWeight.w400, height: 1.5),
+          bodyMedium:
+              TextStyle(fontSize: 14, fontWeight: FontWeight.w400, height: 1.5),
+          bodySmall: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w400, height: 1.45),
+          labelLarge: TextStyle(
+              fontSize: 14, fontWeight: FontWeight.w600, height: 1.35),
+          labelMedium: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w600, height: 1.35),
         ),
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.primary,

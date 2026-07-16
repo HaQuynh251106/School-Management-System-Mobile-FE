@@ -1219,23 +1219,182 @@ class _GradeBookViewState extends State<_GradeBookView> {
   }
 }
 
-class _GradeDistributionView extends StatelessWidget {
+class _GradeDistributionView extends StatefulWidget {
   const _GradeDistributionView();
 
-  // mock distribution (count per range): <5, 5-6.5, 6.5-8, 8-10
-  static const _ranges = [
-    ('Yếu (<5)', 1, AppColors.error),
-    ('TB (5–6.5)', 4, AppColors.late),
-    ('Khá (6.5–8)', 10, AppColors.warning),
-    ('Giỏi (8–10)', 15, AppColors.success),
-  ];
+  @override
+  State<_GradeDistributionView> createState() => _GradeDistributionViewState();
+}
+
+class _GradeDistributionViewState extends State<_GradeDistributionView> {
+  final _api = sl<ApiService>();
+  List<Map<String, dynamic>> _classes = [];
+  List<Map<String, dynamic>> _semesters = [];
+  List<({String id, String name, double average})> _students = [];
+  String? _classId;
+  String? _semesterId;
+  String _subjectName = '';
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStructure();
+  }
+
+  Future<void> _loadStructure() async {
+    setState(() => _loading = true);
+    try {
+      final values = await Future.wait([
+        _api.teachingClasses(),
+        _api.semesters(),
+      ]);
+      _classes = values[0];
+      _semesters = values[1];
+      if (_classId == null && _classes.isNotEmpty) {
+        _classId = _classes.first['id']?.toString();
+      }
+      final activeSemesters =
+          _semesters.where((item) => item['status'] == 'ACTIVE').toList();
+      if (_semesterId == null && activeSemesters.isNotEmpty) {
+        _semesterId = activeSemesters.first['id']?.toString();
+      }
+      if (_semesterId == null && _semesters.isNotEmpty) {
+        _semesterId = _semesters.first['id']?.toString();
+      }
+      await _loadDistribution(showLoader: false);
+    } catch (_) {
+      _students = [];
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _loadDistribution({bool showLoader = true}) async {
+    if (_classId == null || _semesterId == null) return;
+    if (showLoader) setState(() => _loading = true);
+    try {
+      final context = await _api.teacherGradebookContext(
+          classId: _classId!, semesterId: _semesterId!);
+      final subjectId = context['subjectId']?.toString();
+      _subjectName = context['subjectName']?.toString() ?? '';
+      if (subjectId == null || subjectId.isEmpty) {
+        _students = [];
+        return;
+      }
+      final values = await Future.wait([
+        _api.grades(
+          classId: _classId,
+          semesterId: _semesterId,
+          subjectId: subjectId,
+        ),
+        _api.classStudents(_classId!),
+      ]);
+      final names = <String, String>{
+        for (final student in values[1])
+          student['id'].toString(): student['fullName'].toString(),
+      };
+      final grouped = <String, List<double>>{};
+      for (final grade in values[0]) {
+        final score = (grade['score'] as num?)?.toDouble();
+        final studentId = grade['studentId']?.toString();
+        if (score != null && studentId != null) {
+          grouped.putIfAbsent(studentId, () => []).add(score);
+        }
+      }
+      _students = grouped.entries.map((entry) {
+        final average =
+            entry.value.reduce((a, b) => a + b) / entry.value.length;
+        return (
+          id: entry.key,
+          name: names[entry.key] ?? entry.key,
+          average: average,
+        );
+      }).toList()
+        ..sort((a, b) => b.average.compareTo(a.average));
+    } finally {
+      if (showLoader && mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final total = _ranges.fold<int>(0, (s, r) => s + r.$2);
+    final total = _students.length;
+    final classAverage = total == 0
+        ? 0.0
+        : _students.fold<double>(0, (sum, item) => sum + item.average) / total;
+    final ranges = [
+      (
+        'Yếu (<5)',
+        _students.where((item) => item.average < 5).length,
+        AppColors.error
+      ),
+      (
+        'TB (5–6.5)',
+        _students
+            .where((item) => item.average >= 5 && item.average < 6.5)
+            .length,
+        AppColors.late
+      ),
+      (
+        'Khá (6.5–8)',
+        _students
+            .where((item) => item.average >= 6.5 && item.average < 8)
+            .length,
+        AppColors.warning
+      ),
+      (
+        'Giỏi (8–10)',
+        _students.where((item) => item.average >= 8).length,
+        AppColors.success
+      ),
+    ];
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        Row(children: [
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              initialValue: _classId,
+              decoration:
+                  const InputDecoration(labelText: 'Lớp', isDense: true),
+              items: _classes
+                  .map((item) => DropdownMenuItem(
+                        value: item['id'].toString(),
+                        child: Text((item['code'] ?? item['name']).toString()),
+                      ))
+                  .toList(),
+              onChanged: _loading
+                  ? null
+                  : (value) async {
+                      setState(() => _classId = value);
+                      await _loadDistribution();
+                    },
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              initialValue: _semesterId,
+              decoration:
+                  const InputDecoration(labelText: 'Học kỳ', isDense: true),
+              items: _semesters
+                  .map((item) => DropdownMenuItem(
+                        value: item['id'].toString(),
+                        child: Text((item['name'] ?? item['code']).toString()),
+                      ))
+                  .toList(),
+              onChanged: _loading
+                  ? null
+                  : (value) async {
+                      setState(() => _semesterId = value);
+                      await _loadDistribution();
+                    },
+            ),
+          ),
+        ]),
+        const SizedBox(height: 12),
+        if (_loading) const LinearProgressIndicator(),
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -1251,9 +1410,13 @@ class _GradeDistributionView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Lớp 10A1 — Toán — HK1',
-                        style: TextStyle(fontWeight: FontWeight.w600)),
-                    Text('Tổng số HS: $total • TB lớp: 7.8',
+                    Text(
+                        _subjectName.isEmpty
+                            ? 'Chưa có môn được phân công'
+                            : _subjectName,
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text(
+                        'Có điểm: $total học sinh • TB: ${classAverage.toStringAsFixed(2)}',
                         style: const TextStyle(
                             fontSize: 12, color: AppColors.textSecondary)),
                   ],
@@ -1270,7 +1433,7 @@ class _GradeDistributionView extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                for (final r in _ranges) ...[
+                for (final r in ranges) ...[
                   Row(
                     children: [
                       SizedBox(
@@ -1281,7 +1444,7 @@ class _GradeDistributionView extends StatelessWidget {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(4),
                           child: LinearProgressIndicator(
-                            value: r.$2 / total,
+                            value: total == 0 ? 0 : r.$2 / total,
                             color: r.$3,
                             backgroundColor: r.$3.withValues(alpha: 0.15),
                             minHeight: 16,
@@ -1309,22 +1472,29 @@ class _GradeDistributionView extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        const SectionHeader(title: 'Top 5 HS điểm cao nhất'),
+        const SectionHeader(title: 'Top 5 học sinh điểm cao nhất'),
         const SizedBox(height: 10),
-        const Card(
-          child: Column(
-            children: [
-              _TopStudentRow(rank: 1, name: 'Lê Quang Huy', avg: 9.05),
-              Divider(height: 0),
-              _TopStudentRow(rank: 2, name: 'Hoàng Thị Mai', avg: 8.85),
-              Divider(height: 0),
-              _TopStudentRow(rank: 3, name: 'Phạm Hoài An', avg: 8.40),
-              Divider(height: 0),
-              _TopStudentRow(rank: 4, name: 'Nguyễn Minh Châu', avg: 8.30),
-              Divider(height: 0),
-              _TopStudentRow(rank: 5, name: 'Bùi Ngọc Nam', avg: 7.60),
-            ],
-          ),
+        Card(
+          child: total == 0
+              ? const Padding(
+                  padding: EdgeInsets.all(18),
+                  child: Text('Chưa có dữ liệu điểm cho lựa chọn này.'),
+                )
+              : Column(
+                  children: [
+                    for (var index = 0;
+                        index < _students.take(5).length;
+                        index++) ...[
+                      _TopStudentRow(
+                        rank: index + 1,
+                        name: _students[index].name,
+                        avg: _students[index].average,
+                      ),
+                      if (index < _students.take(5).length - 1)
+                        const Divider(height: 0),
+                    ],
+                  ],
+                ),
         ),
       ],
     );

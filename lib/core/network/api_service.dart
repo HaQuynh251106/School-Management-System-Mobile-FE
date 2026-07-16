@@ -9,6 +9,13 @@ class ApiService {
   List<Map<String, dynamic>> _list(Response r) =>
       (r.data as List).cast<Map<String, dynamic>>();
 
+  Future<void> changePassword(
+          String currentPassword, String newPassword) async =>
+      _dio.put('/me/password', data: {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      });
+
   // ---------- Admin: users ----------
   Future<List<Map<String, dynamic>>> users(
       {String? role, String? q, String? classId}) async {
@@ -21,12 +28,32 @@ class ApiService {
 
   Future<void> lockUser(String id) async => _dio.post('/users/$id/lock');
   Future<void> unlockUser(String id) async => _dio.post('/users/$id/unlock');
+  Future<Map<String, dynamic>> user(String id) async =>
+      (await _dio.get('/users/$id')).data.cast<String, dynamic>();
+  Future<Map<String, dynamic>> resetUserPassword(String id,
+          {String? newPassword}) async =>
+      (await _dio.post('/users/$id/reset-password',
+              data: {'newPassword': newPassword}))
+          .data
+          .cast<String, dynamic>();
+  Future<List<Map<String, dynamic>>> loginHistory(String id) async =>
+      _list(await _dio.get('/users/$id/login-history'));
+  Future<List<Map<String, dynamic>>> userChildren(String id) async =>
+      _list(await _dio.get('/users/$id/children'));
 
   // ---------- Admin: structure extras ----------
   Future<List<Map<String, dynamic>>> academicYears() async =>
       _list(await _dio.get('/academicYears'));
   Future<List<Map<String, dynamic>>> rooms() async =>
       _list(await _dio.get('/rooms'));
+  Future<List<Map<String, dynamic>>> promotionPreview(String yearId) async =>
+      _list(await _dio.get('/academic-years/$yearId/promotion-preview'));
+  Future<void> setConduct(
+          String yearId, String studentId, String conductGrade) async =>
+      _dio.put('/academic-years/$yearId/students/$studentId/conduct',
+          data: {'conductGrade': conductGrade});
+  Future<List<Map<String, dynamic>>> finalizeYear(String yearId) async =>
+      _list(await _dio.post('/academic-years/$yearId/finalize'));
 
   // ---------- Admin: finance / templates ----------
   Future<List<Map<String, dynamic>>> feePeriods() async =>
@@ -55,6 +82,68 @@ class ApiService {
   Future<List<Map<String, dynamic>>> timetableOfClass(String classId) async =>
       _list(await _dio
           .get('/timetableSlots', queryParameters: {'classId': classId}));
+
+  Future<List<Map<String, dynamic>>> timetableSlots({
+    required String classId,
+    required String semesterId,
+  }) async =>
+      _list(await _dio.get('/timetableSlots', queryParameters: {
+        'classId': classId,
+        'semesterId': semesterId,
+      }));
+
+  Future<Map<String, dynamic>> createTimetableSlot(
+      Map<String, dynamic> data) async {
+    final response = await _dio.post('/timetableSlots', data: data);
+    return (response.data as Map).cast<String, dynamic>();
+  }
+
+  Future<Map<String, dynamic>> updateTimetableSlot(
+      String id, Map<String, dynamic> data) async {
+    final response = await _dio.put('/timetableSlots/$id', data: data);
+    return (response.data as Map).cast<String, dynamic>();
+  }
+
+  Future<void> deleteTimetableSlot(String id) async =>
+      _dio.delete('/timetableSlots/$id');
+
+  Future<List<Map<String, dynamic>>> teachingAssignments({
+    String? classId,
+    String? subjectId,
+    String? teacherId,
+    String? semesterId,
+    String? dayOfWeek,
+    int? periodNo,
+  }) async =>
+      _list(await _dio.get('/teaching-assignments', queryParameters: {
+        if (classId != null) 'classId': classId,
+        if (subjectId != null) 'subjectId': subjectId,
+        if (teacherId != null) 'teacherId': teacherId,
+        if (semesterId != null) 'semesterId': semesterId,
+        if (dayOfWeek != null) 'dayOfWeek': dayOfWeek,
+        if (periodNo != null) 'periodNo': periodNo,
+      }));
+
+  Future<Map<String, dynamic>> createTeachingAssignment(
+      Map<String, dynamic> data) async {
+    final response = await _dio.post('/teaching-assignments', data: data);
+    return (response.data as Map).cast<String, dynamic>();
+  }
+
+  Future<List<Map<String, dynamic>>> teacherWorkloads(
+          {String? semesterId}) async =>
+      _list(await _dio.get('/teaching-assignments/workloads', queryParameters: {
+        if (semesterId != null) 'semesterId': semesterId,
+      }));
+
+  Future<Map<String, dynamic>> updateTeachingAssignment(
+      String id, Map<String, dynamic> data) async {
+    final response = await _dio.put('/teaching-assignments/$id', data: data);
+    return (response.data as Map).cast<String, dynamic>();
+  }
+
+  Future<void> deleteTeachingAssignment(String id) async =>
+      _dio.delete('/teaching-assignments/$id');
 
   // ---------- Attendance ----------
   Future<List<Map<String, dynamic>>> attendance(
@@ -148,7 +237,14 @@ class ApiService {
       {String method = 'VNPAY'}) async {
     final r = await _dio
         .post('/payments', data: {'invoiceId': invoiceId, 'method': method});
-    return (r.data as Map).cast<String, dynamic>();
+    final initiated = (r.data as Map).cast<String, dynamic>();
+    final callbackUrl = initiated['callbackUrl'] as String?;
+    final callback = initiated['sandboxCallback'];
+    if (callbackUrl != null && callback is Map) {
+      final completed = await _dio.post(callbackUrl, data: callback);
+      return (completed.data as Map).cast<String, dynamic>();
+    }
+    return initiated;
   }
 
   // ---------- Notifications / Announcements ----------
@@ -161,12 +257,29 @@ class ApiService {
 
   Future<void> markNotiRead(String id) async =>
       _dio.post('/notifications/$id/read');
+  Future<List<Map<String, dynamic>>> notificationPreferences() async =>
+      _list(await _dio.get('/notification-preferences'));
+  Future<void> updateNotificationPreference(
+          String channel, bool enabled) async =>
+      _dio.put('/notification-preferences',
+          data: {'channel': channel, 'enabled': enabled});
   Future<List<Map<String, dynamic>>> announcements() async =>
       _list(await _dio.get('/announcements'));
 
   // ---------- Chat (B6/D3) ----------
   Future<List<Map<String, dynamic>>> chatThreads() async =>
       _list(await _dio.get('/chat/threads'));
+  Future<List<Map<String, dynamic>>> chatContacts() async =>
+      _list(await _dio.get('/chat/contacts'));
+  Future<List<Map<String, dynamic>>> teachingClasses() async =>
+      _list(await _dio.get('/me/teaching-classes'));
+  Future<void> broadcastToClass(
+          String classId, String title, String body) async =>
+      _dio.post('/announcements', data: {
+        'audience': 'CLASS:$classId',
+        'title': title,
+        'body': body,
+      });
   Future<List<Map<String, dynamic>>> chatMessages(String withUserId) async =>
       _list(await _dio
           .get('/chat/messages', queryParameters: {'withUserId': withUserId}));

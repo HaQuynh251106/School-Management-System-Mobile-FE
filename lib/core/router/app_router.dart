@@ -6,6 +6,7 @@ import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/bloc/auth_state.dart';
 import '../../features/auth/presentation/pages/forgot_password_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
+import '../../features/auth/presentation/pages/change_password_page.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/admin/presentation/pages/admin_home.dart';
 import '../../features/teacher/presentation/pages/teacher_home.dart';
@@ -25,6 +26,7 @@ class AppRouter {
       final atSplash = state.matchedLocation == '/splash';
       final atLogin = state.matchedLocation.startsWith('/login') ||
           state.matchedLocation.startsWith('/forgot-password');
+      final atPasswordChange = state.matchedLocation == '/change-password';
 
       if (authState is AuthInitial || authState is AuthLoading) {
         return atSplash ? null : '/splash';
@@ -33,7 +35,10 @@ class AppRouter {
         return atLogin ? null : '/login';
       }
       if (authState is AuthAuthenticated) {
-        if (atSplash || atLogin) {
+        if (authState.user.passwordChangeRequired) {
+          return atPasswordChange ? null : '/change-password';
+        }
+        if (atSplash || atLogin || atPasswordChange) {
           return _homeForRole(authState.user);
         }
       }
@@ -42,6 +47,10 @@ class AppRouter {
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => const SplashPage()),
       GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
+      GoRoute(
+        path: '/change-password',
+        builder: (_, __) => const ChangePasswordPage(),
+      ),
       GoRoute(
         path: '/forgot-password',
         builder: (_, __) => const ForgotPasswordPage(),

@@ -306,6 +306,7 @@ class _MonitorTab extends StatefulWidget {
 
 class _MonitorTabState extends State<_MonitorTab> {
   late Future<List<List<Map<String, dynamic>>>> _future;
+  late Future<int> _pendingInvoice;
 
   @override
   void initState() {
@@ -325,15 +326,18 @@ class _MonitorTabState extends State<_MonitorTab> {
       api.attendance(studentId: widget.child.id),
       api.grades(studentId: widget.child.id),
     ]);
+    _pendingInvoice = api.invoices(studentId: widget.child.id).then((items) =>
+        items.where((item) => item['status'] != 'PAID').fold<int>(
+            0,
+            (total, item) =>
+                total +
+                ((item['totalAmount'] as num?)?.toInt() ?? 0) -
+                ((item['paidAmount'] as num?)?.toInt() ?? 0)));
   }
 
   @override
   Widget build(BuildContext context) {
     final child = widget.child;
-    // Note: pending-invoice banner stays static (mock) per task scope.
-    final pendingInvoice = _invoices
-        .where((i) => i.status != 'PAID')
-        .fold<int>(0, (s, i) => s + i.total);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Giám sát con'),
@@ -346,13 +350,20 @@ class _MonitorTabState extends State<_MonitorTab> {
           _ChildCard(child: child, onSwitch: widget.onSwitchChild),
           const SizedBox(height: 16),
           _AlertBanner(),
-          if (pendingInvoice > 0) ...[
-            const SizedBox(height: 12),
-            _InvoiceBanner(
-              totalPending: pendingInvoice,
-              onTap: widget.onGoInvoices,
-            ),
-          ],
+          FutureBuilder<int>(
+            future: _pendingInvoice,
+            builder: (context, snapshot) {
+              final total = snapshot.data ?? 0;
+              if (total <= 0) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: _InvoiceBanner(
+                  totalPending: total,
+                  onTap: widget.onGoInvoices,
+                ),
+              );
+            },
+          ),
           const SizedBox(height: 16),
           const SectionHeader(title: 'Tổng quan học kỳ'),
           const SizedBox(height: 10),
@@ -1311,7 +1322,7 @@ class _InvoicesTabState extends State<_InvoicesTab> {
       await sl<ApiService>().pay(inv['id'].toString());
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Thanh toán ${inv['code']} thành công (sandbox VNPAY)'),
+        content: Text('Thanh toán ${inv['code']} thành công'),
         backgroundColor: AppColors.success,
         behavior: SnackBarBehavior.floating,
       ));

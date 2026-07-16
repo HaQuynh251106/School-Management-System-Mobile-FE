@@ -5,6 +5,7 @@ class UserModel {
     required this.fullName,
     required this.role,
     required this.status,
+    required this.passwordChangeRequired,
     this.email,
     this.phone,
     this.avatarUrl,
@@ -21,6 +22,7 @@ class UserModel {
   final String fullName;
   final String role;
   final String status;
+  final bool passwordChangeRequired;
   final String? email;
   final String? phone;
   final String? avatarUrl;
@@ -37,6 +39,8 @@ class UserModel {
         fullName: json['fullName'] as String,
         role: json['role'] as String,
         status: json['status'] as String,
+        passwordChangeRequired:
+            json['passwordChangeRequired'] as bool? ?? false,
         email: json['email'] as String?,
         phone: json['phone'] as String?,
         avatarUrl: json['avatarUrl'] as String?,
@@ -54,6 +58,7 @@ class UserModel {
         'fullName': fullName,
         'role': role,
         'status': status,
+        'passwordChangeRequired': passwordChangeRequired,
         'email': email,
         'phone': phone,
         'avatarUrl': avatarUrl,

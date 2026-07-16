@@ -213,6 +213,14 @@ class _NotificationCenterState extends State<NotificationCenter> {
     }
   }
 
+  Future<void> _openPreferences() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => _NotificationPreferenceSheet(accent: widget.accent),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final accent = widget.accent;
@@ -229,6 +237,11 @@ class _NotificationCenterState extends State<NotificationCenter> {
               title: const Text('Thông báo'),
               backgroundColor: accent,
               actions: [
+                IconButton(
+                  icon: const Icon(Icons.tune_rounded),
+                  tooltip: 'Kênh nhận thông báo',
+                  onPressed: _openPreferences,
+                ),
                 IconButton(
                   icon: const Icon(Icons.done_all_rounded),
                   tooltip: 'Đánh dấu tất cả đã đọc',
@@ -365,52 +378,79 @@ class _NotiList extends StatelessWidget {
   }
 }
 
-// Mock data có thể dùng cho mọi role
-const mockNotifications = <NotificationItem>[
-  NotificationItem(
-    title: 'Học sinh vắng mặt',
-    body: 'Phạm Hoài An vắng tiết 1 ngày 22/05 — Tiếng Anh',
-    time: '5 phút trước',
-    category: 'ATTENDANCE_ALERT',
-  ),
-  NotificationItem(
-    title: 'Điểm mới',
-    body: 'Bạn vừa nhận điểm GK môn Toán: 8.8',
-    time: '2 giờ trước',
-    category: 'GRADE_PUBLISHED',
-  ),
-  NotificationItem(
-    title: 'Bài tập mới',
-    body: 'GV Trần Thị Hoa giao bài "Hàm số bậc hai" — hạn 28/05 23:59',
-    time: '5 giờ trước',
-    category: 'ASSIGNMENT',
-  ),
-  NotificationItem(
-    title: 'Hóa đơn HK2 đã phát hành',
-    body: 'HD-2025-HK2-0042 — Tổng 4.500.000 ₫ — Hạn 15/06',
-    time: 'Hôm qua',
-    category: 'INVOICE',
-    read: true,
-  ),
-  NotificationItem(
-    title: 'Thanh toán thành công',
-    body: 'VNPAY: HD-2025-HK1-0042 — 4.500.000 ₫',
-    time: '12/12/2025',
-    category: 'PAYMENT',
-    read: true,
-  ),
-  NotificationItem(
-    title: 'Khóa ngoại khóa mở đăng ký',
-    body: 'STEM — Lập trình Python — Còn 5/15 chỗ',
-    time: '2 ngày trước',
-    category: 'EXTRACURRICULAR',
-    read: true,
-  ),
-  NotificationItem(
-    title: 'Thông báo chung',
-    body: 'Lịch thi GK đã được cập nhật — kiểm tra TKB mới',
-    time: '3 ngày trước',
-    category: 'ANNOUNCEMENT',
-    read: true,
-  ),
-];
+class _NotificationPreferenceSheet extends StatefulWidget {
+  const _NotificationPreferenceSheet({required this.accent});
+  final Color accent;
+
+  @override
+  State<_NotificationPreferenceSheet> createState() =>
+      _NotificationPreferenceSheetState();
+}
+
+class _NotificationPreferenceSheetState
+    extends State<_NotificationPreferenceSheet> {
+  late Future<List<Map<String, dynamic>>> _future =
+      sl<ApiService>().notificationPreferences();
+
+  String _label(String channel) => switch (channel) {
+        'IN_APP' => 'Trong ứng dụng',
+        'PUSH' => 'Thông báo đẩy',
+        'EMAIL' => 'Email',
+        _ => channel,
+      };
+
+  IconData _icon(String channel) => switch (channel) {
+        'PUSH' => Icons.phone_android_rounded,
+        'EMAIL' => Icons.email_outlined,
+        _ => Icons.notifications_outlined,
+      };
+
+  Future<void> _toggle(String channel, bool enabled) async {
+    await sl<ApiService>().updateNotificationPreference(channel, enabled);
+    if (mounted) {
+      setState(() => _future = sl<ApiService>().notificationPreferences());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Kênh nhận thông báo',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 6),
+              const Text('Chọn cách nhà trường có thể gửi thông tin tới bạn.',
+                  style: TextStyle(color: AppColors.textSecondary)),
+              const SizedBox(height: 12),
+              FutureBuilder<List<Map<String, dynamic>>>(
+                future: _future,
+                builder: (context, snap) {
+                  if (snap.connectionState != ConnectionState.done) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  return Column(
+                    children: (snap.data ?? const [])
+                        .map((preference) => SwitchListTile(
+                              secondary: Icon(
+                                  _icon(preference['channel'].toString()),
+                                  color: widget.accent),
+                              title: Text(
+                                  _label(preference['channel'].toString())),
+                              value: preference['enabled'] == true,
+                              activeThumbColor: widget.accent,
+                              onChanged: (enabled) => _toggle(
+                                  preference['channel'].toString(), enabled),
+                            ))
+                        .toList(),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+}

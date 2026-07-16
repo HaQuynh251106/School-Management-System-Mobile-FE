@@ -15,7 +15,9 @@ import 'exam_categories_page.dart';
 import 'extracurricular_admin.dart';
 import 'fee_period_detail.dart';
 import 'notification_templates_page.dart';
+import 'teaching_assignments_page.dart';
 import 'timetable_scheduling.dart';
+import 'year_end_page.dart';
 import 'user_detail.dart';
 
 class AdminHome extends StatefulWidget {
@@ -827,10 +829,22 @@ class _UserList extends StatelessWidget {
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => AdminUserDetail(
+                id: id,
                 name: name,
                 code: code,
                 role: role,
                 username: username,
+                email: u['email']?.toString(),
+                phone: u['phone']?.toString(),
+                className: u['className']?.toString(),
+                dateOfBirth: u['dateOfBirth']?.toString(),
+                gender: u['gender']?.toString(),
+                address: u['address']?.toString(),
+                enrollmentDate: u['enrollmentDate']?.toString(),
+                guardianName: u['guardianName']?.toString(),
+                guardianPhone: u['guardianPhone']?.toString(),
+                mainSubject: u['mainSubject']?.toString(),
+                status: status,
               ),
             ),
           ),
@@ -1744,6 +1758,14 @@ class _SettingsTab extends StatelessWidget {
             title: 'Quản trị hệ thống',
             children: [
               _AdminSettingsTile(
+                icon: Icons.person_add_alt_1_rounded,
+                label: 'Phân công giáo viên bộ môn',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => const TeachingAssignmentsPage()),
+                ),
+              ),
+              _AdminSettingsTile(
                 icon: Icons.schedule_rounded,
                 label: 'Xếp Thời khóa biểu (A3)',
                 onTap: () => Navigator.of(context).push(
@@ -1756,6 +1778,13 @@ class _SettingsTab extends StatelessWidget {
                 label: 'Cấu hình Khảo thí (A4)',
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const ExamCategoriesPage()),
+                ),
+              ),
+              _AdminSettingsTile(
+                icon: Icons.school_rounded,
+                label: 'Tổng kết và xét lên lớp',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const YearEndPage()),
                 ),
               ),
               _AdminSettingsTile(

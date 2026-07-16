@@ -41,6 +41,14 @@ class ChatThread {
     );
   }
 
+  factory ChatThread.fromContact(Map<String, dynamic> json) => ChatThread(
+        userId: json['id']?.toString(),
+        name: (json['fullName'] ?? '').toString(),
+        role: (json['role'] ?? '').toString(),
+        lastMessage: 'Bắt đầu hội thoại',
+        lastTime: '',
+      );
+
   static String _formatTime(Object? raw) {
     if (raw == null) return '';
     final dt = DateTime.tryParse(raw.toString());
@@ -69,17 +77,30 @@ class ChatListPage extends StatefulWidget {
 }
 
 class _ChatListPageState extends State<ChatListPage> {
-  late final Future<List<Map<String, dynamic>>> _future =
-      sl<ApiService>().chatThreads();
+  late final Future<List<List<Map<String, dynamic>>>> _future = Future.wait([
+    sl<ApiService>().chatThreads(),
+    sl<ApiService>().chatContacts(),
+  ]);
 
   @override
   Widget build(BuildContext context) {
     final accent = widget.accent;
-    return FutureBuilder<List<Map<String, dynamic>>>(
+    return FutureBuilder<List<List<Map<String, dynamic>>>>(
       future: _future,
       builder: (context, snap) {
         final loading = snap.connectionState != ConnectionState.done;
-        final threads = (snap.data ?? []).map(ChatThread.fromJson).toList();
+        final threadRows =
+            snap.data == null ? const <Map<String, dynamic>>[] : snap.data![0];
+        final contactRows =
+            snap.data == null ? const <Map<String, dynamic>>[] : snap.data![1];
+        final existing = threadRows.map(ChatThread.fromJson).toList();
+        final threads = contactRows.map((contact) {
+          final id = contact['id']?.toString();
+          final matched = existing.where((thread) => thread.userId == id);
+          return matched.isEmpty
+              ? ChatThread.fromContact(contact)
+              : matched.first;
+        }).toList();
         final dms = threads.where((t) => !t.isBroadcast).toList();
         final broadcasts = threads.where((t) => t.isBroadcast).toList();
         return DefaultTabController(
@@ -100,7 +121,7 @@ class _ChatListPageState extends State<ChatListPage> {
             ),
             floatingActionButton: widget.allowBroadcast
                 ? FloatingActionButton.extended(
-                    onPressed: () => _showBroadcastSheet(context),
+                    onPressed: _showBroadcastSheet,
                     backgroundColor: accent,
                     icon: const Icon(Icons.campaign_rounded),
                     label: const Text('Broadcast'),
@@ -125,10 +146,21 @@ class _ChatListPageState extends State<ChatListPage> {
     );
   }
 
-  void _showBroadcastSheet(BuildContext context) {
+  Future<void> _showBroadcastSheet() async {
+    final messenger = ScaffoldMessenger.of(context);
+    List<Map<String, dynamic>> classes;
+    try {
+      classes = await sl<ApiService>().teachingClasses();
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+          SnackBar(content: Text('Không tải được lớp phụ trách: $e')));
+      return;
+    }
+    if (!mounted || classes.isEmpty) return;
     final ctrl = TextEditingController();
-    String target = '10A1';
-    showModalBottomSheet(
+    String target = classes.first['id'].toString();
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
@@ -149,8 +181,10 @@ class _ChatListPageState extends State<ChatListPage> {
                 initialValue: target,
                 decoration:
                     const InputDecoration(labelText: 'Lớp nhận', isDense: true),
-                items: ['10A1', '10A2', '8A1']
-                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                items: classes
+                    .map((c) => DropdownMenuItem(
+                        value: c['id'].toString(),
+                        child: Text(c['code'].toString())))
                     .toList(),
                 onChanged: (v) => setState(() => target = v!),
               ),
@@ -167,15 +201,23 @@ class _ChatListPageState extends State<ChatListPage> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Đã broadcast tới lớp $target'),
+                  onPressed: () async {
+                    if (ctrl.text.trim().isEmpty) return;
+                    try {
+                      await sl<ApiService>().broadcastToClass(
+                          target, 'Thông báo từ giáo viên', ctrl.text.trim());
+                      if (!ctx.mounted) return;
+                      Navigator.pop(ctx);
+                      messenger.showSnackBar(const SnackBar(
+                        content: Text('Đã gửi thông báo tới lớp'),
                         backgroundColor: AppColors.success,
                         behavior: SnackBarBehavior.floating,
-                      ),
-                    );
+                      ));
+                    } catch (e) {
+                      if (!ctx.mounted) return;
+                      messenger.showSnackBar(
+                          SnackBar(content: Text('Không thể gửi: $e')));
+                    }
                   },
                   style: FilledButton.styleFrom(backgroundColor: widget.accent),
                   icon: const Icon(Icons.send_rounded),

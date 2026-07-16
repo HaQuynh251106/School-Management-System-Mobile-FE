@@ -15,6 +15,10 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  static const _showDemoAccounts = bool.fromEnvironment(
+    'SHOW_DEMO_ACCOUNTS',
+    defaultValue: false,
+  );
   final _formKey = GlobalKey<FormState>();
   final _usernameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
@@ -180,12 +184,37 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget _buildDemoAccounts() {
-    final accounts = [
-      ('Quản trị', 'admin', 'admin@123', AppColors.adminAccent),
-      ('Giáo viên', 'gv.hoa', 'teacher@123', AppColors.teacherAccent),
-      ('Học sinh', 'hs.an', 'student@123', AppColors.studentAccent),
-      ('Phụ huynh', 'ph.pham', 'parent@123', AppColors.parentAccent),
+    if (!_showDemoAccounts) return const SizedBox.shrink();
+    const accounts = [
+      (
+        'Quản trị',
+        String.fromEnvironment('DEMO_ADMIN_USERNAME'),
+        String.fromEnvironment('DEMO_ADMIN_PASSWORD'),
+        AppColors.adminAccent
+      ),
+      (
+        'Giáo viên',
+        String.fromEnvironment('DEMO_TEACHER_USERNAME'),
+        String.fromEnvironment('DEMO_TEACHER_PASSWORD'),
+        AppColors.teacherAccent
+      ),
+      (
+        'Học sinh',
+        String.fromEnvironment('DEMO_STUDENT_USERNAME'),
+        String.fromEnvironment('DEMO_STUDENT_PASSWORD'),
+        AppColors.studentAccent
+      ),
+      (
+        'Phụ huynh',
+        String.fromEnvironment('DEMO_PARENT_USERNAME'),
+        String.fromEnvironment('DEMO_PARENT_PASSWORD'),
+        AppColors.parentAccent
+      ),
     ];
+    final configured = accounts
+        .where((account) => account.$2.isNotEmpty && account.$3.isNotEmpty)
+        .toList();
+    if (configured.isEmpty) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -204,7 +233,7 @@ class _LoginPageState extends State<LoginPage> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: accounts.map((a) {
+          children: configured.map((a) {
             final (label, user, pass, color) = a;
             return ActionChip(
               label: Text(label, style: const TextStyle(fontSize: 12)),
