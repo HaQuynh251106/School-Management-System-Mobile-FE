@@ -14,6 +14,8 @@ flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:4000
 flutter run -d android --dart-define=API_BASE_URL=http://10.0.2.2:4000
 ```
 
+Khi chạy debug, màn hình đăng nhập hiển thị sẵn 4 tài khoản demo. Muốn bật trong bản build demo, thêm `--dart-define=SHOW_DEMO_ACCOUNTS=true`.
+
 Thiết bị thật phải dùng HTTPS URL hoặc địa chỉ LAN truy cập được từ thiết bị. Không đưa secret vào `--dart-define`; Mobile chỉ cần URL public của API.
 
 ## Kiểm tra trước khi phát hành

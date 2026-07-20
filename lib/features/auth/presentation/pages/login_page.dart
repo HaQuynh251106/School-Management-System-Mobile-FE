@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -17,7 +18,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   static const _showDemoAccounts = bool.fromEnvironment(
     'SHOW_DEMO_ACCOUNTS',
-    defaultValue: false,
+    defaultValue: !kReleaseMode,
   );
   final _formKey = GlobalKey<FormState>();
   final _usernameCtrl = TextEditingController();
@@ -188,26 +189,26 @@ class _LoginPageState extends State<LoginPage> {
     const accounts = [
       (
         'Quản trị',
-        String.fromEnvironment('DEMO_ADMIN_USERNAME'),
-        String.fromEnvironment('DEMO_ADMIN_PASSWORD'),
+        String.fromEnvironment('DEMO_ADMIN_USERNAME', defaultValue: 'admin'),
+        String.fromEnvironment('DEMO_ADMIN_PASSWORD', defaultValue: 'admin@123'),
         AppColors.adminAccent
       ),
       (
         'Giáo viên',
-        String.fromEnvironment('DEMO_TEACHER_USERNAME'),
-        String.fromEnvironment('DEMO_TEACHER_PASSWORD'),
+        String.fromEnvironment('DEMO_TEACHER_USERNAME', defaultValue: 'gv.hoa'),
+        String.fromEnvironment('DEMO_TEACHER_PASSWORD', defaultValue: 'teacher@123'),
         AppColors.teacherAccent
       ),
       (
         'Học sinh',
-        String.fromEnvironment('DEMO_STUDENT_USERNAME'),
-        String.fromEnvironment('DEMO_STUDENT_PASSWORD'),
+        String.fromEnvironment('DEMO_STUDENT_USERNAME', defaultValue: 'hs.an'),
+        String.fromEnvironment('DEMO_STUDENT_PASSWORD', defaultValue: 'student@123'),
         AppColors.studentAccent
       ),
       (
         'Phụ huynh',
-        String.fromEnvironment('DEMO_PARENT_USERNAME'),
-        String.fromEnvironment('DEMO_PARENT_PASSWORD'),
+        String.fromEnvironment('DEMO_PARENT_USERNAME', defaultValue: 'ph.pham'),
+        String.fromEnvironment('DEMO_PARENT_PASSWORD', defaultValue: 'parent@123'),
         AppColors.parentAccent
       ),
     ];

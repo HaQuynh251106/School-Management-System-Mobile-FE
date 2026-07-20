@@ -265,6 +265,27 @@ class ApiService {
           data: {'channel': channel, 'enabled': enabled});
   Future<List<Map<String, dynamic>>> announcements() async =>
       _list(await _dio.get('/announcements'));
+  Future<List<Map<String, dynamic>>> teacherAnnouncementScopes() async =>
+      _list(await _dio.get('/teacher/announcements/scopes'));
+  Future<List<Map<String, dynamic>>> teacherAnnouncements() async =>
+      _list(await _dio.get('/teacher/announcements'));
+  Future<Map<String, dynamic>> sendTeacherAnnouncement({
+    required String classId,
+    required String target,
+    required String category,
+    required String priority,
+    required String title,
+    required String body,
+  }) async {
+    final response = await _dio.post('/announcements', data: {
+      'audience': '$target:$classId',
+      'category': category,
+      'priority': priority,
+      'title': title,
+      'body': body,
+    });
+    return (response.data as Map).cast<String, dynamic>();
+  }
 
   // ---------- Chat (B6/D3) ----------
   Future<List<Map<String, dynamic>>> chatThreads() async =>
@@ -275,11 +296,14 @@ class ApiService {
       _list(await _dio.get('/me/teaching-classes'));
   Future<void> broadcastToClass(
           String classId, String title, String body) async =>
-      _dio.post('/announcements', data: {
-        'audience': 'CLASS:$classId',
-        'title': title,
-        'body': body,
-      });
+      sendTeacherAnnouncement(
+        classId: classId,
+        target: 'CLASS_ALL',
+        category: 'STUDENT_STATUS',
+        priority: 'NORMAL',
+        title: title,
+        body: body,
+      );
   Future<List<Map<String, dynamic>>> chatMessages(String withUserId) async =>
       _list(await _dio
           .get('/chat/messages', queryParameters: {'withUserId': withUserId}));

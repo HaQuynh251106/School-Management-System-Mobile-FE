@@ -377,11 +377,10 @@ class _TodayAttendanceState extends State<_TodayAttendance> {
         .toList();
     try {
       await _api.bulkAttendance(slotId: _slotId!, date: date, marks: marks);
-      final absent = _status.values.where((v) => v != 'PRESENT').length;
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text(
-            'Đã lưu điểm danh. $absent vắng/muộn → đã gửi cảnh báo phụ huynh.'),
+            'Đã lưu điểm danh. Trạng thái thay đổi đã được tự động thông báo tới học sinh và phụ huynh.'),
         backgroundColor: AppColors.success,
         behavior: SnackBarBehavior.floating,
       ));
@@ -1201,8 +1200,9 @@ class _GradeBookViewState extends State<_GradeBookView> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-              Text(isEdit ? 'Đã sửa điểm, đã ghi log.' : 'Đã lưu điểm mới.'),
+          content: Text(isEdit
+              ? 'Đã sửa điểm, ghi log và tự động thông báo tới học sinh, phụ huynh.'
+              : 'Đã lưu điểm mới và tự động thông báo tới học sinh, phụ huynh.'),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
         ),

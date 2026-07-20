@@ -12,6 +12,7 @@ class NotificationItem {
     required this.body,
     required this.time,
     required this.category,
+    this.priority = 'NORMAL',
     this.read = false,
   });
 
@@ -21,6 +22,7 @@ class NotificationItem {
   final String body;
   final String time;
   final String category;
+  final String priority;
   final bool read;
 
   /// Map 1 notification từ REST backend sang model mà list row đang render.
@@ -31,6 +33,7 @@ class NotificationItem {
       title: (json['title'] ?? '').toString(),
       body: (json['body'] ?? '').toString(),
       category: (json['type'] ?? '').toString(),
+      priority: (json['priority'] ?? 'NORMAL').toString(),
       time: _formatTime(json['createdAt']),
       read: json['read'] == true,
     );
@@ -57,12 +60,25 @@ class NotificationCenter extends StatefulWidget {
 
   static (IconData, Color) _styleFor(String category) {
     switch (category) {
+      case 'ATTENDANCE':
       case 'ATTENDANCE_ALERT':
         return (Icons.event_busy_rounded, AppColors.absentUnexcused);
+      case 'GRADE':
       case 'GRADE_PUBLISHED':
         return (Icons.stars_rounded, AppColors.success);
+      case 'HOLIDAY':
+        return (Icons.beach_access_rounded, AppColors.teacherAccent);
+      case 'EVENT':
+        return (Icons.celebration_rounded, AppColors.adminAccent);
+      case 'STUDENT_STATUS':
+        return (Icons.school_rounded, AppColors.primary);
+      case 'PARENT_MEETING':
+        return (Icons.groups_rounded, AppColors.warning);
+      case 'GENERAL':
+        return (Icons.campaign_rounded, AppColors.adminAccent);
       case 'ASSIGNMENT':
         return (Icons.assignment_outlined, AppColors.primary);
+      case 'FEE':
       case 'INVOICE':
         return (Icons.receipt_long_rounded, AppColors.warning);
       case 'PAYMENT':
@@ -78,12 +94,28 @@ class NotificationCenter extends StatefulWidget {
 
   static String _categoryLabel(String category) {
     switch (category) {
+      case 'ATTENDANCE':
+        return 'Điểm danh';
       case 'ATTENDANCE_ALERT':
         return 'Chuyên cần';
+      case 'GRADE':
+        return 'Điểm số';
       case 'GRADE_PUBLISHED':
         return 'Điểm số';
+      case 'HOLIDAY':
+        return 'Nghỉ lễ';
+      case 'EVENT':
+        return 'Sự kiện';
+      case 'STUDENT_STATUS':
+        return 'Tình hình học sinh';
+      case 'PARENT_MEETING':
+        return 'Họp phụ huynh';
+      case 'GENERAL':
+        return 'Thông báo chung';
       case 'ASSIGNMENT':
         return 'Bài tập';
+      case 'FEE':
+        return 'Khoản thu';
       case 'INVOICE':
         return 'Hóa đơn';
       case 'PAYMENT':
@@ -303,8 +335,20 @@ class _NotiList extends StatelessWidget {
       itemBuilder: (_, i) {
         final item = items[i];
         final (icon, color) = NotificationCenter._styleFor(item.category);
+        final isUrgent = item.priority == 'URGENT';
+        final isImportant = item.priority == 'IMPORTANT';
+        final priorityColor = isUrgent ? AppColors.error : AppColors.warning;
         return Container(
-          color: item.read ? null : color.withValues(alpha: 0.04),
+          decoration: BoxDecoration(
+            color: item.read
+                ? null
+                : (isUrgent ? AppColors.error : color).withValues(alpha: 0.04),
+            border: isUrgent
+                ? const Border(
+                    left: BorderSide(color: AppColors.error, width: 3),
+                  )
+                : null,
+          ),
           child: ListTile(
             leading: Stack(
               children: [
@@ -341,10 +385,13 @@ class _NotiList extends StatelessWidget {
               children: [
                 Text(item.body,
                     style: const TextStyle(fontSize: 12, height: 1.3),
-                    maxLines: 2,
+                    maxLines: 3,
                     overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 4),
-                Row(
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -361,7 +408,23 @@ class _NotiList extends StatelessWidget {
                             fontWeight: FontWeight.w600),
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    if (isUrgent || isImportant)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: priorityColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          isUrgent ? 'Khẩn cấp' : 'Quan trọng',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: priorityColor,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
                     Text(item.time,
                         style: const TextStyle(
                             fontSize: 11, color: AppColors.textSecondary)),

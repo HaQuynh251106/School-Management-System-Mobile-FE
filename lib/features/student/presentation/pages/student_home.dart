@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../shared/widgets/attendance_badge.dart';
+import '../../../../shared/widgets/chat_pages.dart';
 import '../../../../shared/widgets/notification_center.dart';
 import '../../../../shared/widgets/section_header.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
@@ -1103,14 +1104,13 @@ class _ProfileTab extends StatelessWidget {
                   subtitle: const Text('Chat với GV bộ môn',
                       style: TextStyle(fontSize: 11)),
                   trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Mở danh sách chat'),
-                        behavior: SnackBarBehavior.floating,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const ChatListPage(
+                        accent: AppColors.studentAccent,
                       ),
-                    );
-                  },
+                    ),
+                  ),
                 ),
               ],
             ),
