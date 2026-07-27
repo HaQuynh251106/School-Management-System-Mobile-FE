@@ -1,20 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/date_symbol_data_local.dart';
+import 'package:provider/provider.dart';
 
-import 'app.dart';
-import 'core/di/service_locator.dart';
-import 'features/auth/presentation/bloc/auth_bloc.dart';
-import 'features/auth/presentation/bloc/auth_event.dart';
+import 'app/app.dart';
+import 'app/session.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await initializeDateFormatting('vi_VN');
-  await setupServiceLocator();
+  final session = AppSession();
+  await session.bootstrap();
   runApp(
-    BlocProvider(
-      create: (_) => sl<AuthBloc>()..add(const AuthStarted()),
-      child: const SseApp(),
-    ),
+    ChangeNotifierProvider.value(value: session, child: const SmartSchoolApp()),
   );
 }

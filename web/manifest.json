@@ -1,11 +1,11 @@
 {
-    "name": "sse_mobile",
-    "short_name": "sse_mobile",
+    "name": "Trường học số",
+    "short_name": "Smart School",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#091426",
+    "theme_color": "#2864EA",
+    "description": "Ứng dụng Trường học số dành cho nhà trường và gia đình.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

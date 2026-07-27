@@ -1,31 +1,39 @@
-# Smart School Ecosystem Mobile
+# Trường học số Mobile V2
 
-Ứng dụng Flutter cho Admin, giáo viên, học sinh và phụ huynh. Ứng dụng gọi trực tiếp SSE Backend và lưu access/refresh token bằng secure storage của hệ điều hành.
+Ứng dụng Flutter mới dành cho hệ thống quản lý trường học, dùng chung API và
+dữ liệu PostgreSQL với website.
 
-## Chạy local
+## Kiến trúc trải nghiệm
 
-```bash
-flutter pub get
+- Điều hướng riêng cho quản trị viên, giáo viên, học sinh và phụ huynh.
+- Dashboard theo vai trò, chỉ hiển thị thông tin cần quan tâm.
+- Chức năng được nhóm theo công việc: Con người/Vận hành, Giảng dạy/Công việc,
+  Học tập/Nhiệm vụ và Học tập/Gia đình.
+- Có tìm kiếm danh sách, trạng thái tải/trống/lỗi và thao tác thêm mới.
+- Hộp thư hợp nhất thông báo và trao đổi.
+- Material 3 responsive, hỗ trợ light mode và dark mode.
 
-# Chrome/Web
-flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:4000
+## Kết nối backend
 
-# Android Emulator (localhost của máy phát triển là 10.0.2.2)
-flutter run -d android --dart-define=API_BASE_URL=http://10.0.2.2:4000
+Không có dữ liệu demo trong ứng dụng. API được cấu hình khi chạy hoặc build:
+
+```powershell
+flutter run --dart-define=API_BASE_URL=http://127.0.0.1:4000
 ```
 
-Khi chạy debug, màn hình đăng nhập hiển thị sẵn 4 tài khoản demo. Muốn bật trong bản build demo, thêm `--dart-define=SHOW_DEMO_ACCOUNTS=true`.
+Android Emulator dùng địa chỉ máy chủ:
 
-Thiết bị thật phải dùng HTTPS URL hoặc địa chỉ LAN truy cập được từ thiết bị. Không đưa secret vào `--dart-define`; Mobile chỉ cần URL public của API.
+```powershell
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:4000
+```
 
-## Kiểm tra trước khi phát hành
+Thiết bị thật cần dùng IP LAN hoặc tên miền HTTPS của backend.
 
-```bash
-dart format --output=none --set-exit-if-changed lib test
+## Kiểm tra
+
+```powershell
 flutter analyze
 flutter test
-flutter build appbundle --release --dart-define=API_BASE_URL=https://api.example.com
-flutter build ipa --release --dart-define=API_BASE_URL=https://api.example.com
+flutter build web
+flutter build apk
 ```
-
-Việc ký Android/iOS cần keystore, Apple Distribution certificate và provisioning profile của chủ sản phẩm; các khóa này phải đặt trong secret store của CI, không commit vào Git.
