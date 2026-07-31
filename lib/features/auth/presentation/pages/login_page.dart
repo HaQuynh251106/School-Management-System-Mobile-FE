@@ -56,25 +56,147 @@ class _LoginPageState extends State<LoginPage> {
           }
         },
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 64),
-                _buildHeader(),
-                const SizedBox(height: 40),
-                _buildForm(),
-                const SizedBox(height: 24),
-                _buildLoginButton(),
-                const SizedBox(height: 16),
-                _buildForgotPassword(),
-                const SizedBox(height: 40),
-                _buildDemoAccounts(),
-              ],
-            ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final wide = constraints.maxWidth >= 840;
+              if (wide) {
+                return Row(
+                  children: [
+                    Expanded(flex: 11, child: _buildBrandPanel()),
+                    Expanded(
+                      flex: 9,
+                      child: Center(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(48),
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 430),
+                            child: _buildLoginSurface(showHeader: false),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }
+              return Stack(
+                children: [
+                  Positioned(
+                    left: -80,
+                    right: -80,
+                    top: -180,
+                    child: Container(
+                      height: 390,
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFF1647B9), AppColors.primary],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                  SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 54, 20, 28),
+                    child: _buildLoginSurface(showHeader: true),
+                  ),
+                ],
+              );
+            },
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildLoginSurface({required bool showHeader}) {
+    return Card(
+      elevation: 12,
+      shadowColor: Colors.black.withValues(alpha: .12),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (showHeader) ...[_buildHeader(), const SizedBox(height: 28)],
+            if (!showHeader) ...[
+              Text('Chào mừng trở lại',
+                  style: Theme.of(context).textTheme.headlineMedium),
+              const SizedBox(height: 8),
+              Text(
+                'Đăng nhập để tiếp tục công việc trong ngày.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: 30),
+            ],
+            _buildForm(),
+            const SizedBox(height: 20),
+            _buildLoginButton(),
+            const SizedBox(height: 8),
+            _buildForgotPassword(),
+            const SizedBox(height: 22),
+            _buildDemoAccounts(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBrandPanel() {
+    return Container(
+      margin: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(56),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF123B9A), Color(0xFF2764E7), Color(0xFF2397C7)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(32),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 66,
+            height: 66,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: .16),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child:
+                const Icon(Icons.school_rounded, color: Colors.white, size: 36),
+          ),
+          const SizedBox(height: 34),
+          const Text(
+            'Một ứng dụng.\nCả trường học.',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 42,
+              height: 1.08,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -1.2,
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Lịch học, điểm danh, bài tập, kết quả, tài chính và trao đổi được đồng bộ an toàn theo thời gian thực.',
+            style: TextStyle(color: Colors.white70, fontSize: 16, height: 1.55),
+          ),
+          const SizedBox(height: 36),
+          const Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _BrandChip(Icons.bolt_rounded, 'Nhanh chóng'),
+              _BrandChip(Icons.shield_outlined, 'Bảo mật'),
+              _BrandChip(Icons.sync_rounded, 'Đồng bộ'),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -95,16 +217,15 @@ class _LoginPageState extends State<LoginPage> {
         const SizedBox(height: 20),
         const Text(
           'Trường học số',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
-          ),
+          style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 6),
-        const Text(
+        Text(
           'Đăng nhập để tiếp tục',
-          style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+          style: TextStyle(
+            fontSize: 14,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
       ],
     );
@@ -190,25 +311,29 @@ class _LoginPageState extends State<LoginPage> {
       (
         'Quản trị',
         String.fromEnvironment('DEMO_ADMIN_USERNAME', defaultValue: 'admin'),
-        String.fromEnvironment('DEMO_ADMIN_PASSWORD', defaultValue: 'admin@123'),
+        String.fromEnvironment('DEMO_ADMIN_PASSWORD',
+            defaultValue: 'admin@123'),
         AppColors.adminAccent
       ),
       (
         'Giáo viên',
         String.fromEnvironment('DEMO_TEACHER_USERNAME', defaultValue: 'gv.hoa'),
-        String.fromEnvironment('DEMO_TEACHER_PASSWORD', defaultValue: 'teacher@123'),
+        String.fromEnvironment('DEMO_TEACHER_PASSWORD',
+            defaultValue: 'teacher@123'),
         AppColors.teacherAccent
       ),
       (
         'Học sinh',
         String.fromEnvironment('DEMO_STUDENT_USERNAME', defaultValue: 'hs.an'),
-        String.fromEnvironment('DEMO_STUDENT_PASSWORD', defaultValue: 'student@123'),
+        String.fromEnvironment('DEMO_STUDENT_PASSWORD',
+            defaultValue: 'student@123'),
         AppColors.studentAccent
       ),
       (
         'Phụ huynh',
         String.fromEnvironment('DEMO_PARENT_USERNAME', defaultValue: 'ph.pham'),
-        String.fromEnvironment('DEMO_PARENT_PASSWORD', defaultValue: 'parent@123'),
+        String.fromEnvironment('DEMO_PARENT_PASSWORD',
+            defaultValue: 'parent@123'),
         AppColors.parentAccent
       ),
     ];
@@ -253,6 +378,34 @@ class _LoginPageState extends State<LoginPage> {
           }).toList(),
         ),
       ],
+    );
+  }
+}
+
+class _BrandChip extends StatelessWidget {
+  const _BrandChip(this.icon, this.label);
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .13),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 18),
+          const SizedBox(width: 8),
+          Text(label,
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.w700)),
+        ],
+      ),
     );
   }
 }

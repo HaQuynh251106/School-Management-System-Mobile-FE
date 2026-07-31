@@ -8,6 +8,9 @@ import '../../../../shared/widgets/attendance_badge.dart';
 import '../../../../shared/widgets/chat_pages.dart';
 import '../../../../shared/widgets/notification_center.dart';
 import '../../../../shared/widgets/section_header.dart';
+import '../../../../shared/widgets/adaptive_role_scaffold.dart';
+import '../../../../shared/widgets/mobile_workspace_page.dart';
+import '../../../../shared/widgets/theme_mode_tile.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_event.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
@@ -36,27 +39,6 @@ class _Child {
   final int presentCount;
   final int absentCount;
 }
-
-const _children = [
-  _Child(
-    id: 'u-student-1',
-    name: 'Phạm Hoài An',
-    className: '10A1',
-    avatarColor: AppColors.studentAccent,
-    avgScore: 8.1,
-    presentCount: 45,
-    absentCount: 2,
-  ),
-  _Child(
-    id: 'u-student-2',
-    name: 'Phạm Hoài Bình',
-    className: '8A1',
-    avatarColor: AppColors.teacherAccent,
-    avgScore: 8.7,
-    presentCount: 48,
-    absentCount: 0,
-  ),
-];
 
 class _ARecord {
   const _ARecord(this.subject, this.date, this.status, this.note);
@@ -150,7 +132,7 @@ const _invoices = [
   ),
   _Invoice(
     code: 'HD-2025-XHK-0017',
-    title: 'Bảo hiểm + Ngoại khóa Robotics',
+    title: 'Bảo hiểm y tế học sinh',
     dueDate: '30/05/2026',
     total: 1250000,
     status: 'OVERDUE',
@@ -185,66 +167,123 @@ class ParentHome extends StatefulWidget {
 class _ParentHomeState extends State<ParentHome> {
   int _tab = 0;
   int _activeChild = 0;
+  late Future<List<_Child>> _childrenFuture = _loadChildren();
+
+  Future<List<_Child>> _loadChildren() async {
+    final rows = await sl<ApiService>().children();
+    const colors = [
+      AppColors.studentAccent,
+      AppColors.teacherAccent,
+      AppColors.parentAccent,
+    ];
+    return rows
+        .asMap()
+        .entries
+        .map((entry) {
+          final item = entry.value;
+          return _Child(
+            id: '${item['id'] ?? item['studentId'] ?? ''}',
+            name: '${item['fullName'] ?? item['studentName'] ?? 'Học sinh'}',
+            className: '${item['className'] ?? item['classCode'] ?? '—'}',
+            avatarColor: colors[entry.key % colors.length],
+            avgScore: (item['averageScore'] as num?)?.toDouble() ?? 0,
+            presentCount: (item['presentCount'] as num?)?.toInt() ?? 0,
+            absentCount: (item['absentCount'] as num?)?.toInt() ?? 0,
+          );
+        })
+        .where((child) => child.id.isNotEmpty)
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final child = _children[_activeChild];
-    return Scaffold(
-      body: IndexedStack(
-        index: _tab,
-        children: [
-          _MonitorTab(
-            child: child,
-            onSwitchChild: _showChildSwitcher,
-            onGoInvoices: () => setState(() => _tab = 3),
-          ),
-          _AttendanceTab(child: child),
-          _GradesTab(child: child),
-          _InvoicesTab(child: child),
-          _ProfileTab(activeChild: child, onSwitchChild: _showChildSwitcher),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
-        indicatorColor: AppColors.parentAccent.withValues(alpha: 0.15),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.monitor_heart_outlined),
-            selectedIcon: Icon(Icons.monitor_heart_rounded,
-                color: AppColors.parentAccent),
-            label: 'Giám sát',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.event_note_outlined),
-            selectedIcon:
-                Icon(Icons.event_note_rounded, color: AppColors.parentAccent),
-            label: 'Chuyên cần',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.stars_outlined),
-            selectedIcon:
-                Icon(Icons.stars_rounded, color: AppColors.parentAccent),
-            label: 'Kết quả',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon:
-                Icon(Icons.receipt_long_rounded, color: AppColors.parentAccent),
-            label: 'Hóa đơn',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon:
-                Icon(Icons.person_rounded, color: AppColors.parentAccent),
-            label: 'Tài khoản',
-          ),
-        ],
-      ),
+    return FutureBuilder<List<_Child>>(
+      future: _childrenFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
+        }
+        final children = snapshot.data ?? [];
+        if (children.isEmpty) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Không gian phụ huynh')),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.family_restroom_rounded, size: 54),
+                    const SizedBox(height: 14),
+                    const Text('Chưa có học sinh được liên kết'),
+                    const SizedBox(height: 14),
+                    OutlinedButton.icon(
+                      onPressed: () =>
+                          setState(() => _childrenFuture = _loadChildren()),
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('Tải lại'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+        if (_activeChild >= children.length) _activeChild = 0;
+        final child = children[_activeChild];
+        return AdaptiveRoleScaffold(
+          index: _tab,
+          onSelected: (i) => setState(() => _tab = i),
+          accent: AppColors.parentAccent,
+          pages: [
+            _MonitorTab(
+              child: child,
+              onSwitchChild: () => _showChildSwitcher(children),
+              onGoInvoices: () => setState(() => _tab = 3),
+            ),
+            _GradesTab(child: child),
+            _AttendanceTab(child: child),
+            _InvoicesTab(child: child),
+            _ProfileTab(
+              activeChild: child,
+              childrenCount: children.length,
+              onSwitchChild: () => _showChildSwitcher(children),
+            ),
+          ],
+          destinations: const [
+            RoleDestination(
+              icon: Icons.monitor_heart_outlined,
+              selectedIcon: Icons.monitor_heart_rounded,
+              label: 'Tổng quan',
+            ),
+            RoleDestination(
+              icon: Icons.stars_outlined,
+              selectedIcon: Icons.stars_rounded,
+              label: 'Học tập',
+            ),
+            RoleDestination(
+              icon: Icons.event_note_outlined,
+              selectedIcon: Icons.event_note_rounded,
+              label: 'Chuyên cần',
+            ),
+            RoleDestination(
+              icon: Icons.receipt_long_outlined,
+              selectedIcon: Icons.receipt_long_rounded,
+              label: 'Tài chính',
+            ),
+            RoleDestination(
+              icon: Icons.person_outline_rounded,
+              selectedIcon: Icons.person_rounded,
+              label: 'Tôi',
+            ),
+          ],
+        );
+      },
     );
   }
 
-  void _showChildSwitcher() {
+  void _showChildSwitcher(List<_Child> children) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -259,7 +298,7 @@ class _ParentHomeState extends State<ParentHome> {
             const Text('Chọn học sinh',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 16),
-            ..._children.asMap().entries.map((e) {
+            ...children.asMap().entries.map((e) {
               final idx = e.key;
               final c = e.value;
               return ListTile(
@@ -1614,7 +1653,7 @@ class _InvoiceList extends StatelessWidget {
     if (title.contains('Bảo hiểm')) {
       return const [
         InvoiceLineItem('Bảo hiểm y tế', 650000),
-        InvoiceLineItem('Ngoại khóa Robotics', 600000),
+        InvoiceLineItem('Phí dịch vụ học tập', 600000),
       ];
     }
     if (title.contains('Đồng phục')) {
@@ -1637,9 +1676,11 @@ class _InvoiceList extends StatelessWidget {
 class _ProfileTab extends StatelessWidget {
   const _ProfileTab({
     required this.activeChild,
+    required this.childrenCount,
     required this.onSwitchChild,
   });
   final _Child activeChild;
+  final int childrenCount;
   final VoidCallback onSwitchChild;
 
   @override
@@ -1699,11 +1740,13 @@ class _ProfileTab extends StatelessWidget {
           Card(
             child: Column(
               children: [
+                const ThemeModeTile(accent: AppColors.parentAccent),
+                const Divider(height: 0),
                 ListTile(
                   leading: const Icon(Icons.swap_horiz_rounded,
                       color: AppColors.parentAccent),
                   title: const Text('Chuyển học sinh'),
-                  subtitle: Text('${_children.length} con liên kết',
+                  subtitle: Text('$childrenCount con liên kết',
                       style: const TextStyle(
                           fontSize: 11, color: AppColors.textSecondary)),
                   trailing: const Icon(Icons.chevron_right_rounded),
@@ -1711,11 +1754,21 @@ class _ProfileTab extends StatelessWidget {
                 ),
                 const Divider(height: 0),
                 ListTile(
-                  leading: const Icon(Icons.sports_basketball_rounded,
+                  leading: const Icon(Icons.auto_awesome_rounded,
                       color: AppColors.parentAccent),
-                  title: const Text('Đăng ký ngoại khóa cho con'),
+                  title: const Text('Trung tâm công việc'),
+                  subtitle: const Text('Lịch thi, đơn xin nghỉ và báo cáo',
+                      style: TextStyle(fontSize: 11)),
                   trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () => _showExtraCourses(context),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => MobileWorkspacePage(
+                        role: 'PARENT',
+                        accent: AppColors.parentAccent,
+                        childId: activeChild.id,
+                      ),
+                    ),
+                  ),
                 ),
                 const Divider(height: 0),
                 ListTile(
@@ -1773,129 +1826,6 @@ class _ProfileTab extends StatelessWidget {
                 style: TextStyle(color: AppColors.error)),
             onTap: () =>
                 context.read<AuthBloc>().add(const AuthLogoutRequested()),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showExtraCourses(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => const Padding(
-        padding: EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Khóa ngoại khóa đang mở',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            SizedBox(height: 12),
-            _ExtraCourseTile(
-              name: 'Robotics — Trình độ cơ bản',
-              schedule: 'T7 14:00–16:00',
-              fee: '600.000 ₫',
-              spots: 12,
-              total: 20,
-            ),
-            SizedBox(height: 8),
-            _ExtraCourseTile(
-              name: 'Vẽ truyện tranh',
-              schedule: 'T7 09:00–11:00',
-              fee: '450.000 ₫',
-              spots: 18,
-              total: 25,
-            ),
-            SizedBox(height: 8),
-            _ExtraCourseTile(
-              name: 'STEM — Lập trình Python',
-              schedule: 'CN 14:00–16:00',
-              fee: '750.000 ₫',
-              spots: 5,
-              total: 15,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ExtraCourseTile extends StatelessWidget {
-  const _ExtraCourseTile({
-    required this.name,
-    required this.schedule,
-    required this.fee,
-    required this.spots,
-    required this.total,
-  });
-  final String name;
-  final String schedule;
-  final String fee;
-  final int spots;
-  final int total;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.parentAccent.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.sports_basketball_rounded,
-                color: AppColors.parentAccent),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 13)),
-                Text('$schedule • Còn $spots/$total chỗ',
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.textSecondary)),
-                Text(fee,
-                    style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.parentAccent,
-                        fontWeight: FontWeight.w600)),
-              ],
-            ),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Đã đăng ký $name'),
-                  backgroundColor: AppColors.success,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.parentAccent,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: const Text('Đăng ký', style: TextStyle(fontSize: 12)),
           ),
         ],
       ),

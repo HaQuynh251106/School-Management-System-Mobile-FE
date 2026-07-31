@@ -8,12 +8,15 @@ import '../../../../shared/widgets/attendance_badge.dart';
 import '../../../../shared/widgets/chat_pages.dart';
 import '../../../../shared/widgets/notification_center.dart';
 import '../../../../shared/widgets/section_header.dart';
+import '../../../../shared/widgets/adaptive_role_scaffold.dart';
+import '../../../../shared/widgets/mobile_workspace_page.dart';
+import '../../../../shared/widgets/role_page_intro.dart';
+import '../../../../shared/widgets/theme_mode_tile.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_event.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 import 'assignment_detail.dart';
 import 'attendance_record_detail.dart';
-import 'extracurricular_page.dart';
 import 'subject_grade_detail.dart';
 import 'timetable_slot_detail.dart';
 
@@ -29,54 +32,44 @@ class _StudentHomeState extends State<StudentHome> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(
-        index: _tab,
-        children: const [
-          _TimetableTab(),
-          _GradesTab(),
-          _AttendanceTab(),
-          _AssignmentsTab(),
-          _ProfileTab(),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
-        indicatorColor: AppColors.studentAccent.withValues(alpha: 0.15),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.calendar_month_outlined),
-            selectedIcon: Icon(Icons.calendar_month_rounded,
-                color: AppColors.studentAccent),
-            label: 'TKB',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.stars_outlined),
-            selectedIcon:
-                Icon(Icons.stars_rounded, color: AppColors.studentAccent),
-            label: 'Điểm',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.event_available_outlined),
-            selectedIcon: Icon(Icons.event_available_rounded,
-                color: AppColors.studentAccent),
-            label: 'Chuyên cần',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.assignment_outlined),
-            selectedIcon:
-                Icon(Icons.assignment_rounded, color: AppColors.studentAccent),
-            label: 'Bài tập',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon:
-                Icon(Icons.person_rounded, color: AppColors.studentAccent),
-            label: 'Tôi',
-          ),
-        ],
-      ),
+    return AdaptiveRoleScaffold(
+      index: _tab,
+      onSelected: (i) => setState(() => _tab = i),
+      accent: AppColors.studentAccent,
+      pages: const [
+        _TimetableTab(),
+        _AssignmentsTab(),
+        _GradesTab(),
+        _AttendanceTab(),
+        _ProfileTab(),
+      ],
+      destinations: const [
+        RoleDestination(
+          icon: Icons.calendar_month_outlined,
+          selectedIcon: Icons.calendar_month_rounded,
+          label: 'Lịch học',
+        ),
+        RoleDestination(
+          icon: Icons.assignment_outlined,
+          selectedIcon: Icons.assignment_rounded,
+          label: 'Bài tập',
+        ),
+        RoleDestination(
+          icon: Icons.stars_outlined,
+          selectedIcon: Icons.stars_rounded,
+          label: 'Kết quả',
+        ),
+        RoleDestination(
+          icon: Icons.event_available_outlined,
+          selectedIcon: Icons.event_available_rounded,
+          label: 'Chuyên cần',
+        ),
+        RoleDestination(
+          icon: Icons.person_outline_rounded,
+          selectedIcon: Icons.person_rounded,
+          label: 'Tôi',
+        ),
+      ],
     );
   }
 }
@@ -192,9 +185,22 @@ class _TimetableTabState extends State<_TimetableTab>
               }
               return ListView.builder(
                 padding: const EdgeInsets.all(16),
-                itemCount: slots.length,
+                itemCount: slots.length + 1,
                 itemBuilder: (_, j) {
-                  final s = slots[j];
+                  if (j == 0) {
+                    return RolePageIntro(
+                      title: 'Hôm nay học gì?',
+                      subtitle:
+                          '${_dayLabels[i]} có ${slots.length} tiết học. Chạm vào từng tiết để xem chi tiết.',
+                      accent: AppColors.studentAccent,
+                      icon: Icons.wb_sunny_outlined,
+                      badges: [
+                        '${slots.length} tiết',
+                        if (slots.isNotEmpty) slots.first.time,
+                      ],
+                    );
+                  }
+                  final s = slots[j - 1];
                   return Card(
                     margin: const EdgeInsets.only(bottom: 10),
                     child: ListTile(
@@ -218,7 +224,7 @@ class _TimetableTabState extends State<_TimetableTab>
                         ),
                         child: Center(
                           child: Text(
-                            '${j + 1}',
+                            '$j',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               color: AppColors.studentAccent,
@@ -1070,15 +1076,18 @@ class _ProfileTab extends StatelessWidget {
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.sports_basketball_rounded,
+                  leading: const Icon(Icons.auto_awesome_rounded,
                       color: AppColors.studentAccent),
-                  title: const Text('Khóa ngoại khóa'),
-                  subtitle: const Text('Xem & đăng ký khóa mới',
+                  title: const Text('Trung tâm công việc'),
+                  subtitle: const Text('Lịch thi, xin nghỉ và báo cáo',
                       style: TextStyle(fontSize: 11)),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => const StudentExtracurricularPage(),
+                      builder: (_) => const MobileWorkspacePage(
+                        role: 'STUDENT',
+                        accent: AppColors.studentAccent,
+                      ),
                     ),
                   ),
                 ),
@@ -1096,6 +1105,8 @@ class _ProfileTab extends StatelessWidget {
                     ),
                   ),
                 ),
+                const Divider(height: 0),
+                const ThemeModeTile(accent: AppColors.studentAccent),
                 const Divider(height: 0),
                 ListTile(
                   leading: const Icon(Icons.chat_bubble_outline_rounded,

@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/di/service_locator.dart';
 import '../../core/network/api_service.dart';
+import '../../core/network/realtime_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/bloc/auth_state.dart';
@@ -94,7 +97,8 @@ class _ChatListPageState extends State<ChatListPage> {
   Widget build(BuildContext context) {
     final accent = widget.accent;
     final authState = context.watch<AuthBloc>().state;
-    final viewerRole = authState is AuthAuthenticated ? authState.user.role : '';
+    final viewerRole =
+        authState is AuthAuthenticated ? authState.user.role : '';
     return FutureBuilder<List<List<Map<String, dynamic>>>>(
       future: _future,
       builder: (context, snap) {
@@ -143,15 +147,17 @@ class _ChatListPageState extends State<ChatListPage> {
             appBar: AppBar(
               title: const Text('Tin nhắn'),
               backgroundColor: accent,
-              bottom: canBroadcast ? TabBar(
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white60,
-                indicatorColor: Colors.white,
-                tabs: [
-                  Tab(text: 'Cá nhân (${dms.length})'),
-                  Tab(text: 'Lớp (${broadcasts.length})'),
-                ],
-              ) : null,
+              bottom: canBroadcast
+                  ? TabBar(
+                      labelColor: Colors.white,
+                      unselectedLabelColor: Colors.white60,
+                      indicatorColor: Colors.white,
+                      tabs: [
+                        Tab(text: 'Cá nhân (${dms.length})'),
+                        Tab(text: 'Lớp (${broadcasts.length})'),
+                      ],
+                    )
+                  : null,
             ),
             floatingActionButton: canBroadcast
                 ? FloatingActionButton.extended(
@@ -168,17 +174,19 @@ class _ChatListPageState extends State<ChatListPage> {
                         child: Text('Lỗi: ${snap.error}',
                             style: const TextStyle(
                                 color: AppColors.textSecondary)))
-                    : canBroadcast ? TabBarView(
-                        children: [
-                          threadList,
-                          _ThreadList(
-                            threads: broadcasts,
-                            accent: accent,
-                            viewerRole: viewerRole,
-                            onConversationClosed: _reload,
-                          ),
-                        ],
-                      ) : threadList,
+                    : canBroadcast
+                        ? TabBarView(
+                            children: [
+                              threadList,
+                              _ThreadList(
+                                threads: broadcasts,
+                                accent: accent,
+                                viewerRole: viewerRole,
+                                onConversationClosed: _reload,
+                              ),
+                            ],
+                          )
+                        : threadList,
           ),
         );
       },
@@ -190,7 +198,8 @@ class _ChatListPageState extends State<ChatListPage> {
     if (!mounted) return;
     if (classes.isEmpty) {
       messenger.showSnackBar(const SnackBar(
-          content: Text('Chỉ giáo viên chủ nhiệm mới có thể gửi thông báo tới học sinh và phụ huynh.')));
+          content: Text(
+              'Chỉ giáo viên chủ nhiệm mới có thể gửi thông báo tới học sinh và phụ huynh.')));
       return;
     }
     final titleCtrl = TextEditingController();
@@ -208,10 +217,12 @@ class _ChatListPageState extends State<ChatListPage> {
       ),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) {
-          final selectedScope =
-              classes.firstWhere((item) => item['classId'].toString() == target);
-          final studentCount = (selectedScope['studentCount'] as num?)?.toInt() ?? 0;
-          final parentCount = (selectedScope['parentCount'] as num?)?.toInt() ?? 0;
+          final selectedScope = classes
+              .firstWhere((item) => item['classId'].toString() == target);
+          final studentCount =
+              (selectedScope['studentCount'] as num?)?.toInt() ?? 0;
+          final parentCount =
+              (selectedScope['parentCount'] as num?)?.toInt() ?? 0;
           final recipientCount = recipientTarget == 'CLASS_STUDENTS'
               ? studentCount
               : recipientTarget == 'CLASS_PARENTS'
@@ -225,11 +236,13 @@ class _ChatListPageState extends State<ChatListPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('Gửi thông báo lớp học',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                 const SizedBox(height: 4),
                 const Text(
                   'Điểm số và điểm danh được thông báo tự động khi lưu. Biểu mẫu này chỉ dùng để trao đổi tình hình lớp học.',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  style:
+                      TextStyle(color: AppColors.textSecondary, fontSize: 12),
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
@@ -274,7 +287,8 @@ class _ChatListPageState extends State<ChatListPage> {
                   items: [
                     DropdownMenuItem(
                         value: 'CLASS_ALL',
-                        child: Text('Học sinh & phụ huynh (${studentCount + parentCount})')),
+                        child: Text(
+                            'Học sinh & phụ huynh (${studentCount + parentCount})')),
                     DropdownMenuItem(
                         value: 'CLASS_STUDENTS',
                         child: Text('Học sinh ($studentCount)')),
@@ -291,8 +305,10 @@ class _ChatListPageState extends State<ChatListPage> {
                   decoration:
                       const InputDecoration(labelText: 'Mức độ', isDense: true),
                   items: const [
-                    DropdownMenuItem(value: 'NORMAL', child: Text('Thông thường')),
-                    DropdownMenuItem(value: 'IMPORTANT', child: Text('Quan trọng')),
+                    DropdownMenuItem(
+                        value: 'NORMAL', child: Text('Thông thường')),
+                    DropdownMenuItem(
+                        value: 'IMPORTANT', child: Text('Quan trọng')),
                     DropdownMenuItem(value: 'URGENT', child: Text('Khẩn cấp')),
                   ],
                   onChanged: (value) => setState(() => priority = value!),
@@ -424,15 +440,21 @@ class _ThreadList extends StatelessWidget {
                   children: [
                     if (t.role.isNotEmpty)
                       Text(_chatRoleLabel(t.role, viewerRole),
-                          style: TextStyle(fontSize: 10, color: accent, fontWeight: FontWeight.w600)),
+                          style: TextStyle(
+                              fontSize: 10,
+                              color: accent,
+                              fontWeight: FontWeight.w600)),
                     Text(
                       t.lastMessage,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 12,
-                        color: t.unread > 0 ? AppColors.textPrimary : AppColors.textSecondary,
-                        fontWeight: t.unread > 0 ? FontWeight.w500 : FontWeight.normal,
+                        color: t.unread > 0
+                            ? AppColors.textPrimary
+                            : AppColors.textSecondary,
+                        fontWeight:
+                            t.unread > 0 ? FontWeight.w500 : FontWeight.normal,
                       ),
                     ),
                   ],
@@ -492,7 +514,8 @@ class _ThreadList extends StatelessWidget {
 
 String _chatRoleLabel(String role, String viewerRole) => switch (role) {
       'TEACHER' => 'Giáo viên phụ trách',
-      'STUDENT' => viewerRole == 'STUDENT' ? 'Bạn cùng lớp' : 'Học sinh lớp chủ nhiệm',
+      'STUDENT' =>
+        viewerRole == 'STUDENT' ? 'Bạn cùng lớp' : 'Học sinh lớp chủ nhiệm',
       'PARENT' => 'Phụ huynh lớp chủ nhiệm',
       'ADMIN' => 'Quản trị viên',
       _ => role,
@@ -754,6 +777,19 @@ class _ChatThreadPageState extends State<_ChatThreadPage> {
   late Future<List<Map<String, dynamic>>> _future =
       sl<ApiService>().chatMessages(widget.withUserId);
   bool _sending = false;
+  StreamSubscription<RealtimeEvent>? _subscription;
+
+  @override
+  void initState() {
+    super.initState();
+    final realtime = sl<RealtimeService>()..connect();
+    _subscription = realtime.events.where((event) {
+      if (event.type != 'CHAT' && event.type != 'CHAT_READ') return false;
+      final sender = (event.data['senderId'] ?? '').toString();
+      final receiver = (event.data['receiverId'] ?? '').toString();
+      return sender == widget.withUserId || receiver == widget.withUserId;
+    }).listen((_) => _reload());
+  }
 
   String get _myId {
     final state = context.read<AuthBloc>().state;
@@ -816,6 +852,7 @@ class _ChatThreadPageState extends State<_ChatThreadPage> {
 
   @override
   void dispose() {
+    _subscription?.cancel();
     _ctrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
@@ -894,7 +931,11 @@ class _ChatThreadPageState extends State<_ChatThreadPage> {
                       minLines: 1,
                       maxLines: 4,
                       maxLength: 2000,
-                      buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
+                      buildCounter: (_,
+                              {required currentLength,
+                              required isFocused,
+                              maxLength}) =>
+                          null,
                       decoration: const InputDecoration(
                         hintText: 'Nhập tin nhắn...',
                         border: InputBorder.none,

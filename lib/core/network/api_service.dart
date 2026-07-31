@@ -9,6 +9,23 @@ class ApiService {
   List<Map<String, dynamic>> _list(Response r) =>
       (r.data as List).cast<Map<String, dynamic>>();
 
+  Map<String, dynamic> _map(Response r) =>
+      (r.data as Map).cast<String, dynamic>();
+
+  Future<Map<String, dynamic>> dashboard({String? childId}) async =>
+      _map(await _dio.get('/dashboard', queryParameters: {
+        if (childId != null) 'childId': childId,
+      }));
+
+  Future<Map<String, dynamic>> personalReport({String? childId}) async =>
+      _map(await _dio.get('/me/reports', queryParameters: {
+        if (childId != null) 'childId': childId,
+      }));
+
+  Future<Map<String, dynamic>> updateProfile(
+          Map<String, dynamic> profile) async =>
+      _map(await _dio.put('/me/profile', data: profile));
+
   Future<void> changePassword(
           String currentPassword, String newPassword) async =>
       _dio.put('/me/password', data: {
@@ -25,6 +42,9 @@ class ApiService {
     if (classId != null) p['classId'] = classId;
     return _list(await _dio.get('/users', queryParameters: p));
   }
+
+  Future<Map<String, dynamic>> createUser(Map<String, dynamic> data) async =>
+      _map(await _dio.post('/users', data: data));
 
   Future<void> lockUser(String id) async => _dio.post('/users/$id/lock');
   Future<void> unlockUser(String id) async => _dio.post('/users/$id/unlock');
@@ -58,6 +78,16 @@ class ApiService {
   // ---------- Admin: finance / templates ----------
   Future<List<Map<String, dynamic>>> feePeriods() async =>
       _list(await _dio.get('/fee-periods'));
+  Future<Map<String, dynamic>> createFeePeriod(
+          Map<String, dynamic> data) async =>
+      _map(await _dio.post('/fee-periods', data: data));
+  Future<Map<String, dynamic>> financeOverview(
+          {String? grade, String? classId, String? feePeriodId}) async =>
+      _map(await _dio.get('/finance/overview', queryParameters: {
+        if (grade != null) 'grade': grade,
+        if (classId != null) 'classId': classId,
+        if (feePeriodId != null) 'feePeriodId': feePeriodId,
+      }));
   Future<List<Map<String, dynamic>>> generateInvoices(
           String feePeriodId) async =>
       _list(await _dio.post('/fee-periods/$feePeriodId/generate-invoices'));
@@ -67,8 +97,14 @@ class ApiService {
   // ---------- Academic structure ----------
   Future<List<Map<String, dynamic>>> classes() async =>
       _list(await _dio.get('/classes'));
+  Future<Map<String, dynamic>> createClass(Map<String, dynamic> data) async =>
+      _map(await _dio.post('/classes', data: data));
   Future<List<Map<String, dynamic>>> subjects() async =>
       _list(await _dio.get('/subjects'));
+  Future<Map<String, dynamic>> createSubject(Map<String, dynamic> data) async =>
+      _map(await _dio.post('/subjects', data: data));
+  Future<Map<String, dynamic>> createRoom(Map<String, dynamic> data) async =>
+      _map(await _dio.post('/rooms', data: data));
   Future<List<Map<String, dynamic>>> semesters() async =>
       _list(await _dio.get('/semesters'));
   Future<List<Map<String, dynamic>>> examCategories() async =>
@@ -234,7 +270,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> pay(String invoiceId,
-      {String method = 'VNPAY'}) async {
+      {String method = 'MOMO'}) async {
     final r = await _dio
         .post('/payments', data: {'invoiceId': invoiceId, 'method': method});
     final initiated = (r.data as Map).cast<String, dynamic>();
@@ -269,6 +305,9 @@ class ApiService {
       _list(await _dio.get('/teacher/announcements/scopes'));
   Future<List<Map<String, dynamic>>> teacherAnnouncements() async =>
       _list(await _dio.get('/teacher/announcements'));
+  Future<Map<String, dynamic>> createAnnouncement(
+          Map<String, dynamic> data) async =>
+      _map(await _dio.post('/announcements', data: data));
   Future<Map<String, dynamic>> sendTeacherAnnouncement({
     required String classId,
     required String target,
@@ -316,8 +355,13 @@ class ApiService {
   // ---------- Assignments ----------
   Future<List<Map<String, dynamic>>> myAssignments() async =>
       _list(await _dio.get('/me/assignments'));
+  Future<List<Map<String, dynamic>>> childAssignments(String studentId) async =>
+      _list(await _dio.get('/children/$studentId/assignments'));
   Future<List<Map<String, dynamic>>> teacherAssignments() async =>
       _list(await _dio.get('/assignments'));
+  Future<Map<String, dynamic>> createAssignment(
+          Map<String, dynamic> data) async =>
+      _map(await _dio.post('/assignments', data: data));
   Future<Map<String, dynamic>> submitAssignment(
       String id, String content) async {
     final r =
@@ -325,13 +369,54 @@ class ApiService {
     return (r.data as Map).cast<String, dynamic>();
   }
 
-  // ---------- Extracurricular ----------
-  Future<List<Map<String, dynamic>>> clubs() async =>
-      _list(await _dio.get('/clubs'));
-  Future<Map<String, dynamic>> registerClub(String clubId,
-      {String? studentId}) async {
-    final r = await _dio.post('/clubs/$clubId/register',
-        data: studentId != null ? {'studentId': studentId} : {});
-    return (r.data as Map).cast<String, dynamic>();
-  }
+  // ---------- Xin nghỉ học ----------
+  Future<List<Map<String, dynamic>>> leaveRequests() async =>
+      _list(await _dio.get('/leave-requests'));
+
+  Future<Map<String, dynamic>> createLeaveRequest({
+    required String startDate,
+    required String endDate,
+    required String reason,
+  }) async =>
+      _map(await _dio.post('/leave-requests', data: {
+        'startDate': startDate,
+        'endDate': endDate,
+        'reason': reason,
+      }));
+
+  Future<Map<String, dynamic>> decideLeaveRequest(
+    String id,
+    String action, {
+    String? note,
+  }) async =>
+      _map(await _dio.post('/leave-requests/$id/$action',
+          data: {if (note != null) 'note': note}));
+
+  // ---------- Khảo thí ----------
+  Future<List<Map<String, dynamic>>> examPeriods() async =>
+      _list(await _dio.get('/exam-periods'));
+
+  Future<List<Map<String, dynamic>>> examAgenda({String? childId}) async =>
+      _list(await _dio.get('/me/exam-agenda', queryParameters: {
+        if (childId != null) 'childId': childId,
+      }));
+
+  Future<List<Map<String, dynamic>>> examGradingTasks() async =>
+      _list(await _dio.get('/me/exam-grading'));
+
+  Future<List<Map<String, dynamic>>> examResults() async =>
+      _list(await _dio.get('/me/exam-results'));
+
+  Future<List<Map<String, dynamic>>> examReviews({String? status}) async =>
+      _list(await _dio.get('/me/exam-reviews', queryParameters: {
+        if (status != null) 'status': status,
+      }));
+
+  Future<Map<String, dynamic>> requestExamReview(
+    String periodId, {
+    required String resultId,
+    required String reason,
+  }) async =>
+      _map(await _dio.post('/exam-periods/$periodId/reviews',
+          data: {'resultId': resultId, 'reason': reason}));
 }

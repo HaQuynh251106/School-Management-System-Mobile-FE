@@ -2,17 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/theme_controller.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../shared/widgets/notification_center.dart';
 import '../../../../shared/widgets/section_header.dart';
 import '../../../../shared/widgets/stat_card.dart';
+import '../../../../shared/widgets/adaptive_role_scaffold.dart';
+import '../../../../shared/widgets/mobile_workspace_page.dart';
+import '../../../../shared/widgets/quick_create.dart';
+import '../../../../shared/widgets/role_page_intro.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_event.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 import 'class_detail.dart';
 import 'exam_categories_page.dart';
-import 'extracurricular_admin.dart';
 import 'fee_period_detail.dart';
 import 'notification_templates_page.dart';
 import 'teaching_assignments_page.dart';
@@ -32,45 +36,42 @@ class _AdminHomeState extends State<AdminHome> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(
-        index: _tab,
-        children: const [
-          _DashboardTab(),
-          _UsersTab(),
-          _StructureTab(),
-          _SettingsTab(),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
-        indicatorColor: AppColors.adminAccent.withValues(alpha: 0.15),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard, color: AppColors.adminAccent),
-            label: 'Tổng quan',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.people_outline_rounded),
-            selectedIcon:
-                Icon(Icons.people_rounded, color: AppColors.adminAccent),
-            label: 'Người dùng',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.account_tree_outlined),
-            selectedIcon:
-                Icon(Icons.account_tree, color: AppColors.adminAccent),
-            label: 'Cơ cấu',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings, color: AppColors.adminAccent),
-            label: 'Cài đặt',
-          ),
-        ],
-      ),
+    return AdaptiveRoleScaffold(
+      index: _tab,
+      onSelected: (i) => setState(() => _tab = i),
+      accent: AppColors.adminAccent,
+      floatingActionButton: _tab == 0
+          ? const QuickCreateButton(
+              role: 'ADMIN', accent: AppColors.adminAccent)
+          : null,
+      pages: const [
+        _DashboardTab(),
+        _UsersTab(),
+        _StructureTab(),
+        _SettingsTab(),
+      ],
+      destinations: const [
+        RoleDestination(
+          icon: Icons.dashboard_outlined,
+          selectedIcon: Icons.dashboard_rounded,
+          label: 'Tổng quan',
+        ),
+        RoleDestination(
+          icon: Icons.people_outline_rounded,
+          selectedIcon: Icons.people_rounded,
+          label: 'Người dùng',
+        ),
+        RoleDestination(
+          icon: Icons.account_tree_outlined,
+          selectedIcon: Icons.account_tree_rounded,
+          label: 'Đào tạo',
+        ),
+        RoleDestination(
+          icon: Icons.grid_view_outlined,
+          selectedIcon: Icons.grid_view_rounded,
+          label: 'Tiện ích',
+        ),
+      ],
     );
   }
 }
@@ -133,42 +134,13 @@ class _OverviewViewState extends State<_OverviewView> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.adminAccent, Color(0xFF3949AB)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Row(
-            children: [
-              const CircleAvatar(
-                backgroundColor: Colors.white24,
-                radius: 26,
-                child: Icon(Icons.admin_panel_settings,
-                    color: Colors.white, size: 28),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Xin chào, ${user.fullName}',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15)),
-                    const SizedBox(height: 2),
-                    const Text('Quản trị viên hệ thống',
-                        style: TextStyle(color: Colors.white70, fontSize: 12)),
-                  ],
-                ),
-              ),
-            ],
-          ),
+        RolePageIntro(
+          title: 'Xin chào, ${user.fullName}',
+          subtitle:
+              'Tổng hợp vận hành toàn trường. Nhấn “Thêm mới” để tạo nhanh dữ liệu.',
+          accent: AppColors.adminAccent,
+          icon: Icons.admin_panel_settings_rounded,
+          badges: const ['Quản trị hệ thống', 'Dữ liệu thời gian thực'],
         ),
         const SizedBox(height: 20),
         const SectionHeader(title: 'Thống kê nhanh'),
@@ -603,7 +575,7 @@ class _AuditLogView extends StatelessWidget {
       'system',
       'PAYMENT',
       'finance.payment',
-      'VNPAY callback OK — Invoice HD-2025-HK2-0042',
+      'MoMo callback OK — Hóa đơn HD-2025-HK2-0042',
       '20/05 09:30',
       AppColors.success
     ),
@@ -1758,6 +1730,25 @@ class _SettingsTab extends StatelessWidget {
             title: 'Quản trị hệ thống',
             children: [
               _AdminSettingsTile(
+                icon: Icons.contrast_rounded,
+                label: 'Chuyển giao diện sáng / tối',
+                onTap: () => sl<ThemeController>().toggle(
+                  MediaQuery.platformBrightnessOf(context),
+                ),
+              ),
+              _AdminSettingsTile(
+                icon: Icons.auto_awesome_rounded,
+                label: 'Trung tâm công việc',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const MobileWorkspacePage(
+                      role: 'ADMIN',
+                      accent: AppColors.adminAccent,
+                    ),
+                  ),
+                ),
+              ),
+              _AdminSettingsTile(
                 icon: Icons.person_add_alt_1_rounded,
                 label: 'Phân công giáo viên bộ môn',
                 onTap: () => Navigator.of(context).push(
@@ -1788,14 +1779,6 @@ class _SettingsTab extends StatelessWidget {
                 ),
               ),
               _AdminSettingsTile(
-                icon: Icons.sports_basketball_outlined,
-                label: 'Khóa Ngoại khóa (A5)',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                      builder: (_) => const ExtracurricularAdminPage()),
-                ),
-              ),
-              _AdminSettingsTile(
                 icon: Icons.notifications_active_outlined,
                 label: 'Template thông báo',
                 onTap: () => Navigator.of(context).push(
@@ -1804,9 +1787,9 @@ class _SettingsTab extends StatelessWidget {
                 ),
               ),
               _AdminSettingsTile(
-                icon: Icons.api_outlined,
-                label: 'Tích hợp VNPAY / MoMo',
-                onTap: () => _todoSnack(context, 'Tích hợp VNPAY / MoMo'),
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'Thanh toán MoMo',
+                onTap: () => _todoSnack(context, 'Cấu hình MoMo Sandbox'),
               ),
             ],
           ),

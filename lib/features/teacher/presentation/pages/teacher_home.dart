@@ -9,6 +9,11 @@ import '../../../../shared/widgets/attendance_badge.dart';
 import '../../../../shared/widgets/chat_pages.dart';
 import '../../../../shared/widgets/notification_center.dart';
 import '../../../../shared/widgets/section_header.dart';
+import '../../../../shared/widgets/adaptive_role_scaffold.dart';
+import '../../../../shared/widgets/mobile_workspace_page.dart';
+import '../../../../shared/widgets/quick_create.dart';
+import '../../../../shared/widgets/role_page_intro.dart';
+import '../../../../shared/widgets/theme_mode_tile.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_event.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
@@ -28,54 +33,48 @@ class _TeacherHomeState extends State<TeacherHome> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(
-        index: _tab,
-        children: const [
-          _TimetableTab(),
-          _AttendanceTab(),
-          _GradesTab(),
-          _AssignmentsTab(),
-          _ProfileTab(),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
-        indicatorColor: AppColors.teacherAccent.withValues(alpha: 0.15),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.calendar_today_outlined),
-            selectedIcon: Icon(Icons.calendar_today_rounded,
-                color: AppColors.teacherAccent),
-            label: 'TKB',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.fact_check_outlined),
-            selectedIcon:
-                Icon(Icons.fact_check_rounded, color: AppColors.teacherAccent),
-            label: 'Điểm danh',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.grade_outlined),
-            selectedIcon:
-                Icon(Icons.grade_rounded, color: AppColors.teacherAccent),
-            label: 'Điểm số',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.assignment_outlined),
-            selectedIcon:
-                Icon(Icons.assignment_rounded, color: AppColors.teacherAccent),
-            label: 'Bài tập',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon:
-                Icon(Icons.person_rounded, color: AppColors.teacherAccent),
-            label: 'Tôi',
-          ),
-        ],
-      ),
+    return AdaptiveRoleScaffold(
+      index: _tab,
+      onSelected: (i) => setState(() => _tab = i),
+      accent: AppColors.teacherAccent,
+      floatingActionButton: _tab == 0
+          ? const QuickCreateButton(
+              role: 'TEACHER', accent: AppColors.teacherAccent)
+          : null,
+      pages: const [
+        _TimetableTab(),
+        _AttendanceTab(),
+        _GradesTab(),
+        _AssignmentsTab(),
+        _ProfileTab(),
+      ],
+      destinations: const [
+        RoleDestination(
+          icon: Icons.calendar_today_outlined,
+          selectedIcon: Icons.calendar_today_rounded,
+          label: 'Lịch dạy',
+        ),
+        RoleDestination(
+          icon: Icons.fact_check_outlined,
+          selectedIcon: Icons.fact_check_rounded,
+          label: 'Điểm danh',
+        ),
+        RoleDestination(
+          icon: Icons.grade_outlined,
+          selectedIcon: Icons.grade_rounded,
+          label: 'Bảng điểm',
+        ),
+        RoleDestination(
+          icon: Icons.assignment_outlined,
+          selectedIcon: Icons.assignment_rounded,
+          label: 'Bài tập',
+        ),
+        RoleDestination(
+          icon: Icons.person_outline_rounded,
+          selectedIcon: Icons.person_rounded,
+          label: 'Tôi',
+        ),
+      ],
     );
   }
 }
@@ -182,9 +181,22 @@ class _TimetableTabState extends State<_TimetableTab> {
                 }
                 return ListView.builder(
                   padding: const EdgeInsets.all(16),
-                  itemCount: slots.length,
+                  itemCount: slots.length + 1,
                   itemBuilder: (_, i) {
-                    final s = slots[i];
+                    if (i == 0) {
+                      return RolePageIntro(
+                        title: 'Lịch dạy trong ngày',
+                        subtitle:
+                            '${_dayLabels[dayIdx]} có ${slots.length} tiết. Điểm danh đúng giờ và theo dõi công việc cần xử lý.',
+                        accent: AppColors.teacherAccent,
+                        icon: Icons.co_present_rounded,
+                        badges: [
+                          '${slots.length} tiết dạy',
+                          '${slots.map((slot) => slot['classId']).toSet().length} lớp',
+                        ],
+                      );
+                    }
+                    final s = slots[i - 1];
                     return _SlotCard(
                       _Slot(
                         (s['subjectName'] ?? '').toString(),
@@ -1744,6 +1756,23 @@ class _ProfileTab extends StatelessWidget {
                 ),
                 const Divider(height: 0),
                 ListTile(
+                  leading: const Icon(Icons.auto_awesome_rounded,
+                      color: AppColors.teacherAccent),
+                  title: const Text('Trung tâm công việc'),
+                  subtitle: const Text('Khảo thí, đơn xin nghỉ và báo cáo',
+                      style: TextStyle(fontSize: 11)),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const MobileWorkspacePage(
+                        role: 'TEACHER',
+                        accent: AppColors.teacherAccent,
+                      ),
+                    ),
+                  ),
+                ),
+                const Divider(height: 0),
+                ListTile(
                   leading: const Icon(Icons.chat_bubble_outline_rounded,
                       color: AppColors.teacherAccent),
                   title: const Text('Tin nhắn'),
@@ -1776,6 +1805,8 @@ class _ProfileTab extends StatelessWidget {
                     ),
                   ),
                 ),
+                const Divider(height: 0),
+                const ThemeModeTile(accent: AppColors.teacherAccent),
               ],
             ),
           ),

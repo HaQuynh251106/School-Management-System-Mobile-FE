@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/di/service_locator.dart';
 import '../../core/network/api_service.dart';
+import '../../core/network/realtime_service.dart';
 import '../../core/theme/app_colors.dart';
 
 class NotificationItem {
@@ -122,8 +125,6 @@ class NotificationCenter extends StatefulWidget {
         return 'Thanh toán';
       case 'ANNOUNCEMENT':
         return 'Thông báo chung';
-      case 'EXTRACURRICULAR':
-        return 'Ngoại khóa';
       default:
         return category;
     }
@@ -142,14 +143,36 @@ class LiveNotificationAction extends StatefulWidget {
 
 class _LiveNotificationActionState extends State<LiveNotificationAction> {
   late Future<int> _count = sl<ApiService>().notificationUnreadCount();
+  StreamSubscription<RealtimeEvent>? _subscription;
+
+  @override
+  void initState() {
+    super.initState();
+    final realtime = sl<RealtimeService>()..connect();
+    _subscription = realtime.events
+        .where((event) => event.type == 'NOTIFICATION')
+        .listen((_) => _refresh());
+  }
+
+  void _refresh() {
+    if (mounted) {
+      setState(() => _count = sl<ApiService>().notificationUnreadCount());
+    }
+  }
 
   Future<void> _open() async {
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => NotificationCenter(accent: widget.accent),
     ));
     if (mounted) {
-      setState(() => _count = sl<ApiService>().notificationUnreadCount());
+      _refresh();
     }
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
   }
 
   @override
