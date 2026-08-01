@@ -9,6 +9,8 @@ import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/change_password_page.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/admin/presentation/pages/admin_home.dart';
+import '../../features/academic_staff/presentation/pages/academic_staff_home.dart';
+import '../../features/accountant/presentation/pages/accountant_home.dart';
 import '../../features/teacher/presentation/pages/teacher_home.dart';
 import '../../features/student/presentation/pages/student_home.dart';
 import '../../features/parent/presentation/pages/parent_home.dart';
@@ -39,7 +41,7 @@ class AppRouter {
           return atPasswordChange ? null : '/change-password';
         }
         if (atSplash || atLogin || atPasswordChange) {
-          return _homeForRole(authState.user);
+          return homeForRole(authState.user);
         }
       }
       return null;
@@ -56,16 +58,24 @@ class AppRouter {
         builder: (_, __) => const ForgotPasswordPage(),
       ),
       GoRoute(path: '/admin', builder: (_, __) => const AdminHome()),
+      GoRoute(
+          path: '/academic-staff',
+          builder: (_, __) => const AcademicStaffHome()),
+      GoRoute(path: '/accountant', builder: (_, __) => const AccountantHome()),
       GoRoute(path: '/teacher', builder: (_, __) => const TeacherHome()),
       GoRoute(path: '/student', builder: (_, __) => const StudentHome()),
       GoRoute(path: '/parent', builder: (_, __) => const ParentHome()),
     ],
   );
 
-  String _homeForRole(UserModel user) {
+  static String homeForRole(UserModel user) {
     switch (user.role) {
       case 'ADMIN':
         return '/admin';
+      case 'ACADEMIC_STAFF':
+        return '/academic-staff';
+      case 'ACCOUNTANT':
+        return '/accountant';
       case 'TEACHER':
         return '/teacher';
       case 'PARENT':

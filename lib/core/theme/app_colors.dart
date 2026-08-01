@@ -18,6 +18,8 @@ class AppColors {
   static const divider = Color(0xFFDCE5F2);
 
   static const adminAccent = Color(0xFF4A5DE8);
+  static const academicStaffAccent = Color(0xFF176B87);
+  static const accountantAccent = Color(0xFF147D64);
   static const teacherAccent = Color(0xFF098D7B);
   static const studentAccent = Color(0xFF2764E7);
   static const parentAccent = Color(0xFF8A4CE0);

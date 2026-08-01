@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_service.dart';
 import '../../../../shared/widgets/section_header.dart';
 
 class InvoiceLineItem {
@@ -13,6 +15,7 @@ class InvoiceDetailPage extends StatelessWidget {
   const InvoiceDetailPage({
     super.key,
     required this.invoiceCode,
+    this.invoiceId,
     required this.childName,
     required this.semester,
     required this.dueDate,
@@ -22,6 +25,7 @@ class InvoiceDetailPage extends StatelessWidget {
   });
 
   final String invoiceCode;
+  final String? invoiceId;
   final String childName;
   final String semester;
   final String dueDate;
@@ -130,12 +134,12 @@ class InvoiceDetailPage extends StatelessWidget {
                         const _InfoRow(
                             icon: Icons.payment_rounded,
                             label: 'Phương thức',
-                            value: 'MoMo'),
+                            value: 'VietQR'),
                         const Divider(height: 0),
                         const _InfoRow(
                             icon: Icons.tag_rounded,
                             label: 'Mã giao dịch',
-                            value: 'MOMO20250215143025'),
+                            value: 'Đã đối soát ngân hàng'),
                       ],
                     ),
                   ),
@@ -251,10 +255,11 @@ class InvoiceDetailPage extends StatelessWidget {
             const SizedBox(height: 16),
             _PaymentMethodTile(
               icon: Icons.qr_code_rounded,
-              name: 'MoMo Sandbox',
-              subtitle: 'Quét QR hoặc đăng nhập ứng dụng',
-              color: const Color(0xFFA50064),
-              onTap: () => _processPayment(context, 'MOMO'),
+              name: 'VietQR - Techcombank',
+              subtitle:
+                  'Quét mã bằng ứng dụng ngân hàng và chờ Kế toán đối soát',
+              color: AppColors.accountantAccent,
+              onTap: () => _processPayment(context),
             ),
           ],
         ),
@@ -262,26 +267,115 @@ class InvoiceDetailPage extends StatelessWidget {
     );
   }
 
-  void _processPayment(BuildContext context, String provider) {
+  Future<void> _processPayment(BuildContext context) async {
     Navigator.pop(context); // close sheet
+    if (invoiceId == null || invoiceId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Hóa đơn này chưa được đồng bộ mã thanh toán.'),
+        backgroundColor: AppColors.error,
+      ));
+      return;
+    }
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
-    Future.delayed(const Duration(seconds: 2), () {
+    try {
+      final result = await sl<ApiService>().pay(invoiceId!, method: 'VIETQR');
       if (!context.mounted) return;
       Navigator.pop(context); // close loader
-      Navigator.pop(context); // back to list
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Thanh toán $provider thành công!'),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
+      final payment = result['payment'] is Map
+          ? (result['payment'] as Map).cast<String, dynamic>()
+          : <String, dynamic>{};
+      final paymentId = (payment['id'] ?? result['paymentId'] ?? '').toString();
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          title: const Row(children: [
+            Icon(Icons.qr_code_2_rounded),
+            SizedBox(width: 8),
+            Text('Quét mã VietQR')
+          ]),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              if ((result['qrImageUrl'] ?? '').toString().isNotEmpty)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Image.network((result['qrImageUrl']).toString(),
+                      width: 260, height: 260, fit: BoxFit.contain),
+                ),
+              const SizedBox(height: 12),
+              _QrLine(
+                  'Ngân hàng', (result['bankId'] ?? 'Techcombank').toString()),
+              _QrLine('Số tài khoản', (result['accountNo'] ?? '').toString()),
+              _QrLine(
+                  'Chủ tài khoản', (result['accountName'] ?? '').toString()),
+              _QrLine('Nội dung', (result['transferContent'] ?? '').toString()),
+              const SizedBox(height: 10),
+              const Text(
+                  'Hóa đơn chỉ được ghi nhận đã thanh toán sau khi Kế toán xác nhận tiền về.',
+                  textAlign: TextAlign.center,
+                  style:
+                      TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            ]),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Để sau')),
+            FilledButton.icon(
+              onPressed: paymentId.isEmpty
+                  ? null
+                  : () async {
+                      await sl<ApiService>().markVietQrSubmitted(paymentId);
+                      if (dialogContext.mounted) Navigator.pop(dialogContext);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context)
+                            .showSnackBar(const SnackBar(
+                          content: Text(
+                              'Đã gửi thông tin chuyển khoản, vui lòng chờ Kế toán đối soát.'),
+                          backgroundColor: AppColors.success,
+                        ));
+                        Navigator.pop(context);
+                      }
+                    },
+              icon: const Icon(Icons.check_circle_outline),
+              label: const Text('Tôi đã chuyển khoản'),
+            ),
+          ],
         ),
       );
-    });
+    } catch (error) {
+      if (!context.mounted) return;
+      Navigator.pop(context); // close loader
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Không thể tạo VietQR: $error'),
+        backgroundColor: AppColors.error,
+      ));
+    }
   }
+}
+
+class _QrLine extends StatelessWidget {
+  const _QrLine(this.label, this.value);
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SizedBox(
+              width: 92,
+              child: Text(label,
+                  style: const TextStyle(color: AppColors.textSecondary))),
+          Expanded(
+              child: SelectableText(value,
+                  style: const TextStyle(fontWeight: FontWeight.w700))),
+        ]),
+      );
 }
 
 class _PaymentMethodTile extends StatelessWidget {

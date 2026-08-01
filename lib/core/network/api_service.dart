@@ -143,6 +143,19 @@ class ApiService {
   Future<void> deleteTimetableSlot(String id) async =>
       _dio.delete('/timetableSlots/$id');
 
+  Future<List<Map<String, dynamic>>> timetableVersions(
+          String semesterId) async =>
+      _list(await _dio.get('/timetable-versions',
+          queryParameters: {'semesterId': semesterId}));
+
+  Future<Map<String, dynamic>> createTimetableVersion(
+          String semesterId, String name) async =>
+      _map(await _dio.post('/timetable-versions',
+          data: {'semesterId': semesterId, 'name': name}));
+
+  Future<Map<String, dynamic>> publishTimetableVersion(String id) async =>
+      _map(await _dio.post('/timetable-versions/$id/publish'));
+
   Future<List<Map<String, dynamic>>> teachingAssignments({
     String? classId,
     String? subjectId,
@@ -258,9 +271,21 @@ class ApiService {
   Future<List<Map<String, dynamic>>> children() async =>
       _list(await _dio.get('/me/children'));
 
-  Future<List<Map<String, dynamic>>> invoices({String? studentId}) async {
+  Future<List<Map<String, dynamic>>> invoices({
+    String? studentId,
+    String? status,
+    String? feePeriodId,
+    String? classId,
+    String? gradeLevel,
+    String? query,
+  }) async {
     final q = <String, dynamic>{};
     if (studentId != null) q['studentId'] = studentId;
+    if (status != null) q['status'] = status;
+    if (feePeriodId != null) q['periodId'] = feePeriodId;
+    if (classId != null) q['classId'] = classId;
+    if (gradeLevel != null) q['gradeLevel'] = gradeLevel;
+    if (query != null) q['q'] = query;
     return _list(await _dio.get('/invoices', queryParameters: q));
   }
 
@@ -270,7 +295,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> pay(String invoiceId,
-      {String method = 'MOMO'}) async {
+      {String method = 'VIETQR'}) async {
     final r = await _dio
         .post('/payments', data: {'invoiceId': invoiceId, 'method': method});
     final initiated = (r.data as Map).cast<String, dynamic>();
@@ -282,6 +307,20 @@ class ApiService {
     }
     return initiated;
   }
+
+  Future<Map<String, dynamic>> markVietQrSubmitted(String paymentId) async =>
+      _map(await _dio.post('/payments/$paymentId/submitted'));
+
+  Future<List<Map<String, dynamic>>> pendingVietQrPayments() async =>
+      _list(await _dio.get('/payments/vietqr/pending'));
+
+  Future<Map<String, dynamic>> confirmVietQrPayment(
+          String paymentId, String bankTransactionRef) async =>
+      _map(await _dio.post('/payments/$paymentId/confirm-vietqr',
+          data: {'bankTransactionRef': bankTransactionRef}));
+
+  Future<Map<String, dynamic>> rejectVietQrPayment(String paymentId) async =>
+      _map(await _dio.post('/payments/$paymentId/reject-vietqr'));
 
   // ---------- Notifications / Announcements ----------
   Future<List<Map<String, dynamic>>> notifications() async =>

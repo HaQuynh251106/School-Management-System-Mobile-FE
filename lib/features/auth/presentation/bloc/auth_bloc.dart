@@ -39,8 +39,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
       emit(AuthAuthenticated(user));
     } on DioException catch (e) {
-      final msg = e.response?.data?['error'] as String? ??
-          'Đăng nhập thất bại, vui lòng thử lại.';
+      final responseData = e.response?.data;
+      final msg = responseData is Map<String, dynamic>
+          ? (responseData['error'] ?? responseData['message'])?.toString() ??
+              'Đăng nhập thất bại, vui lòng thử lại.'
+          : 'Đăng nhập thất bại, vui lòng thử lại.';
       emit(AuthLoginFailure(msg));
     } catch (_) {
       emit(const AuthLoginFailure('Có lỗi xảy ra, vui lòng thử lại.'));

@@ -1356,23 +1356,6 @@ class _InvoicesTabState extends State<_InvoicesTab> {
     return '$b ₫';
   }
 
-  Future<void> _pay(Map<String, dynamic> inv) async {
-    try {
-      await sl<ApiService>().pay(inv['id'].toString());
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Thanh toán ${inv['code']} thành công'),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-      ));
-      setState(_reload);
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi: $e'), backgroundColor: AppColors.error));
-    }
-  }
-
   Future<void> _openDetail(Map<String, dynamic> summary) async {
     try {
       final detail =
@@ -1391,6 +1374,7 @@ class _InvoicesTabState extends State<_InvoicesTab> {
           .toList();
       await Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => InvoiceDetailPage(
+          invoiceId: (invoice['id'] ?? summary['id']).toString(),
           invoiceCode: (invoice['code'] ?? '').toString(),
           childName: (invoice['studentName'] ?? widget.child.name).toString(),
           semester: (invoice['feePeriodId'] ?? 'Hóa đơn học phí').toString(),
@@ -1492,7 +1476,7 @@ class _InvoicesTabState extends State<_InvoicesTab> {
                         ),
                         if (!paid)
                           FilledButton.icon(
-                            onPressed: () => _pay(inv),
+                            onPressed: () => _openDetail(inv),
                             style: FilledButton.styleFrom(
                               backgroundColor: AppColors.parentAccent,
                               padding: const EdgeInsets.symmetric(
@@ -1501,7 +1485,7 @@ class _InvoicesTabState extends State<_InvoicesTab> {
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                             icon: const Icon(Icons.payment_rounded, size: 16),
-                            label: const Text('Thanh toán',
+                            label: const Text('Tạo VietQR',
                                 style: TextStyle(fontSize: 12)),
                           )
                         else
