@@ -56,8 +56,8 @@ class _StudentExamResultsScreenState extends State<StudentExamResultsScreen> {
       );
       if (mounted) {
         setState(
-          () => future =
-              context.read<AppSession>().api.list('/me/exam-results'),
+          () =>
+              future = context.read<AppSession>().api.list('/me/exam-results'),
         );
       }
     } finally {
@@ -94,10 +94,11 @@ class _StudentExamResultsScreenState extends State<StudentExamResultsScreen> {
                     Row(
                       children: [
                         CircleAvatar(
-                          backgroundColor:
-                              widget.accent.withValues(alpha: .1),
-                          child: Icon(Icons.workspace_premium_outlined,
-                              color: widget.accent),
+                          backgroundColor: widget.accent.withValues(alpha: .1),
+                          child: Icon(
+                            Icons.workspace_premium_outlined,
+                            color: widget.accent,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -114,9 +115,7 @@ class _StudentExamResultsScreenState extends State<StudentExamResultsScreen> {
                         ),
                         Text(
                           item['score'] == null ? '—' : '${item['score']}',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
+                          style: Theme.of(context).textTheme.headlineSmall
                               ?.copyWith(color: widget.accent),
                         ),
                       ],
@@ -184,8 +183,9 @@ class _TeacherExamWorkScreenState extends State<TeacherExamWorkScreen>
         .toList();
     final controllers = {
       for (final item in candidates)
-        '${item['studentId']}':
-            TextEditingController(text: '${item['score'] ?? ''}'),
+        '${item['studentId']}': TextEditingController(
+          text: '${item['score'] ?? ''}',
+        ),
     };
     final accepted = await showModalBottomSheet<bool>(
       context: context,
@@ -200,8 +200,10 @@ class _TeacherExamWorkScreenState extends State<TeacherExamWorkScreen>
         ),
         child: Column(
           children: [
-            const Text('Nhập điểm thi',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            const Text(
+              'Nhập điểm thi',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            ),
             const SizedBox(height: 12),
             Expanded(
               child: ListView.builder(
@@ -276,10 +278,8 @@ class _TeacherExamWorkScreenState extends State<TeacherExamWorkScreen>
               DropdownButtonFormField<String>(
                 initialValue: status,
                 items: const [
-                  DropdownMenuItem(
-                      value: 'APPROVED', child: Text('Chấp nhận')),
-                  DropdownMenuItem(
-                      value: 'REJECTED', child: Text('Từ chối')),
+                  DropdownMenuItem(value: 'APPROVED', child: Text('Chấp nhận')),
+                  DropdownMenuItem(value: 'REJECTED', child: Text('Từ chối')),
                 ],
                 onChanged: (value) => setState(() => status = value!),
               ),
@@ -291,8 +291,9 @@ class _TeacherExamWorkScreenState extends State<TeacherExamWorkScreen>
               const SizedBox(height: 12),
               TextField(
                 controller: score,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 decoration: const InputDecoration(labelText: 'Điểm sau xử lý'),
               ),
             ],
@@ -313,41 +314,40 @@ class _TeacherExamWorkScreenState extends State<TeacherExamWorkScreen>
     if (accepted != true || resolution.text.trim().length < 5 || !mounted) {
       return;
     }
-    await context.read<AppSession>().api.put(
-      '/exam-reviews/${review['id']}/resolve',
-      {
-        'status': status,
-        'resolution': resolution.text.trim(),
-        'resolvedScore': status == 'APPROVED'
-            ? double.tryParse(score.text.replaceAll(',', '.'))
-            : null,
-      },
-    );
+    await context
+        .read<AppSession>()
+        .api
+        .put('/exam-reviews/${review['id']}/resolve', {
+          'status': status,
+          'resolution': resolution.text.trim(),
+          'resolvedScore': status == 'APPROVED'
+              ? double.tryParse(score.text.replaceAll(',', '.'))
+              : null,
+        });
     if (mounted) setState(_reload);
   }
 
   Widget _list(
     Future<List<Map<String, dynamic>>> source,
     Widget Function(Map<String, dynamic>) tile,
-  ) =>
-      FutureBuilder<List<Map<String, dynamic>>>(
-        future: source,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final items = snapshot.data ?? [];
-          if (items.isEmpty) {
-            return const Center(child: Text('Hiện không có công việc.'));
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: items.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 10),
-            itemBuilder: (context, index) => tile(items[index]),
-          );
-        },
+  ) => FutureBuilder<List<Map<String, dynamic>>>(
+    future: source,
+    builder: (context, snapshot) {
+      if (snapshot.connectionState != ConnectionState.done) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      final items = snapshot.data ?? [];
+      if (items.isEmpty) {
+        return const Center(child: Text('Hiện không có công việc.'));
+      }
+      return ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: items.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (context, index) => tile(items[index]),
       );
+    },
+  );
 
   @override
   Widget build(BuildContext context) => Scaffold(

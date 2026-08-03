@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/widgets/glass_ui.dart';
 import 'app_router.dart';
 import 'app_theme.dart';
 import 'session.dart';
@@ -31,6 +32,8 @@ class _SmartSchoolAppState extends State<SmartSchoolApp> {
       darkTheme: AppTheme.dark,
       themeMode: session.themeMode,
       routerConfig: router.config,
+      builder: (context, child) =>
+          AppAuroraBackground(child: child ?? const SizedBox.shrink()),
     );
   }
 }

@@ -74,29 +74,31 @@ class _ChildDataScreenState extends State<ChildDataScreen> {
     try {
       final result = await api.post('/payments', {
         'invoiceId': invoice['id'],
-        'method': 'MOMO',
+        'method': 'VIETQR',
       });
-      final rawUrl = result['payUrl'] ?? result['deeplink'] ?? result['qrCodeUrl'];
+      final rawUrl = result['qrImageUrl'];
       if (rawUrl != null) {
         final uri = Uri.tryParse('$rawUrl');
-        if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else if (result['callbackUrl'] != null &&
-          result['sandboxCallback'] is Map) {
-        await api.dio.post(
-              '${result['callbackUrl']}',
-              data: result['sandboxCallback'],
-            );
+        if (uri != null) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã khởi tạo giao dịch MoMo')),
+        const SnackBar(
+          content: Text(
+            'Đã mở mã VietQR. Hóa đơn sẽ cập nhật sau khi nhà trường đối soát.',
+          ),
+        ),
       );
       reload();
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Chưa thể khởi tạo thanh toán. Kiểm tra cấu hình MoMo.'),
+          content: Text(
+            'Chưa thể tạo VietQR. Vui lòng kiểm tra cấu hình tài khoản ngân hàng.',
+          ),
         ),
       );
     }
@@ -140,7 +142,8 @@ class _ChildDataScreenState extends State<ChildDataScreen> {
                 if (items.isEmpty) {
                   return EmptyState(
                     title: 'Chưa có ${widget.module.title.toLowerCase()}',
-                    message: 'Dữ liệu của học sinh đã chọn sẽ xuất hiện tại đây.',
+                    message:
+                        'Dữ liệu của học sinh đã chọn sẽ xuất hiện tại đây.',
                     icon: widget.module.icon,
                   );
                 }
@@ -164,20 +167,26 @@ class _ChildDataScreenState extends State<ChildDataScreen> {
                             vertical: 10,
                           ),
                           leading: CircleAvatar(
-                            backgroundColor: widget.accent.withValues(alpha: .1),
-                            child: Icon(widget.module.icon, color: widget.accent),
+                            backgroundColor: widget.accent.withValues(
+                              alpha: .1,
+                            ),
+                            child: Icon(
+                              widget.module.icon,
+                              color: widget.accent,
+                            ),
                           ),
                           title: Text(title),
                           subtitle: Text(_subtitle(item)),
-                          trailing: widget.module.endpoint == '/invoices' &&
+                          trailing:
+                              widget.module.endpoint == '/invoices' &&
                                   !const ['PAID', 'CANCELLED'].contains(status)
                               ? FilledButton(
                                   onPressed: () => pay(item),
                                   child: const Text('Thanh toán'),
                                 )
                               : status.isEmpty
-                                  ? null
-                                  : Chip(label: Text(status)),
+                              ? null
+                              : Chip(label: Text(status)),
                         ),
                       );
                     },

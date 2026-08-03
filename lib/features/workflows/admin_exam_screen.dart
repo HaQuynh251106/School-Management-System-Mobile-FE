@@ -101,10 +101,10 @@ class _AdminExamScreenState extends State<AdminExamScreen> {
   Future<void> _periodAction(String action, String success) async {
     if (selectedId == null) return;
     try {
-      await context
-          .read<AppSession>()
-          .api
-          .post('/exam-periods/$selectedId/$action', const {});
+      await context.read<AppSession>().api.post(
+        '/exam-periods/$selectedId/$action',
+        const {},
+      );
       if (mounted) {
         _message(success);
         await _reload();
@@ -122,10 +122,7 @@ class _AdminExamScreenState extends State<AdminExamScreen> {
     );
     if (!accepted || !mounted) return;
     try {
-      await context
-          .read<AppSession>()
-          .api
-          .delete('/exam-periods/$selectedId');
+      await context.read<AppSession>().api.delete('/exam-periods/$selectedId');
       selectedId = null;
       if (mounted) await _reload();
     } catch (error) {
@@ -143,10 +140,10 @@ class _AdminExamScreenState extends State<AdminExamScreen> {
     if (selectedClasses.isEmpty && classes.isNotEmpty) {
       selectedClasses.add('${classes.first['id']}');
     }
-    final date =
-        TextEditingController(text: '${item?['examDate'] ?? ''}');
-    final start =
-        TextEditingController(text: '${item?['startTime'] ?? '07:30'}');
+    final date = TextEditingController(text: '${item?['examDate'] ?? ''}');
+    final start = TextEditingController(
+      text: '${item?['startTime'] ?? '07:30'}',
+    );
     final duration = TextEditingController(
       text: '${item?['durationMinutes'] ?? 90}',
     );
@@ -201,8 +198,7 @@ class _AdminExamScreenState extends State<AdminExamScreen> {
                       child: TextField(
                         controller: duration,
                         keyboardType: TextInputType.number,
-                        decoration:
-                            const InputDecoration(labelText: 'Số phút'),
+                        decoration: const InputDecoration(labelText: 'Số phút'),
                       ),
                     ),
                   ],
@@ -231,8 +227,7 @@ class _AdminExamScreenState extends State<AdminExamScreen> {
                         title: Text(
                           '${classItem['name'] ?? classItem['code']}',
                         ),
-                        subtitle:
-                            Text('Khối ${classItem['gradeLevel'] ?? ''}'),
+                        subtitle: Text('Khối ${classItem['gradeLevel'] ?? ''}'),
                         onChanged: (value) => setDialogState(() {
                           if (value == true) {
                             selectedClasses.add(id);
@@ -296,10 +291,9 @@ class _AdminExamScreenState extends State<AdminExamScreen> {
     );
     if (!accepted || !mounted) return;
     try {
-      await context
-          .read<AppSession>()
-          .api
-          .delete('/exam-schedules/${item['id']}');
+      await context.read<AppSession>().api.delete(
+        '/exam-schedules/${item['id']}',
+      );
       if (mounted) await _reload();
     } catch (error) {
       if (mounted) _message(_friendly(error));
@@ -307,10 +301,9 @@ class _AdminExamScreenState extends State<AdminExamScreen> {
   }
 
   Future<void> _rooms(Map<String, dynamic> schedule) async {
-    var rooms = await context
-        .read<AppSession>()
-        .api
-        .list('/exam-schedules/${schedule['id']}/rooms');
+    var rooms = await context.read<AppSession>().api.list(
+      '/exam-schedules/${schedule['id']}/rooms',
+    );
     if (!mounted) return;
     await showDialog<void>(
       context: context,
@@ -335,8 +328,7 @@ class _AdminExamScreenState extends State<AdminExamScreen> {
                         ),
                         trailing: IconButton(
                           onPressed: () async {
-                            final api =
-                                context.read<AppSession>().api;
+                            final api = context.read<AppSession>().api;
                             await api.delete('/exam-rooms/${room['id']}');
                             rooms = await api.list(
                               '/exam-schedules/${schedule['id']}/rooms',
@@ -358,10 +350,9 @@ class _AdminExamScreenState extends State<AdminExamScreen> {
               onPressed: () async {
                 final created = await _addRoom(schedule);
                 if (created && context.mounted) {
-                  rooms = await context
-                      .read<AppSession>()
-                      .api
-                      .list('/exam-schedules/${schedule['id']}/rooms');
+                  rooms = await context.read<AppSession>().api.list(
+                    '/exam-schedules/${schedule['id']}/rooms',
+                  );
                   setDialogState(() {});
                 }
               },
@@ -409,8 +400,7 @@ class _AdminExamScreenState extends State<AdminExamScreen> {
                       ),
                     )
                     .toList(),
-                onChanged: (value) =>
-                    setDialogState(() => proctorOne = value),
+                onChanged: (value) => setDialogState(() => proctorOne = value),
               ),
               const SizedBox(height: 10),
               DropdownButtonFormField<String>(
@@ -424,8 +414,7 @@ class _AdminExamScreenState extends State<AdminExamScreen> {
                       ),
                     )
                     .toList(),
-                onChanged: (value) =>
-                    setDialogState(() => proctorTwo = value),
+                onChanged: (value) => setDialogState(() => proctorTwo = value),
               ),
             ],
           ),
@@ -444,15 +433,15 @@ class _AdminExamScreenState extends State<AdminExamScreen> {
     );
     if (accepted != true || !mounted) return false;
     try {
-      await context.read<AppSession>().api.post(
-        '/exam-schedules/${schedule['id']}/rooms',
-        {
-          'roomCode': roomCode.text.trim(),
-          'capacity': int.tryParse(capacity.text.trim()) ?? 30,
-          'proctorOneId': proctorOne,
-          'proctorTwoId': proctorTwo,
-        },
-      );
+      await context
+          .read<AppSession>()
+          .api
+          .post('/exam-schedules/${schedule['id']}/rooms', {
+            'roomCode': roomCode.text.trim(),
+            'capacity': int.tryParse(capacity.text.trim()) ?? 30,
+            'proctorOneId': proctorOne,
+            'proctorTwoId': proctorTwo,
+          });
       return true;
     } catch (error) {
       if (mounted) _message(_friendly(error));
@@ -521,7 +510,8 @@ class _AdminExamScreenState extends State<AdminExamScreen> {
   Widget build(BuildContext context) {
     final period = selectedPeriod;
     final status = '${period?['status'] ?? 'DRAFT'}';
-    final published = period?['schedulePublishedAt'] != null ||
+    final published =
+        period?['schedulePublishedAt'] != null ||
         period?['schedulePublished'] == true;
     final locked = period?['scoreEntryLocked'] == true;
     return Scaffold(
@@ -585,10 +575,13 @@ class _AdminExamScreenState extends State<AdminExamScreen> {
                                 children: [
                                   Text(
                                     '${item['name']}',
-                                    style:
-                                        Theme.of(context).textTheme.titleMedium,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleMedium,
                                   ),
-                                  Text('${item['startDate']} – ${item['endDate']}'),
+                                  Text(
+                                    '${item['startDate']} – ${item['endDate']}',
+                                  ),
                                   const Spacer(),
                                   Text(
                                     '${summary['scheduleCount'] ?? 0} môn · ${summary['candidateCount'] ?? 0} thí sinh · ${_periodStatus('${item['status'] ?? 'DRAFT'}')}',
@@ -623,19 +616,15 @@ class _AdminExamScreenState extends State<AdminExamScreen> {
                           ),
                         if (status != 'CONFIRMED')
                           OutlinedButton.icon(
-                            onPressed: () => _periodAction(
-                              'confirm',
-                              'Đã xác nhận kỳ thi.',
-                            ),
+                            onPressed: () =>
+                                _periodAction('confirm', 'Đã xác nhận kỳ thi.'),
                             icon: const Icon(Icons.verified_outlined),
                             label: const Text('Xác nhận kỳ thi'),
                           ),
                         OutlinedButton.icon(
                           onPressed: () => _periodAction(
                             locked ? 'unlock-scores' : 'lock-scores',
-                            locked
-                                ? 'Đã mở nhập điểm.'
-                                : 'Đã khóa nhập điểm.',
+                            locked ? 'Đã mở nhập điểm.' : 'Đã khóa nhập điểm.',
                           ),
                           icon: Icon(
                             locked
@@ -684,14 +673,15 @@ class _AdminExamScreenState extends State<AdminExamScreen> {
                     (item) => Card(
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor:
-                              widget.accent.withValues(alpha: .1),
+                          backgroundColor: widget.accent.withValues(alpha: .1),
                           child: Icon(
                             Icons.event_note_outlined,
                             color: widget.accent,
                           ),
                         ),
-                        title: Text('${item['subjectName'] ?? item['subjectId']}'),
+                        title: Text(
+                          '${item['subjectName'] ?? item['subjectId']}',
+                        ),
                         subtitle: Text(
                           '${item['examDate']} · ${item['startTime']} · ${item['durationMinutes']} phút · Lớp ${_classCodes(item)}',
                         ),

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../app/app_theme.dart';
 import '../../app/session.dart';
+import '../../core/widgets/glass_ui.dart';
 import '../profile/account_settings_screens.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -124,104 +125,104 @@ class _LoginForm extends StatelessWidget {
   final VoidCallback onSubmit;
 
   @override
-  Widget build(BuildContext context) => Card(
-    child: Padding(
-      padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-      child: Form(
-        key: formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Chào mừng trở lại',
-              style: Theme.of(context).textTheme.headlineMedium,
+  Widget build(BuildContext context) => GlassPanel(
+    blur: 28,
+    opacity: .78,
+    padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+    child: Form(
+      key: formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Chào mừng trở lại',
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Đăng nhập để bắt đầu ngày làm việc.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(height: 6),
-            Text(
-              'Đăng nhập để bắt đầu ngày làm việc.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+          if (error != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.errorContainer.withValues(alpha: .6),
+                borderRadius: BorderRadius.circular(14),
               ),
-            ),
-            if (error != null) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.errorContainer.withValues(alpha: .6),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Text(
-                  error!,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onErrorContainer,
-                  ),
-                ),
-              ),
-            ],
-            const SizedBox(height: 26),
-            TextFormField(
-              controller: username,
-              textInputAction: TextInputAction.next,
-              autofillHints: const [AutofillHints.username],
-              decoration: const InputDecoration(
-                labelText: 'Tên đăng nhập',
-                prefixIcon: Icon(Icons.person_outline_rounded),
-              ),
-              validator: (value) => value == null || value.trim().isEmpty
-                  ? 'Vui lòng nhập tên đăng nhập'
-                  : null,
-            ),
-            const SizedBox(height: 14),
-            TextFormField(
-              controller: password,
-              obscureText: obscure,
-              textInputAction: TextInputAction.done,
-              autofillHints: const [AutofillHints.password],
-              onFieldSubmitted: (_) => onSubmit(),
-              decoration: InputDecoration(
-                labelText: 'Mật khẩu',
-                prefixIcon: const Icon(Icons.lock_outline_rounded),
-                suffixIcon: IconButton(
-                  tooltip: obscure ? 'Hiện mật khẩu' : 'Ẩn mật khẩu',
-                  onPressed: onTogglePassword,
-                  icon: Icon(
-                    obscure
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                  ),
+              child: Text(
+                error!,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onErrorContainer,
                 ),
               ),
-              validator: (value) => value == null || value.isEmpty
-                  ? 'Vui lòng nhập mật khẩu'
-                  : null,
-            ),
-            const SizedBox(height: 20),
-            FilledButton(
-              onPressed: loading ? null : onSubmit,
-              child: loading
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text('Đăng nhập'),
-            ),
-            const SizedBox(height: 10),
-            TextButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
-              ),
-              child: const Text('Quên mật khẩu?'),
             ),
           ],
-        ),
+          const SizedBox(height: 26),
+          TextFormField(
+            controller: username,
+            textInputAction: TextInputAction.next,
+            autofillHints: const [AutofillHints.username],
+            decoration: const InputDecoration(
+              labelText: 'Tên đăng nhập',
+              prefixIcon: Icon(Icons.person_outline_rounded),
+            ),
+            validator: (value) => value == null || value.trim().isEmpty
+                ? 'Vui lòng nhập tên đăng nhập'
+                : null,
+          ),
+          const SizedBox(height: 14),
+          TextFormField(
+            controller: password,
+            obscureText: obscure,
+            textInputAction: TextInputAction.done,
+            autofillHints: const [AutofillHints.password],
+            onFieldSubmitted: (_) => onSubmit(),
+            decoration: InputDecoration(
+              labelText: 'Mật khẩu',
+              prefixIcon: const Icon(Icons.lock_outline_rounded),
+              suffixIcon: IconButton(
+                tooltip: obscure ? 'Hiện mật khẩu' : 'Ẩn mật khẩu',
+                onPressed: onTogglePassword,
+                icon: Icon(
+                  obscure
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                ),
+              ),
+            ),
+            validator: (value) => value == null || value.isEmpty
+                ? 'Vui lòng nhập mật khẩu'
+                : null,
+          ),
+          const SizedBox(height: 20),
+          FilledButton(
+            onPressed: loading ? null : onSubmit,
+            child: loading
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text('Đăng nhập'),
+          ),
+          const SizedBox(height: 10),
+          TextButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+            ),
+            child: const Text('Quên mật khẩu?'),
+          ),
+        ],
       ),
     ),
   );
@@ -233,35 +234,53 @@ class _BrandPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     margin: const EdgeInsets.all(18),
-    padding: const EdgeInsets.all(58),
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(34),
-      gradient: const LinearGradient(
-        colors: [Color(0xFF143C9E), AppPalette.blue, Color(0xFF16A3C8)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-    ),
-    child: const Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.start,
+    clipBehavior: Clip.antiAlias,
+    decoration: BoxDecoration(borderRadius: BorderRadius.circular(34)),
+    child: Stack(
+      fit: StackFit.expand,
       children: [
-        _Logo(size: 68),
-        SizedBox(height: 34),
-        Text(
-          'Một ứng dụng.\nCả trường học.',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 43,
-            height: 1.06,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -1.25,
+        Image.asset(
+          'assets/illustrations/school-community-hero.png',
+          fit: BoxFit.cover,
+        ),
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xF20B2450), Color(0xC8144A82), Color(0x3316A3C8)],
+            ),
           ),
         ),
-        SizedBox(height: 20),
-        Text(
-          'Học tập, vận hành, tài chính và trao đổi được kết nối an toàn trong cùng một không gian.',
-          style: TextStyle(color: Colors.white70, fontSize: 16, height: 1.55),
+        const Padding(
+          padding: EdgeInsets.all(58),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _Logo(size: 68),
+              SizedBox(height: 34),
+              Text(
+                'Một ứng dụng.\nCả trường học.',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 43,
+                  height: 1.06,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -1.25,
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Học tập, vận hành, tài chính và trao đổi được kết nối an toàn trong cùng một không gian.',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 16,
+                  height: 1.55,
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     ),

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/session.dart';
+import '../../core/widgets/async_state_view.dart';
+import '../../core/widgets/timetable_grid.dart';
 
 class AdminTimetableScreen extends StatefulWidget {
   const AdminTimetableScreen({super.key, required this.accent});
@@ -85,8 +87,9 @@ class _AdminTimetableScreenState extends State<AdminTimetableScreen> {
             final dayB = days.indexWhere((d) => d.$1 == '${b['dayOfWeek']}');
             final dayCompare = dayA.compareTo(dayB);
             if (dayCompare != 0) return dayCompare;
-            return (a['periodNo'] as num? ?? 0)
-                .compareTo(b['periodNo'] as num? ?? 0);
+            return (a['periodNo'] as num? ?? 0).compareTo(
+              b['periodNo'] as num? ?? 0,
+            );
           });
         assignments = values[1];
         loading = false;
@@ -117,9 +120,7 @@ class _AdminTimetableScreenState extends State<AdminTimetableScreen> {
               .toList()
         : assignments;
     if (candidates.isEmpty) {
-      _message(
-        'Tất cả phân công của lớp đã được xếp đủ số tiết trong tuần.',
-      );
+      _message('Tất cả phân công của lớp đã được xếp đủ số tiết trong tuần.');
       return;
     }
     String? assignmentId;
@@ -182,8 +183,9 @@ class _AdminTimetableScreenState extends State<AdminTimetableScreen> {
                           Expanded(
                             child: DropdownButtonFormField<String>(
                               initialValue: day,
-                              decoration:
-                                  const InputDecoration(labelText: 'Thứ'),
+                              decoration: const InputDecoration(
+                                labelText: 'Thứ',
+                              ),
                               items: days
                                   .map(
                                     (value) => DropdownMenuItem(
@@ -200,8 +202,9 @@ class _AdminTimetableScreenState extends State<AdminTimetableScreen> {
                           Expanded(
                             child: DropdownButtonFormField<int>(
                               initialValue: period,
-                              decoration:
-                                  const InputDecoration(labelText: 'Tiết'),
+                              decoration: const InputDecoration(
+                                labelText: 'Tiết',
+                              ),
                               items: List.generate(
                                 12,
                                 (index) => DropdownMenuItem(
@@ -259,8 +262,9 @@ class _AdminTimetableScreenState extends State<AdminTimetableScreen> {
                       DropdownButtonFormField<String>(
                         initialValue: roomCode,
                         isExpanded: true,
-                        decoration:
-                            const InputDecoration(labelText: 'Phòng học'),
+                        decoration: const InputDecoration(
+                          labelText: 'Phòng học',
+                        ),
                         items: rooms
                             .where((room) {
                               final shift = '${room['studyShift'] ?? ''}';
@@ -368,7 +372,8 @@ class _AdminTimetableScreenState extends State<AdminTimetableScreen> {
     return source[(period - 1).clamp(0, source.length - 1)];
   }
 
-  String? _timeValidator(String? value) => value != null &&
+  String? _timeValidator(String? value) =>
+      value != null &&
           RegExp(r'^(?:[01]\d|2[0-3]):[0-5]\d$').hasMatch(value.trim())
       ? null
       : 'Dùng định dạng HH:mm';
@@ -395,10 +400,9 @@ class _AdminTimetableScreenState extends State<AdminTimetableScreen> {
     );
     if (accepted != true || !mounted) return;
     try {
-      await context
-          .read<AppSession>()
-          .api
-          .delete('/timetableSlots/${slot['id']}');
+      await context.read<AppSession>().api.delete(
+        '/timetableSlots/${slot['id']}',
+      );
       if (mounted) await _reload();
     } catch (error) {
       if (mounted) _message(_friendly(error));
@@ -425,6 +429,49 @@ class _AdminTimetableScreenState extends State<AdminTimetableScreen> {
       ..showSnackBar(SnackBar(content: Text(value)));
   }
 
+  void _slotActions(Map<String, dynamic> slot) => showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (sheetContext) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              '${slot['subjectName'] ?? 'Tiết học'} · Tiết ${slot['periodNo']}',
+              style: Theme.of(sheetContext).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 5),
+            Text(
+              '${slot['teacherName'] ?? 'Chưa có giáo viên'} · Phòng ${slot['roomCode'] ?? '—'}',
+              style: Theme.of(sheetContext).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 18),
+            FilledButton.icon(
+              onPressed: () {
+                Navigator.pop(sheetContext);
+                _edit(slot);
+              },
+              icon: const Icon(Icons.edit_outlined),
+              label: const Text('Sửa tiết học'),
+            ),
+            const SizedBox(height: 9),
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.pop(sheetContext);
+                _delete(slot);
+              },
+              icon: const Icon(Icons.delete_outline_rounded),
+              label: const Text('Xóa tiết học'),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final selectedClass = _selectedClass();
@@ -447,157 +494,133 @@ class _AdminTimetableScreenState extends State<AdminTimetableScreen> {
       ),
       body: Column(
         children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-            color: Theme.of(context).colorScheme.surface,
-            child: Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                SizedBox(
-                  width: 260,
-                  child: DropdownButtonFormField<String>(
-                    initialValue: classId,
-                    decoration: const InputDecoration(
-                      labelText: 'Lớp học',
-                      prefixIcon: Icon(Icons.groups_outlined),
+          Card(
+            margin: const EdgeInsets.fromLTRB(14, 4, 14, 8),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  SizedBox(
+                    width: 260,
+                    child: DropdownButtonFormField<String>(
+                      initialValue: classId,
+                      decoration: const InputDecoration(
+                        labelText: 'Lớp học',
+                        prefixIcon: Icon(Icons.groups_outlined),
+                      ),
+                      items: classes
+                          .map(
+                            (item) => DropdownMenuItem(
+                              value: '${item['id']}',
+                              child: Text(_label(item)),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        classId = value;
+                        _reload();
+                      },
                     ),
-                    items: classes
-                        .map(
-                          (item) => DropdownMenuItem(
-                            value: '${item['id']}',
-                            child: Text(_label(item)),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      classId = value;
-                      _reload();
-                    },
                   ),
-                ),
-                SizedBox(
-                  width: 260,
-                  child: DropdownButtonFormField<String>(
-                    initialValue: semesterId,
-                    decoration: const InputDecoration(
-                      labelText: 'Học kỳ',
-                      prefixIcon: Icon(Icons.date_range_outlined),
+                  SizedBox(
+                    width: 260,
+                    child: DropdownButtonFormField<String>(
+                      initialValue: semesterId,
+                      decoration: const InputDecoration(
+                        labelText: 'Học kỳ',
+                        prefixIcon: Icon(Icons.date_range_outlined),
+                      ),
+                      items: semesters
+                          .map(
+                            (item) => DropdownMenuItem(
+                              value: '${item['id']}',
+                              child: Text(_label(item)),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        semesterId = value;
+                        _reload();
+                      },
                     ),
-                    items: semesters
-                        .map(
-                          (item) => DropdownMenuItem(
-                            value: '${item['id']}',
-                            child: Text(_label(item)),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      semesterId = value;
-                      _reload();
-                    },
                   ),
-                ),
-                Chip(
-                  avatar: Icon(
-                    '${selectedClass['studyShift']}' == 'AFTERNOON'
-                        ? Icons.wb_twilight_outlined
-                        : Icons.wb_sunny_outlined,
-                    size: 18,
+                  Chip(
+                    avatar: Icon(
+                      '${selectedClass['studyShift']}' == 'AFTERNOON'
+                          ? Icons.wb_twilight_outlined
+                          : Icons.wb_sunny_outlined,
+                      size: 18,
+                    ),
+                    label: Text(
+                      '${selectedClass['studyShift']}' == 'AFTERNOON'
+                          ? 'Ca chiều'
+                          : 'Ca sáng',
+                    ),
                   ),
-                  label: Text(
-                    '${selectedClass['studyShift']}' == 'AFTERNOON'
-                        ? 'Ca chiều'
-                        : 'Ca sáng',
+                  Chip(
+                    avatar: const Icon(Icons.assignment_ind_outlined, size: 18),
+                    label: Text('${assignments.length} phân công'),
                   ),
-                ),
-                Chip(
-                  avatar: const Icon(Icons.assignment_ind_outlined, size: 18),
-                  label: Text('${assignments.length} phân công'),
-                ),
-                Chip(
-                  avatar: const Icon(Icons.view_week_outlined, size: 18),
-                  label: Text('${slots.length} tiết đã xếp'),
-                ),
-              ],
+                  Chip(
+                    avatar: const Icon(Icons.view_week_outlined, size: 18),
+                    label: Text('${slots.length} tiết đã xếp'),
+                  ),
+                ],
+              ),
             ),
           ),
           Expanded(
             child: loading
-                ? const Center(child: CircularProgressIndicator())
-                : slots.isEmpty
                 ? const Center(
-                    child: Text(
-                      'Lớp chưa có thời khóa biểu.\nChọn “Xếp tiết” để bắt đầu.',
-                      textAlign: TextAlign.center,
+                    child: Card(
+                      child: Padding(
+                        padding: EdgeInsets.all(22),
+                        child: CircularProgressIndicator(),
+                      ),
                     ),
+                  )
+                : slots.isEmpty
+                ? const EmptyState(
+                    title: 'Lớp chưa có thời khóa biểu',
+                    message: 'Chọn “Xếp tiết” để bắt đầu xây dựng lịch học.',
+                    icon: Icons.calendar_view_week_outlined,
                   )
                 : ListView(
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 110),
-                    children: days.map((day) {
-                      final daySlots = slots
-                          .where((slot) => '${slot['dayOfWeek']}' == day.$1)
-                          .toList();
-                      if (daySlots.isEmpty) return const SizedBox.shrink();
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
-                        child: Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(14),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  day.$2,
-                                  style:
-                                      Theme.of(context).textTheme.titleMedium,
+                    children: [
+                      Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.grid_view_rounded,
+                                color: widget.accent,
+                              ),
+                              const SizedBox(width: 11),
+                              Expanded(
+                                child: Text(
+                                  'Chạm vào một ô để sửa hoặc xóa tiết học',
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
                                 ),
-                                const SizedBox(height: 8),
-                                ...daySlots.map(
-                                  (slot) => ListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    leading: CircleAvatar(
-                                      backgroundColor: widget.accent
-                                          .withValues(alpha: .1),
-                                      child: Text(
-                                        '${slot['periodNo']}',
-                                        style: TextStyle(
-                                          color: widget.accent,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
-                                    ),
-                                    title: Text(
-                                      '${slot['subjectName'] ?? slot['subjectId']}',
-                                    ),
-                                    subtitle: Text(
-                                      '${slot['startTime']}–${slot['endTime']} · ${slot['teacherName'] ?? slot['teacherId']} · Phòng ${slot['roomCode'] ?? '—'}',
-                                    ),
-                                    trailing: PopupMenuButton<String>(
-                                      onSelected: (value) {
-                                        if (value == 'edit') _edit(slot);
-                                        if (value == 'delete') _delete(slot);
-                                      },
-                                      itemBuilder: (_) => const [
-                                        PopupMenuItem(
-                                          value: 'edit',
-                                          child: Text('Sửa tiết học'),
-                                        ),
-                                        PopupMenuItem(
-                                          value: 'delete',
-                                          child: Text('Xóa tiết học'),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                              const Chip(label: Text('Vuốt ngang')),
+                            ],
                           ),
                         ),
-                      );
-                    }).toList(),
+                      ),
+                      TimetableGrid(
+                        slots: slots,
+                        accent: widget.accent,
+                        onSlotTap: _slotActions,
+                        showClass: false,
+                      ),
+                    ],
                   ),
           ),
         ],

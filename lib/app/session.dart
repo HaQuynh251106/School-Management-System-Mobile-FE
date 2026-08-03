@@ -102,8 +102,9 @@ class AppSession extends ChangeNotifier {
     }
     children = await api.list('/me/children');
     if (children.isNotEmpty) {
-      final currentStillExists =
-          children.any((child) => '${child['id']}' == selectedChildId);
+      final currentStillExists = children.any(
+        (child) => '${child['id']}' == selectedChildId,
+      );
       if (!currentStillExists) selectedChildId = '${children.first['id']}';
     }
   }

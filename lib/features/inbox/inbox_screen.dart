@@ -251,14 +251,14 @@ class _ThreadsTab extends StatelessWidget {
       return ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
         itemCount: items.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 9),
+        separatorBuilder: (context, index) => const SizedBox(height: 9),
         itemBuilder: (context, index) {
           final item = items[index];
           final name =
               '${item['fullName'] ?? item['name'] ?? item['participantName'] ?? 'Cuộc trao đổi'}';
           final unread =
               int.tryParse('${item['unread'] ?? item['unreadCount'] ?? 0}') ??
-                  0;
+              0;
           return Card(
             margin: EdgeInsets.zero,
             child: ListTile(

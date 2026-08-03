@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../../app/environment.dart';
 import '../storage/token_vault.dart';
+import 'web_credentials.dart';
 
 class ApiClient {
   ApiClient(this.vault, {void Function()? onUnauthorized}) {
@@ -13,6 +14,7 @@ class ApiClient {
         headers: const {'Accept': 'application/json'},
       ),
     );
+    configureWebCredentials(dio);
     dio.interceptors.add(_AuthInterceptor(dio, vault, onUnauthorized));
   }
 
@@ -144,16 +146,15 @@ class _AuthInterceptor extends Interceptor {
     _refreshing = true;
     try {
       final refresh = await vault.refreshToken();
-      if (refresh == null) throw StateError('Không có refresh token');
       final response = await dio.post(
         '/auth/refresh',
-        data: {'refreshToken': refresh},
+        data: refresh == null ? null : {'refreshToken': refresh},
         options: Options(extra: {'retried': true}),
       );
       final data = (response.data as Map).cast<String, dynamic>();
       await vault.save(
         '${data['accessToken']}',
-        '${data['refreshToken'] ?? refresh}',
+        '${data['refreshToken'] ?? refresh ?? ''}',
       );
       request.headers['Authorization'] = 'Bearer ${data['accessToken']}';
       request.extra['retried'] = true;

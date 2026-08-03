@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../app/session.dart';
 import '../../core/widgets/async_state_view.dart';
+import '../../core/widgets/glass_ui.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key, required this.role, required this.accent});
@@ -60,8 +61,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(height: 12),
                 if (metrics.isEmpty)
                   const _SoftEmpty(text: 'Chưa có số liệu tổng quan')
-                  else
-                    GridView.builder(
+                else
+                  GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: metrics.length.clamp(0, 6),
@@ -72,28 +73,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
                         ),
-                      itemBuilder: (_, index) => _MetricCard(
-                      data: metrics[index],
-                      accent: widget.accent,
+                    itemBuilder: (_, index) => EntranceMotion(
                       index: index,
+                      child: _MetricCard(
+                        data: metrics[index],
+                        accent: widget.accent,
+                        index: index,
                       ),
                     ),
-                  if (charts.isNotEmpty) ...[
-                    const SizedBox(height: 26),
-                    _SectionTitle(
-                      title: 'Phân tích nhanh',
-                      caption: 'Số liệu trực quan hỗ trợ ra quyết định',
-                      icon: Icons.bar_chart_rounded,
-                      color: widget.accent,
-                    ),
-                    const SizedBox(height: 12),
-                    ...charts.take(3).map(
-                          (chart) => _ChartCard(
-                            chart: chart,
-                            accent: widget.accent,
-                          ),
-                        ),
-                  ],
+                  ),
+                if (charts.isNotEmpty) ...[
+                  const SizedBox(height: 26),
+                  _SectionTitle(
+                    title: 'Phân tích nhanh',
+                    caption: 'Số liệu trực quan hỗ trợ ra quyết định',
+                    icon: Icons.bar_chart_rounded,
+                    color: widget.accent,
+                  ),
+                  const SizedBox(height: 12),
+                  ...charts
+                      .take(3)
+                      .map(
+                        (chart) =>
+                            _ChartCard(chart: chart, accent: widget.accent),
+                      ),
+                ],
                 const SizedBox(height: 26),
                 _SectionTitle(
                   title: 'Cần xử lý',
@@ -153,58 +157,55 @@ class _ChartCard extends StatelessWidget {
     final points = _maps(chart['data']);
     final max = points.fold<double>(
       1,
-      (value, item) =>
-          ((item['value'] as num?)?.toDouble() ?? 0) > value
-              ? (item['value'] as num).toDouble()
-              : value,
+      (value, item) => ((item['value'] as num?)?.toDouble() ?? 0) > value
+          ? (item['value'] as num).toDouble()
+          : value,
     );
-    return Card(
+    return GlassPanel(
       margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${chart['title'] ?? 'Biểu đồ'}',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          if (chart['subtitle'] != null)
             Text(
-              '${chart['title'] ?? 'Biểu đồ'}',
-              style: Theme.of(context).textTheme.titleMedium,
+              '${chart['subtitle']}',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
-            if (chart['subtitle'] != null)
-              Text(
-                '${chart['subtitle']}',
-                style: Theme.of(context).textTheme.bodySmall,
+          const SizedBox(height: 16),
+          ...points.take(8).map((point) {
+            final value = (point['value'] as num?)?.toDouble() ?? 0;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 11),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: Text('${point['label'] ?? ''}')),
+                      Text(
+                        '${point['value'] ?? 0}${chart['suffix'] ?? ''}',
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  LinearProgressIndicator(
+                    value: max == 0 ? 0 : value / max,
+                    minHeight: 8,
+                    borderRadius: BorderRadius.circular(8),
+                    color: accent,
+                    backgroundColor: accent.withValues(alpha: .1),
+                  ),
+                ],
               ),
-            const SizedBox(height: 16),
-            ...points.take(8).map((point) {
-              final value = (point['value'] as num?)?.toDouble() ?? 0;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 11),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(child: Text('${point['label'] ?? ''}')),
-                        Text(
-                          '${point['value'] ?? 0}${chart['suffix'] ?? ''}',
-                          style: const TextStyle(fontWeight: FontWeight.w800),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 5),
-                    LinearProgressIndicator(
-                      value: max == 0 ? 0 : value / max,
-                      minHeight: 8,
-                      borderRadius: BorderRadius.circular(8),
-                      color: accent,
-                      backgroundColor: accent.withValues(alpha: .1),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
+            );
+          }),
+        ],
       ),
     );
   }
@@ -240,75 +241,47 @@ class _GreetingCard extends StatelessWidget {
   final String? className;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(24),
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [accent, Color.lerp(accent, const Color(0xFF111F48), .42)!],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-      borderRadius: BorderRadius.circular(28),
-      boxShadow: [
-        BoxShadow(
-          color: accent.withValues(alpha: .22),
-          blurRadius: 26,
-          offset: const Offset(0, 12),
-        ),
-      ],
-    ),
-    child: Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(_welcome(), style: const TextStyle(color: Colors.white70)),
-              const SizedBox(height: 5),
-              Text(
-                name,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                ),
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          children: [
+            Container(
+              width: 54,
+              height: 54,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: .1),
+                borderRadius: BorderRadius.circular(12),
               ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 11,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: .15),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '${_roleName(role)}${className == null ? '' : ' · $className'}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
+              child: Icon(Icons.school_outlined, color: accent, size: 28),
+            ),
+            const SizedBox(width: 15),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _welcome(),
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
-                ),
+                  const SizedBox(height: 3),
+                  Text(name, style: Theme.of(context).textTheme.headlineSmall),
+                  const SizedBox(height: 5),
+                  Text(
+                    '${_roleName(role)}${className == null ? '' : ' · $className'}',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-        Container(
-          width: 74,
-          height: 74,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: .14),
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: const Icon(
-            Icons.school_rounded,
-            color: Colors.white,
-            size: 38,
-          ),
-        ),
-      ],
-    ),
-  );
+      ),
+    );
+  }
 
   String _welcome() {
     final hour = DateTime.now().hour;
@@ -384,29 +357,34 @@ class _MetricCard extends StatelessWidget {
       const Color(0xFFEF8F35),
     ];
     final color = colors[index % colors.length];
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(17),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.insights_rounded, color: color),
-            const Spacer(),
-            Text(
-              value,
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
-            ),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        ),
+    return GlassPanel(
+      padding: const EdgeInsets.all(17),
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          color.withValues(alpha: .13),
+          Theme.of(context).colorScheme.surface.withValues(alpha: .34),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.insights_rounded, color: color),
+          const Spacer(),
+          Text(
+            value,
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
       ),
     );
   }
@@ -428,7 +406,7 @@ class _InfoTile extends StatelessWidget {
         '${item['title'] ?? item['name'] ?? item['label'] ?? 'Cập nhật'}';
     final subtitle =
         '${item['body'] ?? item['description'] ?? item['value'] ?? item['status'] ?? ''}';
-    return Card(
+    return GlassPanel(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
@@ -451,12 +429,8 @@ class _SoftEmpty extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) => GlassPanel(
     padding: const EdgeInsets.all(22),
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(18),
-    ),
     child: Row(
       children: [
         const Icon(Icons.check_circle_outline_rounded),

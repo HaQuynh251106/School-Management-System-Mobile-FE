@@ -120,8 +120,9 @@ class _TeachingAssignmentScreenState extends State<TeachingAssignmentScreen> {
                 DropdownButtonFormField<String>(
                   initialValue: teacherId,
                   isExpanded: true,
-                  decoration:
-                      const InputDecoration(labelText: 'Giáo viên bộ môn'),
+                  decoration: const InputDecoration(
+                    labelText: 'Giáo viên bộ môn',
+                  ),
                   items: teachers
                       .map(
                         (item) => DropdownMenuItem(
@@ -269,8 +270,9 @@ class _TeachingAssignmentScreenState extends State<TeachingAssignmentScreen> {
   }
 
   Future<void> _edit(Map<String, dynamic> item) async {
-    final controller =
-        TextEditingController(text: '${item['weeklyPeriods'] ?? 1}');
+    final controller = TextEditingController(
+      text: '${item['weeklyPeriods'] ?? 1}',
+    );
     final accepted = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -344,10 +346,9 @@ class _TeachingAssignmentScreenState extends State<TeachingAssignmentScreen> {
     );
     if (accepted != true || !mounted) return;
     try {
-      await context
-          .read<AppSession>()
-          .api
-          .delete('/teaching-assignments/${item['id']}');
+      await context.read<AppSession>().api.delete(
+        '/teaching-assignments/${item['id']}',
+      );
       if (mounted) await _reload();
     } catch (error) {
       if (mounted) _message(_friendly(error));
@@ -439,8 +440,7 @@ class _TeachingAssignmentScreenState extends State<TeachingAssignmentScreen> {
                 width: 260,
                 child: DropdownButtonFormField<String>(
                   initialValue: teacherFilter,
-                  decoration:
-                      const InputDecoration(labelText: 'Lọc giáo viên'),
+                  decoration: const InputDecoration(labelText: 'Lọc giáo viên'),
                   items: [
                     const DropdownMenuItem(
                       value: null,
@@ -498,14 +498,13 @@ class _TeachingAssignmentScreenState extends State<TeachingAssignmentScreen> {
                   separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     final item = filtered[index];
-                    final remaining =
-                        (item['remainingPeriods'] as num? ?? 0).toInt();
+                    final remaining = (item['remainingPeriods'] as num? ?? 0)
+                        .toInt();
                     return Card(
                       child: ListTile(
                         contentPadding: const EdgeInsets.all(14),
                         leading: CircleAvatar(
-                          backgroundColor:
-                              widget.accent.withValues(alpha: .1),
+                          backgroundColor: widget.accent.withValues(alpha: .1),
                           child: Icon(
                             Icons.assignment_ind_outlined,
                             color: widget.accent,

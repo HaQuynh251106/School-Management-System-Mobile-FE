@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../app/session.dart';
 import '../../core/widgets/async_state_view.dart';
+import '../../core/widgets/glass_ui.dart';
 import 'create_record_sheet.dart';
 import 'module_hub_screen.dart';
 
@@ -81,8 +82,9 @@ class _ModuleListScreenState extends State<ModuleListScreen> {
           ),
     body: Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+        GlassPanel(
+          margin: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+          padding: const EdgeInsets.all(7),
           child: SearchBar(
             controller: search,
             hintText: 'Tìm trong ${widget.module.title.toLowerCase()}',
@@ -129,10 +131,7 @@ class _ModuleListScreenState extends State<ModuleListScreen> {
                   : (filtered.length / pageSize).ceil();
               if (currentPage >= pageCount) currentPage = pageCount - 1;
               final start = currentPage * pageSize;
-              final visible = filtered
-                  .skip(start)
-                  .take(pageSize)
-                  .toList();
+              final visible = filtered.skip(start).take(pageSize).toList();
               if (filtered.isEmpty) {
                 return EmptyState(
                   title: 'Chưa có dữ liệu',
@@ -152,13 +151,16 @@ class _ModuleListScreenState extends State<ModuleListScreen> {
                         itemCount: visible.length,
                         separatorBuilder: (context, index) =>
                             const SizedBox(height: 10),
-                  itemBuilder: (_, index) => _DataCard(
-                    data: visible[index],
-                    icon: widget.module.icon,
-                    accent: widget.accent,
-                    endpoint: widget.module.endpoint,
-                    onChanged: reload,
-                  ),
+                        itemBuilder: (_, index) => EntranceMotion(
+                          index: index,
+                          child: _DataCard(
+                            data: visible[index],
+                            icon: widget.module.icon,
+                            accent: widget.accent,
+                            endpoint: widget.module.endpoint,
+                            onChanged: reload,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -256,86 +258,75 @@ class _DataCard extends StatelessWidget {
           (entry) =>
               entry.value != null &&
               entry.value.toString().isNotEmpty &&
-              !const [
-                'id',
-                'title',
-                'name',
-                'fullName',
-                'code',
-              ].contains(entry.key),
+              !_isTechnicalKey(entry.key) &&
+              !const ['title', 'name', 'fullName', 'code'].contains(entry.key),
         )
         .take(3)
         .map((entry) => '${_label(entry.key)}: ${_display(entry.value)}')
         .join(' · ');
-    return Card(
-      margin: EdgeInsets.zero,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: () => showModalBottomSheet(
-          context: context,
-          showDragHandle: true,
-          builder: (_) => _DetailSheet(
-            data: data,
-            title: title,
-            endpoint: endpoint,
-            onChanged: onChanged,
-          ),
+    return GlassPanel(
+      borderRadius: 23,
+      onTap: () => showModalBottomSheet(
+        context: context,
+        showDragHandle: true,
+        builder: (_) => _DetailSheet(
+          data: data,
+          title: title,
+          endpoint: endpoint,
+          onChanged: onChanged,
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(15),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: accent.withValues(alpha: .11),
-                child: Icon(icon, color: accent),
-              ),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(15),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: accent.withValues(alpha: .11),
+              child: Icon(icon, color: accent),
+            ),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title.isEmpty ? 'Bản ghi #${data['id'] ?? ''}' : title,
+                    style: Theme.of(context).textTheme.titleMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (details.isNotEmpty) ...[
+                    const SizedBox(height: 5),
                     Text(
-                      title.isEmpty ? 'Bản ghi #${data['id'] ?? ''}' : title,
-                      style: Theme.of(context).textTheme.titleMedium,
-                      maxLines: 1,
+                      details,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
-                    if (details.isNotEmpty) ...[
-                      const SizedBox(height: 5),
-                      Text(
-                        details,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
                   ],
-                ),
+                ],
               ),
-              if (status.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 9,
-                    vertical: 6,
+            ),
+            if (status.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: .1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  _display(status),
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
                   ),
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: .1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    _display(status),
-                    style: TextStyle(
-                      color: accent,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                )
-              else
-                const Icon(Icons.chevron_right_rounded),
-            ],
-          ),
+                ),
+              )
+            else
+              const Icon(Icons.chevron_right_rounded),
+          ],
         ),
       ),
     );
@@ -381,9 +372,7 @@ class _DetailSheet extends StatelessWidget {
       if (!context.mounted) return;
       navigator.pop();
       onChanged();
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Đã xóa dữ liệu.')),
-      );
+      messenger.showSnackBar(const SnackBar(content: Text('Đã xóa dữ liệu.')));
     } catch (_) {
       if (!context.mounted) return;
       messenger.showSnackBar(
@@ -400,8 +389,7 @@ class _DetailSheet extends StatelessWidget {
     final code = TextEditingController(text: '${data['code'] ?? ''}');
     final name = TextEditingController(text: '${data['name'] ?? ''}');
     final number = TextEditingController(
-      text:
-          '${data['coefficient'] ?? data['capacity'] ?? ''}',
+      text: '${data['coefficient'] ?? data['capacity'] ?? ''}',
     );
     String grade = '${data['gradeLevel'] ?? 'K10'}';
     String shift = '${data['studyShift'] ?? 'MORNING'}';
@@ -430,12 +418,11 @@ class _DetailSheet extends StatelessWidget {
                   const SizedBox(height: 10),
                   TextField(
                     controller: number,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: InputDecoration(
-                      labelText: endpoint == '/subjects'
-                          ? 'Hệ số'
-                          : 'Sức chứa',
+                      labelText: endpoint == '/subjects' ? 'Hệ số' : 'Sức chứa',
                     ),
                   ),
                   if (endpoint == '/classes') ...[
@@ -503,26 +490,26 @@ class _DetailSheet extends StatelessWidget {
     if (accepted != true || !context.mounted) return;
     final payload = switch (endpoint) {
       '/subjects' => {
-          'code': code.text.trim(),
-          'name': name.text.trim(),
-          'coefficient': double.tryParse(number.text.trim()),
-        },
+        'code': code.text.trim(),
+        'name': name.text.trim(),
+        'coefficient': double.tryParse(number.text.trim()),
+      },
       '/rooms' => {
-          'code': code.text.trim(),
-          'name': name.text.trim(),
-          'capacity': int.tryParse(number.text.trim()),
-          'supportsMorning': morning,
-          'supportsAfternoon': afternoon,
-        },
+        'code': code.text.trim(),
+        'name': name.text.trim(),
+        'capacity': int.tryParse(number.text.trim()),
+        'supportsMorning': morning,
+        'supportsAfternoon': afternoon,
+      },
       _ => {
-          'code': code.text.trim(),
-          'name': name.text.trim(),
-          'gradeLevel': grade,
-          'academicYearId': data['academicYearId'],
-          'studyShift': shift,
-          'capacity': int.tryParse(number.text.trim()),
-          'roomId': data['roomId'],
-        },
+        'code': code.text.trim(),
+        'name': name.text.trim(),
+        'gradeLevel': grade,
+        'academicYearId': data['academicYearId'],
+        'studyShift': shift,
+        'capacity': int.tryParse(number.text.trim()),
+        'roomId': data['roomId'],
+      },
     };
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
@@ -563,7 +550,7 @@ class _DetailSheet extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           ...data.entries
-              .where((e) => e.value != null)
+              .where((e) => e.value != null && !_isTechnicalKey(e.key))
               .map(
                 (entry) => Padding(
                   padding: const EdgeInsets.only(bottom: 13),
@@ -692,4 +679,14 @@ String _label(String key) {
         RegExp(r'([A-Z])'),
         (match) => ' ${match.group(1)!.toLowerCase()}',
       );
+}
+
+bool _isTechnicalKey(String key) {
+  final normalized = key.toLowerCase();
+  return normalized == 'id' ||
+      normalized.endsWith('id') ||
+      normalized.endsWith('at') ||
+      normalized == 'createdby' ||
+      normalized == 'updatedby' ||
+      normalized == 'version';
 }

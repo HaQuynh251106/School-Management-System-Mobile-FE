@@ -44,18 +44,17 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen> {
     });
     try {
       final results = await Future.wait([
-        context
-            .read<AppSession>()
-            .api
-            .list('/classes/${slot['classId']}/students'),
-        context.read<AppSession>().api.list('/attendance', query: {
-          'slotId': id,
-          'date': dateText,
-        }),
-        context.read<AppSession>().api.map('/attendance/session-status', query: {
-          'slotId': id,
-          'date': dateText,
-        }),
+        context.read<AppSession>().api.list(
+          '/classes/${slot['classId']}/students',
+        ),
+        context.read<AppSession>().api.list(
+          '/attendance',
+          query: {'slotId': id, 'date': dateText},
+        ),
+        context.read<AppSession>().api.map(
+          '/attendance/session-status',
+          query: {'slotId': id, 'date': dateText},
+        ),
       ]);
       final roster = results[0] as List<Map<String, dynamic>>;
       final existing = results[1] as List<Map<String, dynamic>>;
@@ -64,9 +63,9 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen> {
         ..addEntries(
           roster.map((student) {
             final current = existing.cast<Map<String, dynamic>?>().firstWhere(
-                  (mark) => '${mark?['studentId']}' == '${student['id']}',
-                  orElse: () => null,
-                );
+              (mark) => '${mark?['studentId']}' == '${student['id']}',
+              orElse: () => null,
+            );
             return MapEntry(
               '${student['id']}',
               '${current?['status'] ?? 'PRESENT'}',
@@ -138,18 +137,21 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen> {
     if (slotId == null || students.isEmpty) return;
     setState(() => saving = true);
     try {
-      await context.read<AppSession>().api.dio.post('/attendance/bulk', data: {
-        'slotId': slotId,
-        'date': dateText,
-        'marks': students
-            .map(
-              (student) => {
-                'studentId': student['id'],
-                'status': status['${student['id']}'] ?? 'PRESENT',
-              },
-            )
-            .toList(),
-      });
+      await context.read<AppSession>().api.dio.post(
+        '/attendance/bulk',
+        data: {
+          'slotId': slotId,
+          'date': dateText,
+          'marks': students
+              .map(
+                (student) => {
+                  'studentId': student['id'],
+                  'status': status['${student['id']}'] ?? 'PRESENT',
+                },
+              )
+              .toList(),
+        },
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -161,9 +163,9 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen> {
       await selectSlot(slotId!);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không thể lưu: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Không thể lưu: $error')));
     } finally {
       if (mounted) setState(() => saving = false);
     }
@@ -171,127 +173,120 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Sổ điểm danh')),
-        body: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  FutureBuilder<List<Map<String, dynamic>>>(
-                    future: slotsFuture,
-                    builder: (context, snapshot) => DropdownButtonFormField<String>(
-                      initialValue: slotId,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Tiết học đúng phân công',
-                        prefixIcon: Icon(Icons.schedule),
-                      ),
-                      items: (snapshot.data ?? [])
-                          .map(
-                            (slot) => DropdownMenuItem(
-                              value: '${slot['id']}',
-                              child: Text(
-                                '${slot['classCode'] ?? slot['classId']} · ${slot['subjectName']} · Tiết ${slot['periodNo']}',
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
+    appBar: AppBar(title: const Text('Sổ điểm danh')),
+    body: Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              FutureBuilder<List<Map<String, dynamic>>>(
+                future: slotsFuture,
+                builder: (context, snapshot) => DropdownButtonFormField<String>(
+                  initialValue: slotId,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Tiết học đúng phân công',
+                    prefixIcon: Icon(Icons.schedule),
+                  ),
+                  items: (snapshot.data ?? [])
+                      .map(
+                        (slot) => DropdownMenuItem(
+                          value: '${slot['id']}',
+                          child: Text(
+                            '${slot['classCode'] ?? slot['classId']} · ${slot['subjectName']} · Tiết ${slot['periodNo']}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) selectSlot(value);
+                  },
+                ),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: chooseDate,
+                icon: const Icon(Icons.calendar_today),
+                label: Text(DateFormat('dd/MM/yyyy').format(date)),
+              ),
+              if (sessionStatus != null &&
+                  sessionStatus!['canMark'] == false) ...[
+                const SizedBox(height: 10),
+                Card(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  child: ListTile(
+                    title: Text('${sessionStatus!['message']}'),
+                    trailing: sessionStatus!['requiresUnlockReason'] == true
+                        ? FilledButton(
+                            onPressed: unlock,
+                            child: const Text('Mở khóa'),
                           )
-                          .toList(),
-                      onChanged: (value) {
-                        if (value != null) selectSlot(value);
-                      },
-                    ),
+                        : null,
                   ),
-                  const SizedBox(height: 10),
-                  OutlinedButton.icon(
-                    onPressed: chooseDate,
-                    icon: const Icon(Icons.calendar_today),
-                    label: Text(DateFormat('dd/MM/yyyy').format(date)),
-                  ),
-                  if (sessionStatus != null &&
-                      sessionStatus!['canMark'] == false) ...[
-                    const SizedBox(height: 10),
-                    Card(
-                      color: Theme.of(context).colorScheme.errorContainer,
-                      child: ListTile(
-                        title: Text('${sessionStatus!['message']}'),
-                        trailing: sessionStatus!['requiresUnlockReason'] == true
-                            ? FilledButton(
-                                onPressed: unlock,
-                                child: const Text('Mở khóa'),
-                              )
-                            : null,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            Expanded(
-              child: loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : slotId == null
-                      ? const Center(child: Text('Chọn một tiết học để bắt đầu'))
-                      : students.isEmpty
-                          ? const Center(child: Text('Lớp chưa có học sinh'))
-                          : ListView.separated(
-                              padding: const EdgeInsets.fromLTRB(12, 0, 12, 100),
-                              itemCount: students.length,
-                              separatorBuilder: (_, _) =>
-                                  const SizedBox(height: 8),
-                              itemBuilder: (context, index) {
-                                final student = students[index];
-                                final id = '${student['id']}';
-                                return Card(
-                                  child: ListTile(
-                                    leading: CircleAvatar(
-                                      child: Text('${index + 1}'),
-                                    ),
-                                    title: Text('${student['fullName']}'),
-                                    subtitle: Text(
-                                      '${student['studentCode'] ?? ''}',
-                                    ),
-                                    trailing: DropdownButton<String>(
-                                      value: status[id] ?? 'PRESENT',
-                                      items: const [
-                                        DropdownMenuItem(
-                                          value: 'PRESENT',
-                                          child: Text('Có mặt'),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: 'LATE',
-                                          child: Text('Đi muộn'),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: 'ABSENT_EXCUSED',
-                                          child: Text('Vắng phép'),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: 'ABSENT_UNEXCUSED',
-                                          child: Text('Vắng'),
-                                        ),
-                                      ],
-                                      onChanged: (value) => setState(
-                                        () => status[id] = value ?? 'PRESENT',
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-            ),
-          ],
+                ),
+              ],
+            ],
+          ),
         ),
-        floatingActionButton: students.isEmpty ||
-                sessionStatus?['canMark'] == false
-            ? null
-            : FloatingActionButton.extended(
-                onPressed: saving ? null : save,
-                backgroundColor: widget.accent,
-                foregroundColor: Colors.white,
-                icon: const Icon(Icons.save),
-                label: Text(saving ? 'Đang lưu...' : 'Lưu điểm danh'),
-              ),
-      );
+        Expanded(
+          child: loading
+              ? const Center(child: CircularProgressIndicator())
+              : slotId == null
+              ? const Center(child: Text('Chọn một tiết học để bắt đầu'))
+              : students.isEmpty
+              ? const Center(child: Text('Lớp chưa có học sinh'))
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 100),
+                  itemCount: students.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final student = students[index];
+                    final id = '${student['id']}';
+                    return Card(
+                      child: ListTile(
+                        leading: CircleAvatar(child: Text('${index + 1}')),
+                        title: Text('${student['fullName']}'),
+                        subtitle: Text('${student['studentCode'] ?? ''}'),
+                        trailing: DropdownButton<String>(
+                          value: status[id] ?? 'PRESENT',
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'PRESENT',
+                              child: Text('Có mặt'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'LATE',
+                              child: Text('Đi muộn'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'ABSENT_EXCUSED',
+                              child: Text('Vắng phép'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'ABSENT_UNEXCUSED',
+                              child: Text('Vắng'),
+                            ),
+                          ],
+                          onChanged: (value) =>
+                              setState(() => status[id] = value ?? 'PRESENT'),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    ),
+    floatingActionButton: students.isEmpty || sessionStatus?['canMark'] == false
+        ? null
+        : FloatingActionButton.extended(
+            onPressed: saving ? null : save,
+            backgroundColor: widget.accent,
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.save),
+            label: Text(saving ? 'Đang lưu...' : 'Lưu điểm danh'),
+          ),
+  );
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'glass_ui.dart';
 
 class AsyncStateView<T> extends StatelessWidget {
   const AsyncStateView({
@@ -21,7 +22,8 @@ class AsyncStateView<T> extends StatelessWidget {
       }
       if (snapshot.hasError) {
         return Center(
-          child: Padding(
+          child: GlassPanel(
+            margin: const EdgeInsets.all(24),
             padding: const EdgeInsets.all(28),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -83,7 +85,8 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-    child: Padding(
+    child: GlassPanel(
+      margin: const EdgeInsets.all(24),
       padding: const EdgeInsets.all(32),
       child: Column(
         mainAxisSize: MainAxisSize.min,

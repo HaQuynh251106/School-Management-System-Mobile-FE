@@ -11,8 +11,7 @@ class UsersManagementScreen extends StatefulWidget {
   final Color accent;
 
   @override
-  State<UsersManagementScreen> createState() =>
-      _UsersManagementScreenState();
+  State<UsersManagementScreen> createState() => _UsersManagementScreenState();
 }
 
 class _UsersManagementScreenState extends State<UsersManagementScreen> {
@@ -67,10 +66,12 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
         users = (rawItems as List)
             .map((item) => Map<String, dynamic>.from(item as Map))
             .toList();
-        totalPages =
-            (result['totalPages'] as num? ?? 1).toInt().clamp(1, 999999);
-        totalElements =
-            (result['totalElements'] as num? ?? users.length).toInt();
+        totalPages = (result['totalPages'] as num? ?? 1).toInt().clamp(
+          1,
+          999999,
+        );
+        totalElements = (result['totalElements'] as num? ?? users.length)
+            .toInt();
         loading = false;
       });
     } catch (error) {
@@ -86,8 +87,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) =>
-          CreateRecordSheet(kind: 'user', accent: widget.accent),
+      builder: (_) => CreateRecordSheet(kind: 'user', accent: widget.accent),
     );
     if (changed == true) _reload();
   }
@@ -113,8 +113,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
     final email = TextEditingController(text: '${user['email'] ?? ''}');
     final phone = TextEditingController(text: '${user['phone'] ?? ''}');
     final code = TextEditingController(
-      text:
-          '${user['teacherCode'] ?? user['studentCode'] ?? ''}',
+      text: '${user['teacherCode'] ?? user['studentCode'] ?? ''}',
     );
     String? selectedClass = user['classId']?.toString();
     final accepted = await showDialog<bool>(
@@ -140,8 +139,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                   const SizedBox(height: 10),
                   TextField(
                     controller: phone,
-                    decoration:
-                        const InputDecoration(labelText: 'Điện thoại'),
+                    decoration: const InputDecoration(labelText: 'Điện thoại'),
                   ),
                   const SizedBox(height: 10),
                   TextField(
@@ -192,10 +190,8 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
         'fullName': fullName.text.trim(),
         'email': email.text.trim(),
         'phone': phone.text.trim(),
-        if ('${user['role']}' == 'TEACHER')
-          'teacherCode': code.text.trim(),
-        if ('${user['role']}' == 'STUDENT')
-          'studentCode': code.text.trim(),
+        if ('${user['role']}' == 'TEACHER') 'teacherCode': code.text.trim(),
+        if ('${user['role']}' == 'STUDENT') 'studentCode': code.text.trim(),
         if ('${user['role']}' == 'STUDENT') 'classId': selectedClass,
       });
       if (mounted) await _reload();
@@ -317,8 +313,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                     width: 210,
                     child: DropdownButtonFormField<String>(
                       initialValue: role,
-                      decoration:
-                          const InputDecoration(labelText: 'Vai trò'),
+                      decoration: const InputDecoration(labelText: 'Vai trò'),
                       items: const [
                         DropdownMenuItem(
                           value: 'ALL',
@@ -381,8 +376,9 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                     width: 210,
                     child: DropdownButtonFormField<String>(
                       initialValue: status,
-                      decoration:
-                          const InputDecoration(labelText: 'Trạng thái'),
+                      decoration: const InputDecoration(
+                        labelText: 'Trạng thái',
+                      ),
                       items: const [
                         DropdownMenuItem(
                           value: 'ALL',
@@ -425,8 +421,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                       child: ListTile(
                         contentPadding: const EdgeInsets.all(12),
                         leading: CircleAvatar(
-                          backgroundColor:
-                              widget.accent.withValues(alpha: .1),
+                          backgroundColor: widget.accent.withValues(alpha: .1),
                           child: Text(
                             '${user['fullName'] ?? '?'}'
                                 .trim()

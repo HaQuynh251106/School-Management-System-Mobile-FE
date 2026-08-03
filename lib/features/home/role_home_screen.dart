@@ -82,7 +82,7 @@ class _RoleHomeScreenState extends State<RoleHomeScreen> {
           bottomNavigationBar: NavigationBar(
             selectedIndex: index,
             onDestinationSelected: (value) => setState(() => index = value),
-            indicatorColor: accent.withValues(alpha: .14),
+            indicatorColor: accent.withValues(alpha: .12),
             destinations: config.destinations.indexed
                 .map(
                   (entry) => NavigationDestination(
@@ -114,10 +114,10 @@ class _NavIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Badge(
-        isLabelVisible: count > 0,
-        label: Text(count > 99 ? '99+' : '$count'),
-        child: Icon(icon, color: color),
-      );
+    isLabelVisible: count > 0,
+    label: Text(count > 99 ? '99+' : '$count'),
+    child: Icon(icon, color: color),
+  );
 }
 
 class _AppMark extends StatelessWidget {

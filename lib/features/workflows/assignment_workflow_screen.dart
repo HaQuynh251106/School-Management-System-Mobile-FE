@@ -171,17 +171,13 @@ class _AssignmentWorkflowScreenState extends State<AssignmentWorkflowScreen> {
       if (selected != null) {
         final bytes = selected!.bytes;
         if (bytes == null) throw StateError('Không đọc được tệp đã chọn.');
-        final file = await api.upload(
-          '/files',
-          bytes,
-          selected!.name,
-        );
+        final file = await api.upload('/files', bytes, selected!.name);
         fileId = '${file['id']}';
       }
-      await api.post(
-        '/assignments/${assignment['id']}/submit',
-        {'content': content.text.trim(), 'attachmentFileId': fileId},
-      );
+      await api.post('/assignments/${assignment['id']}/submit', {
+        'content': content.text.trim(),
+        'attachmentFileId': fileId,
+      });
       if (mounted) {
         _message('Đã nộp bài thành công.');
         _reload();
@@ -197,10 +193,8 @@ class _AssignmentWorkflowScreenState extends State<AssignmentWorkflowScreen> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => _SubmissionScreen(
-          assignment: assignment,
-          accent: widget.accent,
-        ),
+        builder: (_) =>
+            _SubmissionScreen(assignment: assignment, accent: widget.accent),
       ),
     );
     _reload();
@@ -260,8 +254,9 @@ class _AssignmentWorkflowScreenState extends State<AssignmentWorkflowScreen> {
                       Row(
                         children: [
                           CircleAvatar(
-                            backgroundColor:
-                                widget.accent.withValues(alpha: .1),
+                            backgroundColor: widget.accent.withValues(
+                              alpha: .1,
+                            ),
                             child: Icon(
                               isSubmissionList
                                   ? Icons.cloud_done_outlined
@@ -276,8 +271,9 @@ class _AssignmentWorkflowScreenState extends State<AssignmentWorkflowScreen> {
                               children: [
                                 Text(
                                   '${item['title'] ?? item['assignmentTitle'] ?? 'Bài tập'}',
-                                  style:
-                                      Theme.of(context).textTheme.titleMedium,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
                                 ),
                                 Text(
                                   'Hạn: ${item['deadline'] ?? 'Không giới hạn'}',
@@ -381,8 +377,9 @@ class _SubmissionScreenState extends State<_SubmissionScreen> {
 
   Future<void> _grade(Map<String, dynamic> submission) async {
     final score = TextEditingController(text: '${submission['score'] ?? ''}');
-    final feedback =
-        TextEditingController(text: '${submission['feedback'] ?? ''}');
+    final feedback = TextEditingController(
+      text: '${submission['feedback'] ?? ''}',
+    );
     final accepted = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -392,8 +389,9 @@ class _SubmissionScreenState extends State<_SubmissionScreen> {
           children: [
             TextField(
               controller: score,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(labelText: 'Điểm /10'),
             ),
             const SizedBox(height: 12),
@@ -429,7 +427,9 @@ class _SubmissionScreenState extends State<_SubmissionScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text('${widget.assignment['title'] ?? 'Bài đã nộp'}')),
+    appBar: AppBar(
+      title: Text('${widget.assignment['title'] ?? 'Bài đã nộp'}'),
+    ),
     body: FutureBuilder<List<Map<String, dynamic>>>(
       future: future,
       builder: (context, snapshot) {
@@ -459,10 +459,14 @@ class _SubmissionScreenState extends State<_SubmissionScreen> {
                   onSelected: (value) {
                     if (value == 'grade') _grade(item);
                     if (value == 'resubmit') {
-                      context.read<AppSession>().api.post(
-                        '/submissions/${item['id']}/allow-resubmit',
-                        const {},
-                      ).then((_) => setState(() => future = _load()));
+                      context
+                          .read<AppSession>()
+                          .api
+                          .post(
+                            '/submissions/${item['id']}/allow-resubmit',
+                            const {},
+                          )
+                          .then((_) => setState(() => future = _load()));
                     }
                   },
                   itemBuilder: (_) => const [

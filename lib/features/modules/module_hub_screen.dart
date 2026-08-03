@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/widgets/glass_ui.dart';
 import 'module_router.dart';
 
 enum ModuleGroup {
@@ -57,7 +58,13 @@ class ModuleHubScreen extends StatelessWidget {
             ),
           ),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(18, 10, 18, 120),
+            padding: const EdgeInsets.fromLTRB(18, 4, 18, 10),
+            sliver: SliverToBoxAdapter(
+              child: _ModuleBanner(spec: spec, accent: accent),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(18, 4, 18, 120),
             sliver: SliverGrid.builder(
               itemCount: spec.modules.length,
               gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
@@ -68,13 +75,16 @@ class ModuleHubScreen extends StatelessWidget {
               ),
               itemBuilder: (context, index) {
                 final module = spec.modules[index];
-                return _ModuleCard(
-                  module: module,
-                  accent: accent,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          buildModuleScreen(module: module, accent: accent),
+                return EntranceMotion(
+                  index: index,
+                  child: _ModuleCard(
+                    module: module,
+                    accent: accent,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            buildModuleScreen(module: module, accent: accent),
+                      ),
                     ),
                   ),
                 );
@@ -85,6 +95,47 @@ class ModuleHubScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ModuleBanner extends StatelessWidget {
+  const _ModuleBanner({required this.spec, required this.accent});
+  final _GroupSpec spec;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(18),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: .1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.apps_rounded, color: accent),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(spec.title, style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 3),
+                Text(
+                  '${spec.modules.length} chức năng · Chọn một mục để bắt đầu',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _ModuleCard extends StatelessWidget {
@@ -99,7 +150,6 @@ class _ModuleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-    margin: EdgeInsets.zero,
     clipBehavior: Clip.antiAlias,
     child: InkWell(
       onTap: onTap,

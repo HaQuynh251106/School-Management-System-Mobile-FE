@@ -42,10 +42,7 @@ class _AcademicStructureScreenState extends State<AcademicStructureScreen>
       yearId ??= loadedYears.isEmpty ? null : '${loadedYears.first['id']}';
       final loadedSemesters = yearId == null
           ? <Map<String, dynamic>>[]
-          : await api.list(
-              '/semesters',
-              query: {'academicYearId': yearId},
-            );
+          : await api.list('/semesters', query: {'academicYearId': yearId});
       if (!mounted) return;
       setState(() {
         years = loadedYears;
@@ -98,8 +95,7 @@ class _AcademicStructureScreenState extends State<AcademicStructureScreen>
                 const SizedBox(height: 10),
                 TextField(
                   controller: name,
-                  decoration:
-                      const InputDecoration(labelText: 'Tên học kỳ'),
+                  decoration: const InputDecoration(labelText: 'Tên học kỳ'),
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<int>(
@@ -174,10 +170,9 @@ class _AcademicStructureScreenState extends State<AcademicStructureScreen>
     String status,
   ) async {
     try {
-      await context
-          .read<AppSession>()
-          .api
-          .put('/$type/${item['id']}/status', {'status': status});
+      await context.read<AppSession>().api.put('/$type/${item['id']}/status', {
+        'status': status,
+      });
       if (mounted) await _reload();
     } catch (error) {
       if (mounted) _message(_friendly(error));
@@ -215,10 +210,9 @@ class _AcademicStructureScreenState extends State<AcademicStructureScreen>
 
   Future<List<Map<String, dynamic>>> _promotionPreview() async {
     if (yearId == null) return [];
-    return context
-        .read<AppSession>()
-        .api
-        .list('/academic-years/$yearId/promotion-preview');
+    return context.read<AppSession>().api.list(
+      '/academic-years/$yearId/promotion-preview',
+    );
   }
 
   String _friendly(Object error) {
@@ -239,13 +233,11 @@ class _AcademicStructureScreenState extends State<AcademicStructureScreen>
   }
 
   Widget _statusChip(String status) => Chip(
-    label: Text(
-      switch (status) {
-        'ACTIVE' => 'Đang hoạt động',
-        'CLOSED' => 'Đã kết thúc',
-        _ => 'Đã lên kế hoạch',
-      },
-    ),
+    label: Text(switch (status) {
+      'ACTIVE' => 'Đang hoạt động',
+      'CLOSED' => 'Đã kết thúc',
+      _ => 'Đã lên kế hoạch',
+    }),
   );
 
   String _conduct(dynamic value) => switch ('$value') {
@@ -283,8 +275,7 @@ class _AcademicStructureScreenState extends State<AcademicStructureScreen>
                   color: widget.accent,
                 ),
                 title: Text('${item['name'] ?? item['code']}'),
-                subtitle:
-                    Text('${item['startDate']} – ${item['endDate']}'),
+                subtitle: Text('${item['startDate']} – ${item['endDate']}'),
                 trailing: _statusChip(status),
               ),
               Wrap(
@@ -292,14 +283,12 @@ class _AcademicStructureScreenState extends State<AcademicStructureScreen>
                 children: [
                   if (status == 'PLANNED')
                     FilledButton.tonal(
-                      onPressed: () =>
-                          _status('academicYears', item, 'ACTIVE'),
+                      onPressed: () => _status('academicYears', item, 'ACTIVE'),
                       child: const Text('Kích hoạt'),
                     ),
                   if (status == 'ACTIVE')
                     OutlinedButton(
-                      onPressed: () =>
-                          _status('academicYears', item, 'CLOSED'),
+                      onPressed: () => _status('academicYears', item, 'CLOSED'),
                       child: const Text('Kết thúc năm học'),
                     ),
                   if (status == 'PLANNED')
@@ -397,9 +386,7 @@ class _AcademicStructureScreenState extends State<AcademicStructureScreen>
               subtitle: Text(
                 'TB năm: ${item['yearAverage'] ?? '—'} · Hạnh kiểm: ${_conduct(item['conductGrade'])}',
               ),
-              trailing: Chip(
-                label: Text(_promotion(item['promotionStatus'])),
-              ),
+              trailing: Chip(label: Text(_promotion(item['promotionStatus']))),
             ),
           );
         },
@@ -432,9 +419,7 @@ class _AcademicStructureScreenState extends State<AcademicStructureScreen>
               backgroundColor: widget.accent,
               foregroundColor: Colors.white,
               icon: const Icon(Icons.add_rounded),
-              label: Text(
-                tabs.index == 0 ? 'Tạo năm học' : 'Tạo học kỳ',
-              ),
+              label: Text(tabs.index == 0 ? 'Tạo năm học' : 'Tạo học kỳ'),
             ),
     ),
     body: Column(

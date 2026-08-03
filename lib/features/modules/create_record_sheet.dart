@@ -180,10 +180,10 @@ class _FormFieldState extends State<_FormField> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (widget.field.type == _FieldType.remoteSelect &&
-        optionsFuture == null) {
-      optionsFuture =
-          context.read<AppSession>().api.list(widget.field.endpoint!);
+    if (widget.field.type == _FieldType.remoteSelect && optionsFuture == null) {
+      optionsFuture = context.read<AppSession>().api.list(
+        widget.field.endpoint!,
+      );
     }
   }
 
@@ -262,8 +262,9 @@ class _FormFieldState extends State<_FormField> {
             setState(() => enabled = value);
           },
           subtitle: Text((state.value ?? false) ? 'Đã bật' : 'Chưa bật'),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
       );
     }
@@ -395,11 +396,7 @@ class _CreateSpec {
           'Khối',
           Icons.stairs_outlined,
           type: _FieldType.select,
-          options: [
-            ('K10', 'Khối 10'),
-            ('K11', 'Khối 11'),
-            ('K12', 'Khối 12'),
-          ],
+          options: [('K10', 'Khối 10'), ('K11', 'Khối 11'), ('K12', 'Khối 12')],
         ),
         _FieldSpec(
           'startDate',
@@ -471,11 +468,7 @@ class _CreateSpec {
           'Khối',
           Icons.stairs_outlined,
           type: _FieldType.select,
-          options: [
-            ('K10', 'Khối 10'),
-            ('K11', 'Khối 11'),
-            ('K12', 'Khối 12'),
-          ],
+          options: [('K10', 'Khối 10'), ('K11', 'Khối 11'), ('K12', 'Khối 12')],
         ),
         _FieldSpec(
           'academicYearId',
@@ -585,11 +578,7 @@ class _CreateSpec {
             ('K10,K11,K12', 'Toàn trường'),
           ],
         ),
-        _FieldSpec(
-          'feeItemName',
-          'Tên khoản thu',
-          Icons.receipt_long_outlined,
-        ),
+        _FieldSpec('feeItemName', 'Tên khoản thu', Icons.receipt_long_outlined),
         _FieldSpec(
           'amount',
           'Số tiền',

@@ -8,16 +8,14 @@ class AttendanceViewerScreen extends StatefulWidget {
   final Color accent;
 
   @override
-  State<AttendanceViewerScreen> createState() =>
-      _AttendanceViewerScreenState();
+  State<AttendanceViewerScreen> createState() => _AttendanceViewerScreenState();
 }
 
 class _AttendanceViewerScreenState extends State<AttendanceViewerScreen> {
   late Future<List<Map<String, dynamic>>> future;
   String filter = 'ALL';
 
-  bool get isParent =>
-      context.read<AppSession>().user?.role == 'PARENT';
+  bool get isParent => context.read<AppSession>().user?.role == 'PARENT';
 
   @override
   void initState() {
@@ -27,10 +25,13 @@ class _AttendanceViewerScreenState extends State<AttendanceViewerScreen> {
 
   Future<List<Map<String, dynamic>>> _load() {
     final session = context.read<AppSession>();
-    return session.api.list('/attendance', query: {
-      if (isParent && session.selectedChildId != null)
-        'studentId': session.selectedChildId,
-    });
+    return session.api.list(
+      '/attendance',
+      query: {
+        if (isParent && session.selectedChildId != null)
+          'studentId': session.selectedChildId,
+      },
+    );
   }
 
   void _reload() => setState(() => future = _load());
@@ -81,8 +82,7 @@ class _AttendanceViewerScreenState extends State<AttendanceViewerScreen> {
                         .map(
                           (item) => DropdownMenuItem(
                             value: '${item['id']}',
-                            child:
-                                Text('${item['fullName'] ?? item['name']}'),
+                            child: Text('${item['fullName'] ?? item['name']}'),
                           ),
                         )
                         .toList(),
@@ -110,8 +110,7 @@ class _AttendanceViewerScreenState extends State<AttendanceViewerScreen> {
                           child: ChoiceChip(
                             label: Text(item.$2),
                             selected: filter == item.$1,
-                            onSelected: (_) =>
-                                setState(() => filter = item.$1),
+                            onSelected: (_) => setState(() => filter = item.$1),
                           ),
                         ),
                     ],
@@ -151,8 +150,9 @@ class _AttendanceViewerScreenState extends State<AttendanceViewerScreen> {
                     return Card(
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor:
-                              _color(status).withValues(alpha: .12),
+                          backgroundColor: _color(
+                            status,
+                          ).withValues(alpha: .12),
                           child: Icon(
                             status == 'PRESENT'
                                 ? Icons.check_rounded

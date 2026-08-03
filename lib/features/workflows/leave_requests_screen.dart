@@ -46,7 +46,9 @@ class _LeaveRequestsScreenState extends State<LeaveRequestsScreen> {
         content: TextField(
           controller: note,
           maxLines: 3,
-          decoration: const InputDecoration(labelText: 'Ghi chú (không bắt buộc)'),
+          decoration: const InputDecoration(
+            labelText: 'Ghi chú (không bắt buộc)',
+          ),
         ),
         actions: [
           TextButton(
@@ -70,7 +72,9 @@ class _LeaveRequestsScreenState extends State<LeaveRequestsScreen> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không thể xử lý đơn ở trạng thái hiện tại')),
+        const SnackBar(
+          content: Text('Không thể xử lý đơn ở trạng thái hiện tại'),
+        ),
       );
     }
   }
@@ -108,7 +112,7 @@ class _LeaveRequestsScreenState extends State<LeaveRequestsScreen> {
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
               itemCount: items.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 10),
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
                 final item = items[index];
                 final actions = _actions(role, '${item['status']}');
@@ -145,7 +149,8 @@ class _LeaveRequestsScreenState extends State<LeaveRequestsScreen> {
                             runSpacing: 8,
                             children: actions
                                 .map(
-                                  (action) => action.contains('reject') ||
+                                  (action) =>
+                                      action.contains('reject') ||
                                           action == 'cancel'
                                       ? OutlinedButton(
                                           onPressed: () =>
@@ -188,20 +193,20 @@ class _LeaveRequestsScreenState extends State<LeaveRequestsScreen> {
   }
 
   String _actionLabel(String action) => switch (action) {
-        'parent-confirm' => 'Phụ huynh xác nhận',
-        'parent-reject' => 'Phụ huynh từ chối',
-        'approve' => 'GVCN duyệt',
-        'reject' => 'GVCN từ chối',
-        'cancel' => 'Hủy đơn',
-        _ => action,
-      };
+    'parent-confirm' => 'Phụ huynh xác nhận',
+    'parent-reject' => 'Phụ huynh từ chối',
+    'approve' => 'GVCN duyệt',
+    'reject' => 'GVCN từ chối',
+    'cancel' => 'Hủy đơn',
+    _ => action,
+  };
 
   String _status(String status) => switch (status) {
-        'PENDING_PARENT' => 'Chờ phụ huynh',
-        'PENDING_HOMEROOM' => 'Chờ GVCN',
-        'APPROVED' => 'Đã duyệt',
-        'REJECTED' => 'Từ chối',
-        'CANCELLED' => 'Đã hủy',
-        _ => status,
-      };
+    'PENDING_PARENT' => 'Chờ phụ huynh',
+    'PENDING_HOMEROOM' => 'Chờ GVCN',
+    'APPROVED' => 'Đã duyệt',
+    'REJECTED' => 'Từ chối',
+    'CANCELLED' => 'Đã hủy',
+    _ => status,
+  };
 }

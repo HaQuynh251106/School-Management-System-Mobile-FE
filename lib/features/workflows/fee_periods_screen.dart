@@ -70,10 +70,9 @@ class _FeePeriodsScreenState extends State<FeePeriodsScreen> {
     );
     if (accepted != true || !mounted) return;
     try {
-      await context
-          .read<AppSession>()
-          .api
-          .delete('/fee-periods/${period['id']}');
+      await context.read<AppSession>().api.delete(
+        '/fee-periods/${period['id']}',
+      );
       if (mounted) _reload();
     } catch (error) {
       if (mounted) _message(_friendly(error));
@@ -81,10 +80,9 @@ class _FeePeriodsScreenState extends State<FeePeriodsScreen> {
   }
 
   Future<void> _details(Map<String, dynamic> period) async {
-    final items = await context
-        .read<AppSession>()
-        .api
-        .list('/fee-periods/${period['id']}/items');
+    final items = await context.read<AppSession>().api.list(
+      '/fee-periods/${period['id']}/items',
+    );
     if (!mounted) return;
     await showModalBottomSheet<void>(
       context: context,
@@ -204,8 +202,9 @@ class _FeePeriodsScreenState extends State<FeePeriodsScreen> {
                       Row(
                         children: [
                           CircleAvatar(
-                            backgroundColor:
-                                widget.accent.withValues(alpha: .1),
+                            backgroundColor: widget.accent.withValues(
+                              alpha: .1,
+                            ),
                             child: Icon(
                               Icons.account_balance_wallet_outlined,
                               color: widget.accent,
@@ -218,8 +217,9 @@ class _FeePeriodsScreenState extends State<FeePeriodsScreen> {
                               children: [
                                 Text(
                                   '${item['name'] ?? item['code']}',
-                                  style:
-                                      Theme.of(context).textTheme.titleMedium,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
                                 ),
                                 Text(
                                   '${item['code']} · Hạn ${item['dueDate'] ?? 'chưa đặt'} · Khối ${item['applyToGrades'] ?? 'toàn trường'}',
@@ -228,13 +228,11 @@ class _FeePeriodsScreenState extends State<FeePeriodsScreen> {
                             ),
                           ),
                           Chip(
-                            label: Text(
-                              switch (status) {
-                                'OPEN' => 'Đang thu',
-                                'CLOSED' => 'Đã kết thúc',
-                                _ => 'Bản nháp',
-                              },
-                            ),
+                            label: Text(switch (status) {
+                              'OPEN' => 'Đang thu',
+                              'CLOSED' => 'Đã kết thúc',
+                              _ => 'Bản nháp',
+                            }),
                           ),
                         ],
                       ),

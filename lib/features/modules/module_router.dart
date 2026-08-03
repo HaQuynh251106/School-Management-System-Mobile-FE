@@ -14,6 +14,7 @@ import '../workflows/finance_overview_screen.dart';
 import '../workflows/grade_viewer_screen.dart';
 import '../workflows/leave_requests_screen.dart';
 import '../workflows/teacher_attendance_screen.dart';
+import '../workflows/teacher_classes_screen.dart';
 import '../workflows/teacher_gradebook_screen.dart';
 import '../workflows/teaching_assignment_screen.dart';
 import '../workflows/timetable_viewer_screen.dart';
@@ -21,10 +22,7 @@ import '../workflows/users_management_screen.dart';
 import 'module_hub_screen.dart';
 import 'module_list_screen.dart';
 
-Widget buildModuleScreen({
-  required AppModule module,
-  required Color accent,
-}) {
+Widget buildModuleScreen({required AppModule module, required Color accent}) {
   return Builder(
     builder: (context) {
       final role = context.read<AppSession>().user?.role;
@@ -42,10 +40,7 @@ Widget buildModuleScreen({
       }
       if ((role == 'TEACHER' || role == 'STUDENT' || role == 'PARENT') &&
           module.endpoint == '/me/timetable') {
-        return TimetableViewerScreen(
-          title: module.title,
-          accent: accent,
-        );
+        return TimetableViewerScreen(title: module.title, accent: accent);
       }
       if ((role == 'STUDENT' || role == 'PARENT') &&
           module.endpoint == '/grades') {
@@ -55,8 +50,7 @@ Widget buildModuleScreen({
           module.endpoint == '/attendance') {
         return AttendanceViewerScreen(accent: accent);
       }
-      if (role == 'ADMIN' &&
-          module.endpoint == '/teaching-assignments') {
+      if (role == 'ADMIN' && module.endpoint == '/teaching-assignments') {
         return TeachingAssignmentScreen(accent: accent);
       }
       if (role == 'ADMIN' && module.endpoint == '/fee-periods') {
@@ -71,6 +65,9 @@ Widget buildModuleScreen({
       }
       if (role == 'TEACHER' && module.endpoint == '/attendance') {
         return TeacherAttendanceScreen(accent: accent);
+      }
+      if (role == 'TEACHER' && module.endpoint == '/me/teaching-classes') {
+        return TeacherClassesScreen(accent: accent);
       }
       if (role == 'TEACHER' && module.endpoint == '/grades') {
         return TeacherGradebookScreen(accent: accent);
