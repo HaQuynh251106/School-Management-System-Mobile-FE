@@ -1,9 +1,13 @@
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/di/service_locator.dart';
 import '../../core/network/api_service.dart';
 import '../../core/theme/app_colors.dart';
+import 'real_dashboard_panel.dart';
 
 class MobileWorkspacePage extends StatefulWidget {
   const MobileWorkspacePage({
@@ -26,20 +30,55 @@ class _MobileWorkspacePageState extends State<MobileWorkspacePage> {
 
   Future<_WorkspaceData> _load() async {
     final api = sl<ApiService>();
-    final dashboard = await api.dashboard(childId: widget.childId);
-    final leaves = widget.role == 'ADMIN'
-        ? const <Map<String, dynamic>>[]
-        : await api.leaveRequests();
-    final exams = switch (widget.role) {
-      'ADMIN' => await api.examPeriods(),
-      'TEACHER' => await api.examGradingTasks(),
-      _ => await api.examAgenda(childId: widget.childId),
-    };
-    final report = widget.role == 'ADMIN'
-        ? <String, dynamic>{}
-        : await api.personalReport(childId: widget.childId);
+    final dashboard = Map<String, dynamic>.from(
+      await api.dashboard(childId: widget.childId),
+    );
+    final errors = <Map<String, dynamic>>[
+      ...?((dashboard['errors'] as List?)
+          ?.whereType<Map>()
+          .map((item) => item.cast<String, dynamic>())),
+    ];
+
+    var leaves = <Map<String, dynamic>>[];
+    if (widget.role != 'ADMIN') {
+      try {
+        leaves = await api.leaveRequests();
+      } catch (_) {
+        errors
+            .add(_partialError('leaveRequests', 'Không tải được đơn xin nghỉ'));
+      }
+    }
+
+    var exams = <Map<String, dynamic>>[];
+    try {
+      exams = switch (widget.role) {
+        'ADMIN' => await api.examPeriods(),
+        'TEACHER' => await api.examGradingTasks(),
+        _ => await api.examAgenda(childId: widget.childId),
+      };
+    } catch (_) {
+      errors.add(_partialError('exams', 'Không tải được dữ liệu khảo thí'));
+    }
+
+    var report = <String, dynamic>{};
+    if (widget.role != 'ADMIN') {
+      try {
+        report = await api.personalReport(childId: widget.childId);
+      } catch (_) {
+        errors.add(
+            _partialError('personalReport', 'Không tải được báo cáo cá nhân'));
+      }
+    }
+    dashboard['errors'] = errors;
     return _WorkspaceData(dashboard, leaves, exams, report);
   }
+
+  Map<String, dynamic> _partialError(String widget, String message) => {
+        'widget': widget,
+        'code': 'PARTIAL_SOURCE_ERROR',
+        'message': message,
+        'retryable': true,
+      };
 
   Future<void> _refresh() async {
     setState(() => _future = _load());
@@ -67,8 +106,12 @@ class _MobileWorkspacePageState extends State<MobileWorkspacePage> {
               children: [
                 _Hero(accent: widget.accent, role: widget.role),
                 const SizedBox(height: 18),
-                _DashboardMetrics(
-                    dashboard: data.dashboard, accent: widget.accent),
+                RealDashboardPanel(
+                  dashboard: data.dashboard,
+                  accent: widget.accent,
+                  onRetry: _refresh,
+                  onShortcut: (shortcut) => Navigator.of(context).pop(shortcut),
+                ),
                 const SizedBox(height: 24),
                 _SectionTitle(
                   icon: Icons.event_available_rounded,
@@ -107,6 +150,8 @@ class _MobileWorkspacePageState extends State<MobileWorkspacePage> {
                     icon: Icons.insights_rounded,
                     title: 'Báo cáo cá nhân',
                     count: data.report.length,
+                    actionLabel: 'Xuất CSV',
+                    onAction: _exportPersonalReport,
                   ),
                   const SizedBox(height: 10),
                   _ReportCard(data.report),
@@ -227,6 +272,27 @@ class _MobileWorkspacePageState extends State<MobileWorkspacePage> {
       await _refresh();
     } catch (error) {
       if (mounted) _showError('Không thể cập nhật đơn: $error');
+    }
+  }
+
+  Future<void> _exportPersonalReport() async {
+    try {
+      final bytes = await sl<ApiService>().exportPersonalReport(
+        childId: widget.childId,
+      );
+      final stamp = DateFormat('yyyyMMdd-HHmmss').format(DateTime.now());
+      await FilePicker.platform.saveFile(
+        dialogTitle: 'Lưu báo cáo cá nhân',
+        fileName: 'bao-cao-ca-nhan-$stamp.csv',
+        bytes: Uint8List.fromList(bytes),
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã tạo báo cáo cá nhân')),
+        );
+      }
+    } catch (error) {
+      if (mounted) _showError('Không thể export báo cáo: $error');
     }
   }
 

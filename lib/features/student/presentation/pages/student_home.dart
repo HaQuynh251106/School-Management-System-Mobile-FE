@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -6,6 +7,7 @@ import '../../../../core/di/service_locator.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../shared/widgets/attendance_badge.dart';
 import '../../../../shared/widgets/chat_pages.dart';
+import '../../../../shared/widgets/club_registration_page.dart';
 import '../../../../shared/widgets/notification_center.dart';
 import '../../../../shared/widgets/section_header.dart';
 import '../../../../shared/widgets/adaptive_role_scaffold.dart';
@@ -1106,6 +1108,22 @@ class _ProfileTab extends StatelessWidget {
                   ),
                 ),
                 const Divider(height: 0),
+                ListTile(
+                  leading: const Icon(Icons.groups_outlined,
+                      color: AppColors.studentAccent),
+                  title: const Text('Câu lạc bộ'),
+                  subtitle: const Text('Đăng ký, theo dõi và hủy đăng ký',
+                      style: TextStyle(fontSize: 11)),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const ClubRegistrationPage(
+                        accent: AppColors.studentAccent,
+                      ),
+                    ),
+                  ),
+                ),
+                const Divider(height: 0),
                 const ThemeModeTile(accent: AppColors.studentAccent),
                 const Divider(height: 0),
                 ListTile(
@@ -1150,8 +1168,18 @@ class _Assignment {
     required this.teacher,
     required this.deadline,
     required this.status,
+    this.description,
+    this.assignmentAttachmentFileId,
+    this.assignmentAttachmentName,
+    this.submissionId,
+    this.submissionContent,
+    this.submissionAttachmentFileId,
+    this.submissionAttachmentName,
     this.score,
     this.feedback,
+    this.assignmentStatus = 'PUBLISHED',
+    this.deadlineAt,
+    this.allowLate = false,
   });
   final String? id;
   final String title;
@@ -1159,8 +1187,18 @@ class _Assignment {
   final String teacher;
   final String deadline;
   final String status; // PENDING / SUBMITTED / LATE / GRADED
+  final String? description;
+  final String? assignmentAttachmentFileId;
+  final String? assignmentAttachmentName;
+  final String? submissionId;
+  final String? submissionContent;
+  final String? submissionAttachmentFileId;
+  final String? submissionAttachmentName;
   final double? score;
   final String? feedback;
+  final String assignmentStatus;
+  final DateTime? deadlineAt;
+  final bool allowLate;
 }
 
 /// Format an ISO-8601 deadline string into a short 'dd/MM HH:mm' label.
@@ -1175,23 +1213,45 @@ String _formatDeadline(Object? raw) {
   return '${two(local.day)}/${two(local.month)} ${two(local.hour)}:${two(local.minute)}';
 }
 
-/// Map an API assignment status to the existing display-status vocabulary so
-/// the colour/label logic in [_AssignmentList] keeps working. The student's
-/// own submission state isn't part of /me/assignments, so we surface the
-/// assignment status: PUBLISHED -> PENDING (chưa nộp), CLOSED/DRAFT kept raw.
-String _mapAssignmentStatus(Object? raw) {
-  final s = (raw ?? '').toString();
-  return s == 'PUBLISHED' ? 'PENDING' : s;
+_Assignment _assignmentFromJson(
+  Map<String, dynamic> m,
+  Map<String, dynamic>? submission,
+) {
+  final assignmentStatus = (m['status'] ?? '').toString();
+  final deadlineAt =
+      DateTime.tryParse((m['deadline'] ?? '').toString())?.toLocal();
+  final allowLate = m['allowLate'] == true;
+  String status;
+  if (submission != null) {
+    status = (submission['status'] ?? 'SUBMITTED').toString();
+  } else if (assignmentStatus != 'PUBLISHED') {
+    status = 'CLOSED';
+  } else if (deadlineAt != null && DateTime.now().isAfter(deadlineAt)) {
+    status = allowLate ? 'LATE_ALLOWED' : 'OVERDUE';
+  } else {
+    status = 'PENDING';
+  }
+  return _Assignment(
+    id: (m['id'] ?? '').toString(),
+    title: (m['title'] ?? '').toString(),
+    subject: (m['subjectName'] ?? '').toString(),
+    teacher: (m['teacherName'] ?? '').toString(),
+    deadline: _formatDeadline(m['deadline']),
+    status: status,
+    description: m['description']?.toString(),
+    assignmentAttachmentFileId: m['attachmentFileId']?.toString(),
+    assignmentAttachmentName: m['attachmentName']?.toString(),
+    submissionId: submission?['id']?.toString(),
+    submissionContent: submission?['content']?.toString(),
+    submissionAttachmentFileId: submission?['attachmentFileId']?.toString(),
+    submissionAttachmentName: submission?['attachmentName']?.toString(),
+    score: (submission?['score'] as num?)?.toDouble(),
+    feedback: submission?['feedback']?.toString(),
+    assignmentStatus: assignmentStatus,
+    deadlineAt: deadlineAt,
+    allowLate: allowLate,
+  );
 }
-
-_Assignment _assignmentFromJson(Map<String, dynamic> m) => _Assignment(
-      id: (m['id'] ?? '').toString(),
-      title: (m['title'] ?? '').toString(),
-      subject: (m['subjectName'] ?? '').toString(),
-      teacher: (m['teacherName'] ?? '').toString(),
-      deadline: _formatDeadline(m['deadline']),
-      status: _mapAssignmentStatus(m['status']),
-    );
 
 class _AssignmentsTab extends StatefulWidget {
   const _AssignmentsTab();
@@ -1201,54 +1261,59 @@ class _AssignmentsTab extends StatefulWidget {
 }
 
 class _AssignmentsTabState extends State<_AssignmentsTab> {
-  late Future<List<Map<String, dynamic>>> _future =
-      sl<ApiService>().myAssignments();
+  late Future<List<_Assignment>> _future = _load();
+
+  Future<List<_Assignment>> _load() async {
+    final results = await Future.wait([
+      sl<ApiService>().myAssignments(),
+      sl<ApiService>().mySubmissions(),
+    ]);
+    final submissions = <String, Map<String, dynamic>>{
+      for (final item in results[1])
+        (item['assignmentId'] ?? '').toString(): item,
+    };
+    return results[0]
+        .map((item) => _assignmentFromJson(
+              item,
+              submissions[(item['id'] ?? '').toString()],
+            ))
+        .toList();
+  }
 
   void _refresh() {
     setState(() {
-      _future = sl<ApiService>().myAssignments();
+      _future = _load();
     });
   }
 
-  Future<void> _submit(_Assignment a) async {
+  Future<bool> _submit(_Assignment a) async {
     final id = a.id;
-    if (id == null || id.isEmpty) return;
-    final controller = TextEditingController();
-    final content = await showDialog<String>(
+    if (id == null || id.isEmpty) return false;
+    final draft = await showDialog<Map<String, Object?>>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(a.title),
-        content: TextField(
-          controller: controller,
-          minLines: 4,
-          maxLines: 10,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Nội dung bài làm',
-            hintText: 'Nhập nội dung hoặc đường dẫn bài làm',
-          ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Hủy')),
-          FilledButton(
-            onPressed: () {
-              final value = controller.text.trim();
-              if (value.isNotEmpty) Navigator.pop(dialogContext, value);
-            },
-            child: const Text('Nộp bài'),
-          ),
-        ],
-      ),
+      builder: (_) => _AssignmentSubmissionDialog(title: a.title),
     );
-    controller.dispose();
-    if (content == null) return;
-    if (!mounted) return;
+    if (draft == null || !mounted) return false;
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await sl<ApiService>().submitAssignment(id, content);
-      if (!mounted) return;
+      String? attachmentFileId;
+      final file = draft['file'] as PlatformFile?;
+      if (file != null) {
+        if (file.bytes == null) {
+          throw StateError('Không đọc được nội dung file đã chọn');
+        }
+        final uploaded = await sl<ApiService>().uploadFile(
+          bytes: file.bytes!,
+          fileName: file.name,
+        );
+        attachmentFileId = uploaded['id']?.toString();
+      }
+      await sl<ApiService>().submitAssignment(
+        id,
+        content: (draft['content'] ?? '').toString(),
+        attachmentFileId: attachmentFileId,
+      );
+      if (!mounted) return false;
       messenger.showSnackBar(
         const SnackBar(
           content: Text('Đã nộp bài'),
@@ -1256,26 +1321,32 @@ class _AssignmentsTabState extends State<_AssignmentsTab> {
         ),
       );
       _refresh();
+      return true;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       messenger.showSnackBar(
         SnackBar(
           content: Text('Nộp bài thất bại: $e'),
           behavior: SnackBarBehavior.floating,
         ),
       );
+      return false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<Map<String, dynamic>>>(
+    return FutureBuilder<List<_Assignment>>(
       future: _future,
       builder: (context, snap) {
         final loading = snap.connectionState != ConnectionState.done;
-        final assignments = (snap.data ?? []).map(_assignmentFromJson).toList();
-        final pending =
-            assignments.where((a) => a.status == 'PENDING').toList();
+        final assignments = snap.data ?? const <_Assignment>[];
+        final pending = assignments
+            .where((a) =>
+                a.status == 'PENDING' ||
+                a.status == 'LATE_ALLOWED' ||
+                a.status == 'RESUBMISSION_ALLOWED')
+            .toList();
         final submitted = assignments
             .where((a) => a.status == 'SUBMITTED' || a.status == 'LATE')
             .toList();
@@ -1323,15 +1394,96 @@ class _AssignmentsTabState extends State<_AssignmentsTab> {
   }
 }
 
+class _AssignmentSubmissionDialog extends StatefulWidget {
+  const _AssignmentSubmissionDialog({required this.title});
+
+  final String title;
+
+  @override
+  State<_AssignmentSubmissionDialog> createState() =>
+      _AssignmentSubmissionDialogState();
+}
+
+class _AssignmentSubmissionDialogState
+    extends State<_AssignmentSubmissionDialog> {
+  final _controller = TextEditingController();
+  PlatformFile? _selectedFile;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _controller,
+              minLines: 4,
+              maxLines: 10,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Nội dung bài làm',
+                hintText: 'Nhập nội dung hoặc đính kèm file',
+              ),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () async {
+                final result = await FilePicker.platform.pickFiles(
+                  withData: true,
+                  allowMultiple: false,
+                );
+                if (result != null && mounted) {
+                  setState(() => _selectedFile = result.files.single);
+                }
+              },
+              icon: const Icon(Icons.attach_file_rounded),
+              label: Text(_selectedFile?.name ?? 'Chọn file'),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Hủy'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final value = _controller.text.trim();
+            if (value.isEmpty && _selectedFile == null) return;
+            Navigator.pop(context, {
+              'content': value,
+              'file': _selectedFile,
+            });
+          },
+          child: const Text('Nộp bài'),
+        ),
+      ],
+    );
+  }
+}
+
 class _AssignmentList extends StatelessWidget {
   const _AssignmentList({required this.items, this.onSubmit});
   final List<_Assignment> items;
-  final void Function(_Assignment)? onSubmit;
+  final Future<bool> Function(_Assignment)? onSubmit;
 
   Color _statusColor(String status) => switch (status) {
         'GRADED' => AppColors.success,
         'SUBMITTED' => AppColors.primary,
         'LATE' => AppColors.warning,
+        'RESUBMISSION_ALLOWED' => AppColors.warning,
+        'LATE_ALLOWED' => AppColors.warning,
+        'OVERDUE' => AppColors.error,
+        'CLOSED' => AppColors.textSecondary,
         _ => AppColors.error,
       };
 
@@ -1339,6 +1491,10 @@ class _AssignmentList extends StatelessWidget {
         'GRADED' => 'Đã chấm',
         'SUBMITTED' => 'Đã nộp',
         'LATE' => 'Nộp trễ',
+        'RESUBMISSION_ALLOWED' => 'Được nộp lại',
+        'LATE_ALLOWED' => 'Nộp muộn',
+        'OVERDUE' => 'Quá hạn',
+        'CLOSED' => 'Đã đóng',
         _ => 'Chưa nộp',
       };
 
@@ -1360,19 +1516,29 @@ class _AssignmentList extends StatelessWidget {
           margin: EdgeInsets.zero,
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => StudentAssignmentDetail(
-                  title: a.title,
-                  subject: a.subject,
-                  teacher: a.teacher,
-                  deadline: a.deadline,
-                  status: a.status,
-                  score: a.score,
-                  feedback: a.feedback,
+            onTap: () async {
+              await Navigator.of(context).push<bool>(
+                MaterialPageRoute(
+                  builder: (_) => StudentAssignmentDetail(
+                    assignmentId: a.id!,
+                    title: a.title,
+                    subject: a.subject,
+                    teacher: a.teacher,
+                    deadline: a.deadline,
+                    status: a.status,
+                    description: a.description,
+                    assignmentAttachmentFileId: a.assignmentAttachmentFileId,
+                    assignmentAttachmentName: a.assignmentAttachmentName,
+                    submissionContent: a.submissionContent,
+                    submissionAttachmentFileId: a.submissionAttachmentFileId,
+                    submissionAttachmentName: a.submissionAttachmentName,
+                    score: a.score,
+                    feedback: a.feedback,
+                    onSubmit: () => onSubmit?.call(a) ?? Future.value(false),
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -1409,7 +1575,7 @@ class _AssignmentList extends StatelessWidget {
                                 color: AppColors.studentAccent)),
                       ),
                       const Spacer(),
-                      if (a.score != null)
+                      if (a.status == 'GRADED' && a.score != null)
                         Text(
                           a.score!.toStringAsFixed(1),
                           style: TextStyle(
@@ -1442,7 +1608,9 @@ class _AssignmentList extends StatelessWidget {
                     ],
                   ),
                   if (onSubmit != null &&
-                      a.status == 'PENDING' &&
+                      (a.status == 'PENDING' ||
+                          a.status == 'LATE_ALLOWED' ||
+                          a.status == 'RESUBMISSION_ALLOWED') &&
                       a.id != null) ...[
                     const SizedBox(height: 8),
                     Align(

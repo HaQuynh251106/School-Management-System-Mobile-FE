@@ -1,14 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/network/api_service.dart';
+import '../../../../shared/widgets/invoice_state_indicator.dart';
 import '../../../../shared/widgets/section_header.dart';
 
 class InvoiceLineItem {
   const InvoiceLineItem(this.name, this.amount);
   final String name;
   final int amount;
+}
+
+class InvoiceRefundItem {
+  const InvoiceRefundItem(this.amount, this.reason, this.createdAt);
+  final int amount;
+  final String reason;
+  final String createdAt;
+}
+
+class InvoicePaymentItem {
+  const InvoicePaymentItem({
+    required this.amount,
+    required this.method,
+    required this.paidAt,
+    required this.receiptCode,
+    this.payerName,
+    this.note,
+  });
+
+  final int amount;
+  final String method;
+  final String paidAt;
+  final String receiptCode;
+  final String? payerName;
+  final String? note;
 }
 
 class InvoiceDetailPage extends StatelessWidget {
@@ -21,7 +48,13 @@ class InvoiceDetailPage extends StatelessWidget {
     required this.dueDate,
     required this.items,
     required this.status,
+    this.paidAmount = 0,
+    this.refundedAmount = 0,
+    this.refunds = const [],
+    this.payments = const [],
     this.paidAt,
+    this.paidMethod,
+    this.transactionRef,
   });
 
   final String invoiceCode;
@@ -30,10 +63,23 @@ class InvoiceDetailPage extends StatelessWidget {
   final String semester;
   final String dueDate;
   final List<InvoiceLineItem> items;
-  final String status; // PENDING, PAID, OVERDUE
+  final String status;
+  final int paidAmount;
+  final int refundedAmount;
+  final List<InvoiceRefundItem> refunds;
+  final List<InvoicePaymentItem> payments;
   final String? paidAt;
+  final String? paidMethod;
+  final String? transactionRef;
 
   int get _total => items.fold(0, (s, i) => s + i.amount);
+  int get _remaining {
+    final value = _total - paidAmount;
+    return value < 0 ? 0 : value;
+  }
+
+  bool get _canPay =>
+      const {'UNPAID', 'PARTIAL', 'OVERDUE'}.contains(status) && _remaining > 0;
 
   String _formatVnd(int amount) {
     final s = amount.toString();
@@ -45,15 +91,29 @@ class InvoiceDetailPage extends StatelessWidget {
     return '${buf.toString()} ₫';
   }
 
+  String _formatTime(String value) {
+    final parsed = DateTime.tryParse(value)?.toLocal();
+    return parsed == null
+        ? value
+        : DateFormat('dd/MM/yyyy HH:mm').format(parsed);
+  }
+
   Color get _statusColor => switch (status) {
         'PAID' => AppColors.success,
         'OVERDUE' => AppColors.error,
+        'PARTIAL' || 'PARTIALLY_REFUNDED' => AppColors.warning,
+        'REFUNDED' || 'CANCELLED' => AppColors.textSecondary,
         _ => AppColors.warning,
       };
 
   String get _statusLabel => switch (status) {
         'PAID' => 'Đã thanh toán',
         'OVERDUE' => 'Quá hạn',
+        'PARTIAL' => 'Đã thanh toán một phần',
+        'PARTIALLY_REFUNDED' => 'Đã hoàn một phần',
+        'REFUNDED' => 'Đã hoàn toàn bộ',
+        'CANCELLED' => 'Đã hủy',
+        'UNPAID' => 'Chưa thanh toán',
         _ => 'Chưa thanh toán',
       };
 
@@ -71,6 +131,13 @@ class InvoiceDetailPage extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               children: [
                 _buildHeader(),
+                const SizedBox(height: 12),
+                InvoiceStateIndicator(
+                  status: status,
+                  remainingAmount: _remaining,
+                  refundedAmount: refundedAmount,
+                  formatAmount: _formatVnd,
+                ),
                 const SizedBox(height: 16),
                 const SectionHeader(title: 'Các khoản'),
                 const SizedBox(height: 8),
@@ -119,7 +186,83 @@ class InvoiceDetailPage extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (status == 'PAID' && paidAt != null) ...[
+                const SizedBox(height: 12),
+                Card(
+                  child: Column(children: [
+                    _InfoRow(
+                        icon: Icons.payments_outlined,
+                        label: 'Đã thanh toán',
+                        value: _formatVnd(paidAmount)),
+                    const Divider(height: 0),
+                    _InfoRow(
+                        icon: Icons.undo_rounded,
+                        label: 'Đã hoàn',
+                        value: _formatVnd(refundedAmount)),
+                    const Divider(height: 0),
+                    _InfoRow(
+                        icon: Icons.account_balance_wallet_outlined,
+                        label: 'Còn phải trả',
+                        value: _formatVnd(_remaining)),
+                  ]),
+                ),
+                if (status == 'CANCELLED') ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.textSecondary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.info_outline_rounded,
+                            color: AppColors.textSecondary),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Hóa đơn đã hủy nên không thể tạo mã thanh toán.',
+                            style: TextStyle(color: AppColors.textSecondary),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (payments.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const SectionHeader(title: 'Lịch sử thanh toán'),
+                  const SizedBox(height: 8),
+                  Card(
+                    child: Column(
+                      children: payments
+                          .map((payment) => ListTile(
+                                leading: Icon(payment.method == 'CASH'
+                                    ? Icons.payments_rounded
+                                    : Icons.qr_code_2_rounded),
+                                title: Text(_formatVnd(payment.amount)),
+                                subtitle: Text([
+                                  payment.method == 'CASH'
+                                      ? 'Tiền mặt'
+                                      : 'VietQR',
+                                  _formatTime(payment.paidAt),
+                                  if (payment.payerName?.isNotEmpty == true)
+                                    'Người nộp: ${payment.payerName}',
+                                  if (payment.note?.isNotEmpty == true)
+                                    payment.note!,
+                                ].join(' • ')),
+                                trailing: Text(
+                                  payment.receiptCode.isEmpty
+                                      ? 'Đã xác nhận'
+                                      : payment.receiptCode,
+                                  textAlign: TextAlign.end,
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ))
+                          .toList(),
+                    ),
+                  ),
+                ] else if (paidAmount > 0 && paidAt != null) ...[
                   const SizedBox(height: 16),
                   const SectionHeader(title: 'Thông tin thanh toán'),
                   const SizedBox(height: 8),
@@ -131,23 +274,42 @@ class InvoiceDetailPage extends StatelessWidget {
                             label: 'Ngày thanh toán',
                             value: paidAt!),
                         const Divider(height: 0),
-                        const _InfoRow(
+                        _InfoRow(
                             icon: Icons.payment_rounded,
                             label: 'Phương thức',
-                            value: 'VietQR'),
+                            value:
+                                paidMethod == 'CASH' ? 'Tiền mặt' : 'VietQR'),
                         const Divider(height: 0),
-                        const _InfoRow(
+                        _InfoRow(
                             icon: Icons.tag_rounded,
                             label: 'Mã giao dịch',
-                            value: 'Đã đối soát ngân hàng'),
+                            value: transactionRef ?? 'Đã xác nhận'),
                       ],
+                    ),
+                  ),
+                ],
+                if (refunds.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const SectionHeader(title: 'Lịch sử hoàn tiền'),
+                  const SizedBox(height: 8),
+                  Card(
+                    child: Column(
+                      children: refunds
+                          .map((refund) => ListTile(
+                                leading: const Icon(Icons.undo_rounded),
+                                title: Text(_formatVnd(refund.amount)),
+                                subtitle: Text(refund.reason),
+                                trailing: Text(refund.createdAt,
+                                    style: const TextStyle(fontSize: 11)),
+                              ))
+                          .toList(),
                     ),
                   ),
                 ],
               ],
             ),
           ),
-          if (status != 'PAID')
+          if (_canPay)
             SafeArea(
               top: false,
               child: Container(
@@ -166,7 +328,7 @@ class InvoiceDetailPage extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     icon: const Icon(Icons.payment_rounded),
-                    label: Text('Thanh toán ${_formatVnd(_total)}'),
+                    label: Text('Tạo mã VietQR ${_formatVnd(_remaining)}'),
                   ),
                 ),
               ),
@@ -225,7 +387,8 @@ class InvoiceDetailPage extends StatelessWidget {
                   size: 14, color: AppColors.textSecondary),
               const SizedBox(width: 4),
               Text(
-                status == 'PAID'
+                const {'PAID', 'PARTIALLY_REFUNDED', 'REFUNDED'}
+                        .contains(status)
                     ? 'Đã thanh toán ngày $paidAt'
                     : 'Hạn thanh toán: $dueDate',
                 style: const TextStyle(

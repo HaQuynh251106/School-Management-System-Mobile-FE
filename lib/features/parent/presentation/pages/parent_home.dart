@@ -6,6 +6,7 @@ import '../../../../core/di/service_locator.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../shared/widgets/attendance_badge.dart';
 import '../../../../shared/widgets/chat_pages.dart';
+import '../../../../shared/widgets/club_registration_page.dart';
 import '../../../../shared/widgets/notification_center.dart';
 import '../../../../shared/widgets/section_header.dart';
 import '../../../../shared/widgets/adaptive_role_scaffold.dart';
@@ -365,13 +366,17 @@ class _MonitorTabState extends State<_MonitorTab> {
       api.attendance(studentId: widget.child.id),
       api.grades(studentId: widget.child.id),
     ]);
-    _pendingInvoice = api.invoices(studentId: widget.child.id).then((items) =>
-        items.where((item) => item['status'] != 'PAID').fold<int>(
-            0,
-            (total, item) =>
-                total +
-                ((item['totalAmount'] as num?)?.toInt() ?? 0) -
-                ((item['paidAmount'] as num?)?.toInt() ?? 0)));
+    _pendingInvoice = api.invoices(studentId: widget.child.id).then(
+        (items) =>
+            items
+                .where((item) => const {'UNPAID', 'PARTIAL', 'OVERDUE'}
+                    .contains(item['status']))
+                .fold<int>(
+                    0,
+                    (total, item) =>
+                        total +
+                        ((item['totalAmount'] as num?)?.toInt() ?? 0) -
+                        ((item['paidAmount'] as num?)?.toInt() ?? 0)));
   }
 
   @override
@@ -1372,6 +1377,26 @@ class _InvoicesTabState extends State<_InvoicesTab> {
       final payments = (detail['payments'] as List? ?? const [])
           .map((raw) => (raw as Map).cast<String, dynamic>())
           .toList();
+      final paymentHistory = payments
+          .where((item) => item['status'] == 'SUCCESS')
+          .map((item) => InvoicePaymentItem(
+                amount: (item['amount'] as num?)?.toInt() ?? 0,
+                method: (item['method'] ?? '').toString(),
+                paidAt: (item['paidAt'] ?? item['createdAt'] ?? '').toString(),
+                receiptCode:
+                    (item['receiptCode'] ?? item['txnRef'] ?? '').toString(),
+                payerName: item['payerName']?.toString(),
+                note: item['note']?.toString(),
+              ))
+          .toList();
+      final refunds = (detail['refunds'] as List? ?? const [])
+          .map((raw) => (raw as Map).cast<String, dynamic>())
+          .map((item) => InvoiceRefundItem(
+                (item['amount'] as num?)?.toInt() ?? 0,
+                (item['reason'] ?? '').toString(),
+                (item['createdAt'] ?? '').toString(),
+              ))
+          .toList();
       await Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => InvoiceDetailPage(
           invoiceId: (invoice['id'] ?? summary['id']).toString(),
@@ -1380,10 +1405,19 @@ class _InvoicesTabState extends State<_InvoicesTab> {
           semester: (invoice['feePeriodId'] ?? 'Hóa đơn học phí').toString(),
           dueDate: (invoice['dueDate'] ?? '').toString(),
           status: (invoice['status'] ?? '').toString(),
+          paidAmount: (invoice['paidAmount'] as num?)?.toInt() ?? 0,
+          refundedAmount: (invoice['refundedAmount'] as num?)?.toInt() ?? 0,
+          refunds: refunds,
+          payments: paymentHistory,
           paidAt: payments.isEmpty ? null : payments.last['paidAt']?.toString(),
+          paidMethod:
+              payments.isEmpty ? null : payments.last['method']?.toString(),
+          transactionRef:
+              payments.isEmpty ? null : payments.last['txnRef']?.toString(),
           items: items,
         ),
       ));
+      if (mounted) setState(_reload);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1424,10 +1458,24 @@ class _InvoicesTabState extends State<_InvoicesTab> {
             itemBuilder: (_, i) {
               final inv = invoices[i];
               final status = (inv['status'] ?? '').toString();
-              final paid = status == 'PAID';
-              final color = paid
-                  ? AppColors.success
-                  : (status == 'PARTIAL' ? AppColors.warning : AppColors.error);
+              final payable =
+                  const {'UNPAID', 'PARTIAL', 'OVERDUE'}.contains(status);
+              final color = switch (status) {
+                'PAID' => AppColors.success,
+                'OVERDUE' => AppColors.error,
+                'REFUNDED' => AppColors.textSecondary,
+                'CANCELLED' => AppColors.textSecondary,
+                _ => AppColors.warning,
+              };
+              final label = switch (status) {
+                'PAID' => 'Đã thanh toán',
+                'PARTIAL' => 'Một phần',
+                'OVERDUE' => 'Quá hạn',
+                'PARTIALLY_REFUNDED' => 'Hoàn một phần',
+                'REFUNDED' => 'Đã hoàn tiền',
+                'CANCELLED' => 'Đã hủy',
+                _ => 'Chưa thanh toán',
+              };
               return Card(
                 margin: EdgeInsets.zero,
                 child: Padding(
@@ -1442,12 +1490,7 @@ class _InvoicesTabState extends State<_InvoicesTab> {
                           decoration: BoxDecoration(
                               color: color,
                               borderRadius: BorderRadius.circular(6)),
-                          child: Text(
-                              paid
-                                  ? 'Đã thanh toán'
-                                  : (status == 'PARTIAL'
-                                      ? 'Một phần'
-                                      : 'Chưa TT'),
+                          child: Text(label,
                               style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 10,
@@ -1474,7 +1517,7 @@ class _InvoicesTabState extends State<_InvoicesTab> {
                           onPressed: () => _openDetail(inv),
                           child: const Text('Chi tiết'),
                         ),
-                        if (!paid)
+                        if (payable)
                           FilledButton.icon(
                             onPressed: () => _openDetail(inv),
                             style: FilledButton.styleFrom(
@@ -1489,9 +1532,8 @@ class _InvoicesTabState extends State<_InvoicesTab> {
                                 style: TextStyle(fontSize: 12)),
                           )
                         else
-                          const Text('Đã thanh toán',
-                              style: TextStyle(
-                                  fontSize: 12, color: AppColors.success)),
+                          Text(label,
+                              style: TextStyle(fontSize: 12, color: color)),
                       ]),
                     ],
                   ),
@@ -1750,6 +1792,24 @@ class _ProfileTab extends StatelessWidget {
                         role: 'PARENT',
                         accent: AppColors.parentAccent,
                         childId: activeChild.id,
+                      ),
+                    ),
+                  ),
+                ),
+                const Divider(height: 0),
+                ListTile(
+                  leading: const Icon(Icons.groups_outlined,
+                      color: AppColors.parentAccent),
+                  title: const Text('Câu lạc bộ'),
+                  subtitle: Text('Đăng ký cho ${activeChild.name}',
+                      style: const TextStyle(fontSize: 11)),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ClubRegistrationPage(
+                        accent: AppColors.parentAccent,
+                        childId: activeChild.id,
+                        childName: activeChild.name,
                       ),
                     ),
                   ),

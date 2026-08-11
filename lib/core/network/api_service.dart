@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:http_parser/http_parser.dart';
 
 /// Lớp gọi API SSE backend (Spring Boot, :4000) dùng Dio đã gắn interceptor JWT.
 /// Trả JSON thô (List/Map dynamic) để các trang đọc field trực tiếp — gọn, ít model.
@@ -21,6 +22,80 @@ class ApiService {
       _map(await _dio.get('/me/reports', queryParameters: {
         if (childId != null) 'childId': childId,
       }));
+
+  Future<Map<String, dynamic>> reportOverview() async =>
+      _map(await _dio.get('/reports/overview'));
+
+  Future<List<Map<String, dynamic>>> reportGradeDistribution({
+    String? semesterId,
+    String? classId,
+    String? subjectId,
+  }) async =>
+      _list(await _dio.get('/reports/grade-distribution', queryParameters: {
+        if (semesterId != null) 'semesterId': semesterId,
+        if (classId != null) 'classId': classId,
+        if (subjectId != null) 'subjectId': subjectId,
+      }));
+
+  Future<Map<String, dynamic>> reportAttendance({
+    String? classId,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async =>
+      _map(await _dio.get('/reports/attendance-summary', queryParameters: {
+        if (classId != null) 'classId': classId,
+        if (startDate != null)
+          'startDate': startDate.toIso8601String().substring(0, 10),
+        if (endDate != null)
+          'endDate': endDate.toIso8601String().substring(0, 10),
+      }));
+
+  Future<Map<String, dynamic>> reportRevenue({
+    String? periodId,
+    String? classId,
+  }) async =>
+      _map(await _dio.get('/reports/revenue', queryParameters: {
+        if (periodId != null) 'periodId': periodId,
+        if (classId != null) 'classId': classId,
+      }));
+
+  Future<List<int>> exportReport({
+    required String type,
+    required String format,
+    String? semesterId,
+    String? classId,
+    String? subjectId,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? periodId,
+  }) async {
+    final response = await _dio.get<List<int>>(
+      '/reports/export',
+      queryParameters: {
+        'type': type,
+        'format': format,
+        if (semesterId != null) 'semesterId': semesterId,
+        if (classId != null) 'classId': classId,
+        if (subjectId != null) 'subjectId': subjectId,
+        if (startDate != null)
+          'startDate': startDate.toIso8601String().substring(0, 10),
+        if (endDate != null)
+          'endDate': endDate.toIso8601String().substring(0, 10),
+        if (periodId != null) 'periodId': periodId,
+      },
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return response.data ?? const [];
+  }
+
+  Future<List<int>> exportPersonalReport({String? childId}) async {
+    final response = await _dio.get<List<int>>(
+      '/me/reports/export',
+      queryParameters: {if (childId != null) 'childId': childId},
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return response.data ?? const [];
+  }
 
   Future<Map<String, dynamic>> updateProfile(
           Map<String, dynamic> profile) async =>
@@ -81,6 +156,28 @@ class ApiService {
   Future<Map<String, dynamic>> createFeePeriod(
           Map<String, dynamic> data) async =>
       _map(await _dio.post('/fee-periods', data: data));
+  Future<Map<String, dynamic>> feePeriodDetail(String id) async =>
+      _map(await _dio.get('/fee-periods/$id'));
+  Future<Map<String, dynamic>> updateFeePeriod(
+          String id, Map<String, dynamic> data) async =>
+      _map(await _dio.put('/fee-periods/$id', data: data));
+  Future<Map<String, dynamic>> feePeriodPreview(String id) async =>
+      _map(await _dio.get('/fee-periods/$id/preview'));
+  Future<Map<String, dynamic>> addFeePeriodItem(
+          String id, Map<String, dynamic> data) async =>
+      _map(await _dio.post('/fee-periods/$id/items', data: data));
+  Future<void> deleteFeePeriodItem(String periodId, String itemId) async =>
+      _dio.delete('/fee-periods/$periodId/items/$itemId');
+  Future<Map<String, dynamic>> saveFeePeriodAdjustment(
+          String id, Map<String, dynamic> data) async =>
+      _map(await _dio.post('/fee-periods/$id/adjustments', data: data));
+  Future<void> deleteFeePeriodAdjustment(
+          String periodId, String adjustmentId) async =>
+      _dio.delete('/fee-periods/$periodId/adjustments/$adjustmentId');
+  Future<Map<String, dynamic>> openFeePeriod(String id) async =>
+      _map(await _dio.post('/fee-periods/$id/open'));
+  Future<Map<String, dynamic>> closeFeePeriod(String id) async =>
+      _map(await _dio.post('/fee-periods/$id/close'));
   Future<Map<String, dynamic>> financeOverview(
           {String? grade, String? classId, String? feePeriodId}) async =>
       _map(await _dio.get('/finance/overview', queryParameters: {
@@ -271,6 +368,54 @@ class ApiService {
   Future<List<Map<String, dynamic>>> children() async =>
       _list(await _dio.get('/me/children'));
 
+  // Clubs (F13)
+  Future<List<Map<String, dynamic>>> clubs() async =>
+      _list(await _dio.get('/clubs'));
+
+  Future<Map<String, dynamic>> createClub(Map<String, dynamic> data) async =>
+      _map(await _dio.post('/clubs', data: data));
+
+  Future<List<Map<String, dynamic>>> adminClubRegistrations({
+    String? clubId,
+    String? status,
+  }) async {
+    final query = <String, dynamic>{};
+    if (clubId != null && clubId.isNotEmpty) query['clubId'] = clubId;
+    if (status != null && status.isNotEmpty) query['status'] = status;
+    return _list(
+        await _dio.get('/admin/club-registrations', queryParameters: query));
+  }
+
+  Future<Map<String, dynamic>> approveClubRegistration(String registrationId,
+          {String? note}) async =>
+      _map(await _dio.post('/club-registrations/$registrationId/approve',
+          data: {'note': note ?? 'Duyệt từ ứng dụng mobile'}));
+
+  Future<Map<String, dynamic>> rejectClubRegistration(String registrationId,
+          {String? note}) async =>
+      _map(await _dio.post('/club-registrations/$registrationId/reject',
+          data: {'note': note ?? 'Từ chối từ ứng dụng mobile'}));
+
+  Future<List<Map<String, dynamic>>> myClubRegistrations() async =>
+      _list(await _dio.get('/me/club-registrations'));
+
+  Future<List<Map<String, dynamic>>> childClubRegistrations(
+          String studentId) async =>
+      _list(await _dio.get('/children/$studentId/club-registrations'));
+
+  Future<Map<String, dynamic>> registerClub(String clubId,
+      {String? studentId}) async {
+    return _map(await _dio.post('/clubs/$clubId/registrations',
+        data: studentId == null
+            ? <String, dynamic>{}
+            : {'studentId': studentId}));
+  }
+
+  Future<Map<String, dynamic>> cancelClubRegistration(String registrationId,
+          {String? reason}) async =>
+      _map(await _dio.post('/club-registrations/$registrationId/cancel',
+          data: {'reason': reason ?? 'Hủy từ ứng dụng mobile'}));
+
   Future<List<Map<String, dynamic>>> invoices({
     String? studentId,
     String? status,
@@ -307,6 +452,25 @@ class ApiService {
     }
     return initiated;
   }
+
+  Future<Map<String, dynamic>> recordCashPayment(
+    String invoiceId, {
+    int? amount,
+    String? payerName,
+    String? note,
+  }) async =>
+      _map(await _dio.post('/payments/cash', data: {
+        'invoiceId': invoiceId,
+        if (amount != null) 'amount': amount,
+        if (payerName != null && payerName.trim().isNotEmpty)
+          'payerName': payerName.trim(),
+        if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+      }));
+
+  Future<Map<String, dynamic>> refundInvoice(
+          String invoiceId, int amount, String reason) async =>
+      _map(await _dio.post('/invoices/$invoiceId/refund',
+          data: {'amount': amount, 'reason': reason}));
 
   Future<Map<String, dynamic>> markVietQrSubmitted(String paymentId) async =>
       _map(await _dio.post('/payments/$paymentId/submitted'));
@@ -354,6 +518,7 @@ class ApiService {
     required String priority,
     required String title,
     required String body,
+    String? idempotencyKey,
   }) async {
     final response = await _dio.post('/announcements', data: {
       'audience': '$target:$classId',
@@ -361,6 +526,19 @@ class ApiService {
       'priority': priority,
       'title': title,
       'body': body,
+      if (idempotencyKey != null) 'idempotencyKey': idempotencyKey,
+    });
+    return (response.data as Map).cast<String, dynamic>();
+  }
+
+  Future<Map<String, dynamic>> previewTeacherAnnouncement({
+    required String classId,
+    required String target,
+    required String category,
+  }) async {
+    final response = await _dio.post('/announcements/preview', data: {
+      'audience': '$target:$classId',
+      'category': category,
     });
     return (response.data as Map).cast<String, dynamic>();
   }
@@ -381,6 +559,8 @@ class ApiService {
         priority: 'NORMAL',
         title: title,
         body: body,
+        idempotencyKey:
+            'class-$classId-${DateTime.now().microsecondsSinceEpoch}',
       );
   Future<List<Map<String, dynamic>>> chatMessages(String withUserId) async =>
       _list(await _dio
@@ -394,6 +574,8 @@ class ApiService {
   // ---------- Assignments ----------
   Future<List<Map<String, dynamic>>> myAssignments() async =>
       _list(await _dio.get('/me/assignments'));
+  Future<List<Map<String, dynamic>>> mySubmissions() async =>
+      _list(await _dio.get('/me/submissions'));
   Future<List<Map<String, dynamic>>> childAssignments(String studentId) async =>
       _list(await _dio.get('/children/$studentId/assignments'));
   Future<List<Map<String, dynamic>>> teacherAssignments() async =>
@@ -401,11 +583,99 @@ class ApiService {
   Future<Map<String, dynamic>> createAssignment(
           Map<String, dynamic> data) async =>
       _map(await _dio.post('/assignments', data: data));
+  Future<List<Map<String, dynamic>>> assignmentSubmissions(String id) async =>
+      _list(await _dio.get('/assignments/$id/submissions'));
   Future<Map<String, dynamic>> submitAssignment(
-      String id, String content) async {
-    final r =
-        await _dio.post('/assignments/$id/submit', data: {'content': content});
+    String id, {
+    String? content,
+    String? attachmentFileId,
+  }) async {
+    final r = await _dio.post('/assignments/$id/submit', data: {
+      'content': content,
+      'attachmentFileId': attachmentFileId,
+    });
     return (r.data as Map).cast<String, dynamic>();
+  }
+
+  Future<Map<String, dynamic>> gradeSubmission(
+    String id, {
+    required double score,
+    String? feedback,
+  }) async =>
+      _map(await _dio.post('/submissions/$id/grade', data: {
+        'score': score,
+        'feedback': feedback,
+      }));
+
+  Future<Map<String, dynamic>> allowResubmit(String id) async =>
+      _map(await _dio.post('/submissions/$id/allow-resubmit'));
+
+  Future<Map<String, dynamic>> publishAssignment(String id) async =>
+      _map(await _dio.post('/assignments/$id/publish'));
+
+  Future<Map<String, dynamic>> updateAssignment(
+    String id,
+    Map<String, dynamic> data,
+  ) async =>
+      _map(await _dio.put('/assignments/$id', data: data));
+
+  Future<Map<String, dynamic>> extendAssignment(
+    String id,
+    DateTime deadline,
+  ) async =>
+      _map(await _dio.post('/assignments/$id/extend', data: {
+        'deadline': deadline.toUtc().toIso8601String(),
+      }));
+
+  Future<Map<String, dynamic>> closeAssignment(String id) async =>
+      _map(await _dio.post('/assignments/$id/close'));
+
+  Future<Map<String, dynamic>> reopenAssignment(String id) async =>
+      _map(await _dio.post('/assignments/$id/reopen'));
+
+  Future<Map<String, dynamic>> uploadFile({
+    required List<int> bytes,
+    required String fileName,
+  }) async {
+    final data = FormData.fromMap({
+      'file': MultipartFile.fromBytes(
+        bytes,
+        filename: fileName,
+        contentType: _fileMediaType(fileName),
+      ),
+    });
+    return _map(await _dio.post('/files', data: data));
+  }
+
+  MediaType _fileMediaType(String fileName) {
+    final lower = fileName.toLowerCase();
+    if (lower.endsWith('.pdf')) return MediaType('application', 'pdf');
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+      return MediaType('image', 'jpeg');
+    }
+    if (lower.endsWith('.png')) return MediaType('image', 'png');
+    if (lower.endsWith('.webp')) return MediaType('image', 'webp');
+    if (lower.endsWith('.doc')) return MediaType('application', 'msword');
+    if (lower.endsWith('.docx')) {
+      return MediaType('application',
+          'vnd.openxmlformats-officedocument.wordprocessingml.document');
+    }
+    if (lower.endsWith('.xls')) {
+      return MediaType('application', 'vnd.ms-excel');
+    }
+    if (lower.endsWith('.xlsx')) {
+      return MediaType('application',
+          'vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    }
+    return MediaType('text', 'plain');
+  }
+
+  Future<List<int>> downloadFile(String id) async {
+    final response = await _dio.get<List<int>>(
+      '/files/$id/content',
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return response.data ?? const [];
   }
 
   // ---------- Xin nghỉ học ----------

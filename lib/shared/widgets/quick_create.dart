@@ -1,8 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/di/service_locator.dart';
 import '../../core/network/api_service.dart';
+
+Future<void> openQuickCreate(
+  BuildContext context, {
+  required String role,
+  required Color accent,
+  String? initialType,
+  VoidCallback? onCreated,
+}) async {
+  await QuickCreateButton(
+    role: role,
+    accent: accent,
+    initialType: initialType,
+    onCreated: onCreated,
+  )._openMenu(context);
+}
 
 class QuickCreateButton extends StatelessWidget {
   const QuickCreateButton({
@@ -10,11 +26,13 @@ class QuickCreateButton extends StatelessWidget {
     required this.role,
     required this.accent,
     this.onCreated,
+    this.initialType,
   });
 
   final String role;
   final Color accent;
   final VoidCallback? onCreated;
+  final String? initialType;
 
   @override
   Widget build(BuildContext context) => FloatingActionButton.extended(
@@ -41,7 +59,7 @@ class QuickCreateButton extends StatelessWidget {
                 Icons.menu_book_rounded, 'Cơ cấu đào tạo'),
             _CreateOption('ROOM', 'Phòng học', 'Sức chứa và ca sử dụng',
                 Icons.meeting_room_rounded, 'Cơ cấu đào tạo'),
-            _CreateOption('FEE', 'Đợt thu', 'Hạn nộp và khối áp dụng',
+            _CreateOption('FEE', 'Đợt thu', 'Phạm vi và hạn thanh toán',
                 Icons.receipt_long_rounded, 'Vận hành'),
             _CreateOption('ANNOUNCEMENT', 'Thông báo',
                 'Gửi theo đúng đối tượng', Icons.campaign_rounded, 'Vận hành'),
@@ -57,71 +75,75 @@ class QuickCreateButton extends StatelessWidget {
                 'Trao đổi'),
           ];
 
-    final selected = await showModalBottomSheet<_CreateOption>(
-      context: context,
-      builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Bạn muốn thêm gì?',
-                style: Theme.of(context).textTheme.headlineMedium),
-            const SizedBox(height: 5),
-            Text(
-              'Các tác vụ được sắp xếp theo nhóm để thao tác nhanh hơn.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-            const SizedBox(height: 16),
-            Flexible(
-              child: ListView(
-                shrinkWrap: true,
+    final selected = initialType == null
+        ? await showModalBottomSheet<_CreateOption>(
+            context: context,
+            builder: (sheetContext) => Padding(
+              padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (var i = 0; i < options.length; i++) ...[
-                    if (i == 0 || options[i - 1].group != options[i].group)
-                      Padding(
-                        padding:
-                            EdgeInsets.only(top: i == 0 ? 0 : 14, bottom: 6),
-                        child: Text(options[i].group.toUpperCase(),
-                            style: TextStyle(
-                              color: accent,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: .6,
-                            )),
-                      ),
-                    Card(
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 4),
-                        leading: Container(
-                          width: 42,
-                          height: 42,
-                          decoration: BoxDecoration(
-                            color: accent.withValues(alpha: .1),
-                            borderRadius: BorderRadius.circular(13),
-                          ),
-                          child: Icon(options[i].icon, color: accent),
+                  Text('Bạn muốn thêm gì?',
+                      style: Theme.of(context).textTheme.headlineMedium),
+                  const SizedBox(height: 5),
+                  Text(
+                    'Các tác vụ được sắp xếp theo nhóm để thao tác nhanh hơn.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
-                        title: Text(options[i].title,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w700)),
-                        subtitle: Text(options[i].subtitle),
-                        trailing: const Icon(Icons.chevron_right_rounded),
-                        onTap: () => Navigator.pop(sheetContext, options[i]),
-                      ),
+                  ),
+                  const SizedBox(height: 16),
+                  Flexible(
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: [
+                        for (var i = 0; i < options.length; i++) ...[
+                          if (i == 0 ||
+                              options[i - 1].group != options[i].group)
+                            Padding(
+                              padding: EdgeInsets.only(
+                                  top: i == 0 ? 0 : 14, bottom: 6),
+                              child: Text(options[i].group.toUpperCase(),
+                                  style: TextStyle(
+                                    color: accent,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: .6,
+                                  )),
+                            ),
+                          Card(
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 4),
+                              leading: Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: accent.withValues(alpha: .1),
+                                  borderRadius: BorderRadius.circular(13),
+                                ),
+                                child: Icon(options[i].icon, color: accent),
+                              ),
+                              title: Text(options[i].title,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w700)),
+                              subtitle: Text(options[i].subtitle),
+                              trailing: const Icon(Icons.chevron_right_rounded),
+                              onTap: () =>
+                                  Navigator.pop(sheetContext, options[i]),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                  ],
+                  ),
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
+          )
+        : options.where((option) => option.type == initialType).firstOrNull;
     if (selected == null || !context.mounted) return;
     final created = await showModalBottomSheet<bool>(
       context: context,
@@ -174,6 +196,8 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
   String? _subjectId;
   String? _yearId;
   String _shift = 'MORNING';
+  String _feeScope = 'SCHOOL';
+  String? _feeGradeLevel;
   String _audience = 'ALL';
   String _category = 'GENERAL';
   String _priority = 'NORMAL';
@@ -181,6 +205,7 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
   bool _allowLate = false;
   bool _morning = true;
   bool _afternoon = true;
+  PlatformFile? _assignmentFile;
   DateTime _date = DateTime.now().add(const Duration(days: 7));
 
   TextEditingController field(String name) =>
@@ -197,6 +222,7 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
     try {
       if (widget.option.type == 'USER' ||
           widget.option.type == 'CLASS' ||
+          widget.option.type == 'FEE' ||
           widget.option.type == 'ASSIGNMENT' ||
           widget.option.type == 'ANNOUNCEMENT') {
         _classes = widget.role == 'TEACHER'
@@ -210,6 +236,9 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
         _years = await api.academicYears();
       }
       if (_classes.isNotEmpty) _classId = _idOf(_classes.first);
+      if (_feeGradeOptions.isNotEmpty) {
+        _feeGradeLevel = _feeGradeOptions.keys.first;
+      }
       if (_subjects.isNotEmpty) _subjectId = _idOf(_subjects.first);
       if (_years.isNotEmpty) _yearId = _idOf(_years.first);
       if (widget.role == 'TEACHER' && _classId != null) {
@@ -391,10 +420,38 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
             rows: _years,
             onChanged: (value) => setState(() => _yearId = value)),
         _gap,
-        _input('grades', 'Khối áp dụng, ví dụ 10,11,12',
-            Icons.filter_alt_outlined),
+        _select(
+          label: 'Phạm vi áp dụng',
+          value: _feeScope,
+          items: const {
+            'SCHOOL': 'Toàn trường',
+            'GRADE': 'Theo khối',
+            'CLASS': 'Theo lớp',
+          },
+          onChanged: (value) => setState(() {
+            _feeScope = value;
+            if (value == 'GRADE' && _feeGradeLevel == null) {
+              _feeGradeLevel = _feeGradeOptions.keys.firstOrNull;
+            }
+          }),
+        ),
+        if (_feeScope == 'GRADE') ...[
+          _gap,
+          _feeGradeSelect(),
+        ],
+        if (_feeScope == 'CLASS') ...[
+          _gap,
+          _objectSelect(
+              label: 'Lớp áp dụng',
+              value: _classId,
+              rows: _classes,
+              onChanged: (value) => setState(() => _classId = value)),
+        ],
         _gap,
-        _dateTile('Hạn nộp'),
+        _dateTile(
+          'Hạn thanh toán (ngày cuối)',
+          helper: 'Đợt bắt đầu khi được duyệt sang OPEN',
+        ),
       ];
 
   List<Widget> _assignmentFields() => [
@@ -416,6 +473,20 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
             maxLines: 4),
         _gap,
         _dateTile('Hạn nộp'),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: () async {
+            final result = await FilePicker.platform.pickFiles(
+              withData: true,
+              allowMultiple: false,
+            );
+            if (result != null) {
+              setState(() => _assignmentFile = result.files.single);
+            }
+          },
+          icon: const Icon(Icons.attach_file_rounded),
+          label: Text(_assignmentFile?.name ?? 'Đính kèm tài liệu'),
+        ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           title: const Text('Cho phép nộp muộn'),
@@ -570,11 +641,37 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
         onChanged: onChanged,
       );
 
-  Widget _dateTile(String label) => Card(
+  Widget _feeGradeSelect() => DropdownButtonFormField<String>(
+        initialValue: _feeGradeOptions.containsKey(_feeGradeLevel)
+            ? _feeGradeLevel
+            : null,
+        decoration: const InputDecoration(
+          labelText: 'Khối áp dụng',
+          prefixIcon: Icon(Icons.filter_alt_outlined),
+        ),
+        items: _feeGradeOptions.entries
+            .map((item) => DropdownMenuItem(
+                  value: item.key,
+                  child: Text(item.value),
+                ))
+            .toList(),
+        validator: (value) => value == null
+            ? _feeGradeOptions.isEmpty
+                ? 'Chưa có khối nào trong dữ liệu lớp'
+                : 'Vui lòng chọn khối áp dụng'
+            : null,
+        onChanged: (value) => setState(() => _feeGradeLevel = value),
+      );
+
+  Widget _dateTile(String label, {String? helper}) => Card(
         child: ListTile(
           leading: Icon(Icons.event_rounded, color: widget.accent),
           title: Text(label),
-          subtitle: Text(DateFormat('dd/MM/yyyy').format(_date)),
+          subtitle: Text([
+            DateFormat('dd/MM/yyyy').format(_date),
+            if (helper != null) helper,
+          ].join('\n')),
+          isThreeLine: helper != null,
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () async {
             final picked = await showDatePicker(
@@ -639,10 +736,23 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
             'code': text('code'),
             'name': text('name'),
             'academicYearId': _yearId,
-            'applyToGrades': text('grades'),
+            'scopeType': _feeScope,
+            'scopeGradeLevel': _feeScope == 'GRADE' ? _feeGradeLevel : null,
+            'scopeClassId': _feeScope == 'CLASS' ? _classId : null,
             'dueDate': DateFormat('yyyy-MM-dd').format(_date),
           });
         case 'ASSIGNMENT':
+          String? attachmentFileId;
+          if (_assignmentFile != null) {
+            if (_assignmentFile!.bytes == null) {
+              throw StateError('Không đọc được nội dung file đã chọn');
+            }
+            final uploaded = await api.uploadFile(
+              bytes: _assignmentFile!.bytes!,
+              fileName: _assignmentFile!.name,
+            );
+            attachmentFileId = uploaded['id']?.toString();
+          }
           await api.createAssignment({
             'classId': _classId,
             'subjectId': _subjectId,
@@ -654,6 +764,7 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
                 .toIso8601String(),
             'allowLate': _allowLate,
             'publishNow': _publishNow,
+            'attachmentFileId': attachmentFileId,
           });
         default:
           await api.createAnnouncement({
@@ -693,6 +804,27 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
       if (_idOf(row) == id) return _labelOf(row);
     }
     return null;
+  }
+
+  Map<String, String> get _feeGradeOptions {
+    final result = <String, String>{};
+    for (final row in _classes) {
+      final raw = '${row['gradeLevel'] ?? ''}'.trim().toUpperCase();
+      if (raw.isEmpty) continue;
+      final value = raw.startsWith('K') ? raw : 'K$raw';
+      final number = value.substring(1);
+      result[value] = number.isEmpty ? value : 'Khối $number';
+    }
+    final entries = result.entries.toList()
+      ..sort((a, b) {
+        final aNumber = int.tryParse(a.key.substring(1));
+        final bNumber = int.tryParse(b.key.substring(1));
+        if (aNumber != null && bNumber != null) {
+          return aNumber.compareTo(bNumber);
+        }
+        return a.key.compareTo(b.key);
+      });
+    return Map.fromEntries(entries);
   }
 }
 

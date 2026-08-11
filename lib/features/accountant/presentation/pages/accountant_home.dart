@@ -232,6 +232,204 @@ class _DebtPageState extends State<_DebtPage> {
       query: _query.trim().isEmpty ? null : _query.trim());
   void _reload() => setState(() => _future = _load());
 
+  int _parseAmount(String value) =>
+      int.tryParse(value.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+
+  Future<void> _recordCash(Map<String, dynamic> invoice) async {
+    final total = _number(invoice['totalAmount']);
+    final paid = _number(invoice['paidAmount']);
+    final remaining = total - paid;
+    final controller = TextEditingController(text: remaining.toString());
+    final payerController =
+        TextEditingController(text: (invoice['parentName'] ?? '').toString());
+    final noteController = TextEditingController();
+    final result = await showDialog<(int, String, String)>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Ghi nhận tiền mặt'),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(
+              controller: controller,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'Số tiền nhận',
+                helperText: 'Còn phải thu: ${_money(remaining)}',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: payerController,
+              decoration: const InputDecoration(
+                labelText: 'Người nộp tiền',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: noteController,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                labelText: 'Ghi chú (không bắt buộc)',
+              ),
+            ),
+          ]),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Hủy')),
+          FilledButton(
+            onPressed: () {
+              final amount = _parseAmount(controller.text);
+              if (amount <= 0 || amount > remaining) return;
+              Navigator.pop(
+                  context, (amount, payerController.text, noteController.text));
+            },
+            child: const Text('Xác nhận thu'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    payerController.dispose();
+    noteController.dispose();
+    if (result == null) return;
+    try {
+      final response = await sl<ApiService>().recordCashPayment(
+        invoice['id'].toString(),
+        amount: result.$1,
+        payerName: result.$2,
+        note: result.$3,
+      );
+      final payment = response['payment'] is Map
+          ? (response['payment'] as Map).cast<String, dynamic>()
+          : const <String, dynamic>{};
+      final receipt = (payment['receiptCode'] ?? '').toString();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Đã thu ${_money(result.$1)}'
+              '${receipt.isEmpty ? '' : ' • Biên nhận $receipt'}')));
+      _reload();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Không thể ghi nhận: $error')));
+    }
+  }
+
+  Future<void> _refund(Map<String, dynamic> invoice) async {
+    final paid = _number(invoice['paidAmount']);
+    final refunded = _number(invoice['refundedAmount']);
+    final refundable = paid - refunded;
+    final amountController = TextEditingController(text: refundable.toString());
+    final reasonController = TextEditingController();
+    final result = await showDialog<(int, String)>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Xác nhận hoàn tiền'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: amountController,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'Số tiền hoàn',
+                helperText: 'Có thể hoàn: ${_money(refundable)}',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(labelText: 'Lý do hoàn tiền'),
+              maxLines: 2,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Hủy')),
+          FilledButton(
+              onPressed: () {
+                final amount = _parseAmount(amountController.text);
+                final reason = reasonController.text.trim();
+                if (amount > 0 && reason.isNotEmpty) {
+                  Navigator.pop(context, (amount, reason));
+                }
+              },
+              child: const Text('Xác nhận hoàn')),
+        ],
+      ),
+    );
+    amountController.dispose();
+    reasonController.dispose();
+    if (result == null) return;
+    try {
+      await sl<ApiService>()
+          .refundInvoice(invoice['id'].toString(), result.$1, result.$2);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Đã hoàn ${_money(result.$1)}')));
+      _reload();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Không thể hoàn tiền: $error')));
+    }
+  }
+
+  void _showActions(Map<String, dynamic> invoice) {
+    final status = (invoice['status'] ?? '').toString();
+    final canCollect = const {'UNPAID', 'PARTIAL', 'OVERDUE'}.contains(status);
+    final canRefund = const {'PAID', 'PARTIALLY_REFUNDED'}.contains(status);
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text((invoice['studentName'] ?? invoice['code'] ?? '').toString(),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              Text((invoice['code'] ?? '').toString()),
+              const SizedBox(height: 16),
+              if (canCollect)
+                FilledButton.icon(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    _recordCash(invoice);
+                  },
+                  icon: const Icon(Icons.payments_rounded),
+                  label: const Text('Ghi nhận tiền mặt'),
+                ),
+              if (canRefund)
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    _refund(invoice);
+                  },
+                  icon: const Icon(Icons.undo_rounded),
+                  label: const Text('Hoàn tiền'),
+                ),
+              if (!canCollect && !canRefund)
+                const Text('Hóa đơn không có thao tác tài chính khả dụng.',
+                    textAlign: TextAlign.center),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: const Text('Hóa đơn và công nợ')),
@@ -254,9 +452,17 @@ class _DebtPageState extends State<_DebtPage> {
                   DropdownMenuItem(
                       value: 'ALL', child: Text('Tất cả trạng thái')),
                   DropdownMenuItem(
-                      value: 'ISSUED', child: Text('Chưa thanh toán')),
+                      value: 'UNPAID', child: Text('Chưa thanh toán')),
+                  DropdownMenuItem(
+                      value: 'PARTIAL', child: Text('Thanh toán một phần')),
                   DropdownMenuItem(value: 'OVERDUE', child: Text('Quá hạn')),
                   DropdownMenuItem(value: 'PAID', child: Text('Đã thanh toán')),
+                  DropdownMenuItem(
+                      value: 'PARTIALLY_REFUNDED',
+                      child: Text('Hoàn một phần')),
+                  DropdownMenuItem(
+                      value: 'REFUNDED', child: Text('Đã hoàn toàn bộ')),
+                  DropdownMenuItem(value: 'CANCELLED', child: Text('Đã hủy')),
                 ],
                 onChanged: (value) {
                   _status = value ?? 'ALL';
@@ -288,6 +494,7 @@ class _DebtPageState extends State<_DebtPage> {
                             final paid = _number(invoice['paidAmount']);
                             return Card(
                                 child: ListTile(
+                              onTap: () => _showActions(invoice),
                               leading: CircleAvatar(
                                   child: Text((invoice['classCode'] ?? '?')
                                       .toString()
@@ -537,7 +744,11 @@ class _FinanceStatus extends StatelessWidget {
     final label = switch (status) {
       'PAID' => 'Đã thu',
       'OVERDUE' => 'Quá hạn',
-      'ISSUED' => 'Chưa thu',
+      'UNPAID' => 'Chưa thu',
+      'PARTIAL' => 'Thu một phần',
+      'PARTIALLY_REFUNDED' => 'Hoàn một phần',
+      'REFUNDED' => 'Đã hoàn',
+      'CANCELLED' => 'Đã hủy',
       'OPEN' => 'Đang mở',
       'DRAFT' => 'Bản nháp',
       'COMPLETED' => 'Hoàn tất',
@@ -546,6 +757,7 @@ class _FinanceStatus extends StatelessWidget {
     final color = switch (status) {
       'PAID' || 'COMPLETED' => AppColors.success,
       'OVERDUE' => AppColors.error,
+      'REFUNDED' || 'CANCELLED' => AppColors.textSecondary,
       'OPEN' => AppColors.accountantAccent,
       _ => AppColors.warning
     };

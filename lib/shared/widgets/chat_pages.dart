@@ -52,6 +52,30 @@ class ChatThread {
         lastTime: '',
       );
 
+  factory ChatThread.fromAnnouncement(
+      Map<String, dynamic> json, List<Map<String, dynamic>> scopes) {
+    final audience = (json['audience'] ?? '').toString();
+    final separator = audience.indexOf(':');
+    final target = separator < 0 ? audience : audience.substring(0, separator);
+    final classId = separator < 0 ? '' : audience.substring(separator + 1);
+    final matched =
+        scopes.where((item) => item['classId']?.toString() == classId);
+    final classCode =
+        matched.isEmpty ? classId : matched.first['classCode'].toString();
+    final recipientLabel = switch (target) {
+      'CLASS_STUDENTS' || 'CLASS' => 'Học sinh',
+      'CLASS_PARENTS' => 'Phụ huynh',
+      _ => 'Học sinh & phụ huynh',
+    };
+    return ChatThread(
+      name: (json['title'] ?? 'Thông báo lớp').toString(),
+      role: '$classCode · $recipientLabel',
+      lastMessage: (json['body'] ?? '').toString(),
+      lastTime: _formatTime(json['createdAt']),
+      isBroadcast: true,
+    );
+  }
+
   static String _formatTime(Object? raw) {
     if (raw == null) return '';
     final dt = DateTime.tryParse(raw.toString());
@@ -89,9 +113,17 @@ class _ChatListPageState extends State<ChatListPage> {
           sl<ApiService>().teacherAnnouncementScopes()
         else
           Future.value(<Map<String, dynamic>>[]),
+        if (widget.allowBroadcast)
+          sl<ApiService>().teacherAnnouncements()
+        else
+          Future.value(<Map<String, dynamic>>[]),
       ]);
 
-  void _reload() => setState(() => _future = _load());
+  void _reload() {
+    setState(() {
+      _future = _load();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -107,10 +139,12 @@ class _ChatListPageState extends State<ChatListPage> {
             snap.data == null ? const <Map<String, dynamic>>[] : snap.data![0];
         final contactRows =
             snap.data == null ? const <Map<String, dynamic>>[] : snap.data![1];
-        final homeroomScopes = snap.data == null
-            ? const <Map<String, dynamic>>[]
-            : snap.data![2].where((item) => item['homeroom'] == true).toList();
-        final canBroadcast = widget.allowBroadcast && homeroomScopes.isNotEmpty;
+        final announcementScopes =
+            snap.data == null ? const <Map<String, dynamic>>[] : snap.data![2];
+        final announcementRows =
+            snap.data == null ? const <Map<String, dynamic>>[] : snap.data![3];
+        final canBroadcast =
+            widget.allowBroadcast && announcementScopes.isNotEmpty;
         final existing = threadRows.map(ChatThread.fromJson).toList();
         final threads = contactRows.map((contact) {
           final id = contact['id']?.toString();
@@ -127,7 +161,10 @@ class _ChatListPageState extends State<ChatListPage> {
                 );
         }).toList();
         final dms = threads.where((t) => !t.isBroadcast).toList();
-        final broadcasts = threads.where((t) => t.isBroadcast).toList();
+        final broadcasts = announcementRows
+            .map(
+                (item) => ChatThread.fromAnnouncement(item, announcementScopes))
+            .toList();
         final threadList = RefreshIndicator(
           onRefresh: () async {
             final future = _load();
@@ -161,7 +198,7 @@ class _ChatListPageState extends State<ChatListPage> {
             ),
             floatingActionButton: canBroadcast
                 ? FloatingActionButton.extended(
-                    onPressed: () => _showBroadcastSheet(homeroomScopes),
+                    onPressed: () => _showBroadcastSheet(announcementScopes),
                     backgroundColor: accent,
                     icon: const Icon(Icons.campaign_rounded),
                     label: const Text('Gửi thông báo'),
@@ -202,185 +239,214 @@ class _ChatListPageState extends State<ChatListPage> {
               'Chỉ giáo viên chủ nhiệm mới có thể gửi thông báo tới học sinh và phụ huynh.')));
       return;
     }
-    final titleCtrl = TextEditingController();
-    final bodyCtrl = TextEditingController();
-    titleCtrl.text = 'Thông báo tình hình lớp học';
-    String target = classes.first['classId'].toString();
-    const String category = 'STUDENT_STATUS';
-    String recipientTarget = 'CLASS_ALL';
-    String priority = 'NORMAL';
-    await showModalBottomSheet(
+    final delivered = await showModalBottomSheet<int>(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setState) {
-          final selectedScope = classes
-              .firstWhere((item) => item['classId'].toString() == target);
-          final studentCount =
-              (selectedScope['studentCount'] as num?)?.toInt() ?? 0;
-          final parentCount =
-              (selectedScope['parentCount'] as num?)?.toInt() ?? 0;
-          final recipientCount = recipientTarget == 'CLASS_STUDENTS'
-              ? studentCount
-              : recipientTarget == 'CLASS_PARENTS'
-                  ? parentCount
-                  : studentCount + parentCount;
-          return SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(
-                20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+      builder: (_) => _BroadcastSheet(classes: classes, accent: widget.accent),
+    );
+    if (delivered == null || !mounted) return;
+    _reload();
+    messenger.showSnackBar(SnackBar(
+      content: Text('Đã gửi thông báo tới $delivered người nhận'),
+      backgroundColor: AppColors.success,
+      behavior: SnackBarBehavior.floating,
+    ));
+  }
+}
+
+class _BroadcastSheet extends StatefulWidget {
+  const _BroadcastSheet({required this.classes, required this.accent});
+
+  final List<Map<String, dynamic>> classes;
+  final Color accent;
+
+  @override
+  State<_BroadcastSheet> createState() => _BroadcastSheetState();
+}
+
+class _BroadcastSheetState extends State<_BroadcastSheet> {
+  final _titleCtrl = TextEditingController(text: 'Thông báo tình hình lớp học');
+  final _bodyCtrl = TextEditingController();
+  final _idempotencyKey =
+      'mobile-announcement-${DateTime.now().microsecondsSinceEpoch}';
+  static const _category = 'STUDENT_STATUS';
+  late String _classId = widget.classes.first['classId'].toString();
+  String _recipientTarget = 'CLASS_ALL';
+  String _priority = 'NORMAL';
+  bool _sending = false;
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _bodyCtrl.dispose();
+    super.dispose();
+  }
+
+  int get _recipientCount {
+    final scope = widget.classes
+        .firstWhere((item) => item['classId'].toString() == _classId);
+    final students = (scope['studentCount'] as num?)?.toInt() ?? 0;
+    final parents = (scope['parentCount'] as num?)?.toInt() ?? 0;
+    return switch (_recipientTarget) {
+      'CLASS_STUDENTS' => students,
+      'CLASS_PARENTS' => parents,
+      _ => students + parents,
+    };
+  }
+
+  Future<void> _send() async {
+    if (_titleCtrl.text.trim().isEmpty || _bodyCtrl.text.trim().isEmpty) return;
+    setState(() => _sending = true);
+    try {
+      final preview = await sl<ApiService>().previewTeacherAnnouncement(
+        classId: _classId,
+        target: _recipientTarget,
+        category: _category,
+      );
+      final result = await sl<ApiService>().sendTeacherAnnouncement(
+        classId: _classId,
+        target: _recipientTarget,
+        category: _category,
+        priority: _priority,
+        title: _titleCtrl.text.trim(),
+        body: _bodyCtrl.text.trim(),
+        idempotencyKey: _idempotencyKey,
+      );
+      if (!mounted) return;
+      final delivered = (result['recipientCount'] as num?)?.toInt() ??
+          (preview['recipientCount'] as num?)?.toInt() ??
+          _recipientCount;
+      Navigator.pop(context, delivered);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Không thể gửi: $e')));
+      setState(() => _sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = widget.classes
+        .firstWhere((item) => item['classId'].toString() == _classId);
+    final studentCount = (scope['studentCount'] as num?)?.toInt() ?? 0;
+    final parentCount = (scope['parentCount'] as num?)?.toInt() ?? 0;
+    final recipientCount = _recipientCount;
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(
+          20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Gửi thông báo lớp học',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          const SizedBox(height: 4),
+          const Text(
+            'Điểm số và điểm danh được thông báo tự động khi lưu. Biểu mẫu này chỉ dùng để trao đổi tình hình lớp học.',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            initialValue: _classId,
+            decoration: const InputDecoration(
+                labelText: 'Lớp phụ trách', isDense: true),
+            items: widget.classes
+                .map((item) => DropdownMenuItem(
+                    value: item['classId'].toString(),
+                    child: Text(
+                        '${item['classCode']} · ${item['homeroom'] == true ? 'Chủ nhiệm' : 'Giảng dạy'}')))
+                .toList(),
+            onChanged: (value) => setState(() => _classId = value!),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.teacherAccent.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Row(
               children: [
-                const Text('Gửi thông báo lớp học',
-                    style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                const SizedBox(height: 4),
-                const Text(
-                  'Điểm số và điểm danh được thông báo tự động khi lưu. Biểu mẫu này chỉ dùng để trao đổi tình hình lớp học.',
-                  style:
-                      TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: target,
-                  decoration: const InputDecoration(
-                      labelText: 'Lớp phụ trách', isDense: true),
-                  items: classes
-                      .map((item) => DropdownMenuItem(
-                          value: item['classId'].toString(),
-                          child: Text(
-                              '${item['classCode']} · ${item['homeroom'] == true ? 'Chủ nhiệm' : 'Giảng dạy'}')))
-                      .toList(),
-                  onChanged: (value) => setState(() => target = value!),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.teacherAccent.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.auto_awesome_rounded,
-                          color: AppColors.teacherAccent),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Điểm mới và thay đổi trạng thái điểm danh được gửi ngay tới học sinh và phụ huynh, không gửi trùng khi dữ liệu không đổi.',
-                          style: TextStyle(fontSize: 11, height: 1.4),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: recipientTarget,
-                  decoration: const InputDecoration(
-                      labelText: 'Người nhận', isDense: true),
-                  items: [
-                    DropdownMenuItem(
-                        value: 'CLASS_ALL',
-                        child: Text(
-                            'Học sinh & phụ huynh (${studentCount + parentCount})')),
-                    DropdownMenuItem(
-                        value: 'CLASS_STUDENTS',
-                        child: Text('Học sinh ($studentCount)')),
-                    DropdownMenuItem(
-                        value: 'CLASS_PARENTS',
-                        child: Text('Phụ huynh ($parentCount)')),
-                  ],
-                  onChanged: (value) =>
-                      setState(() => recipientTarget = value!),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: priority,
-                  decoration:
-                      const InputDecoration(labelText: 'Mức độ', isDense: true),
-                  items: const [
-                    DropdownMenuItem(
-                        value: 'NORMAL', child: Text('Thông thường')),
-                    DropdownMenuItem(
-                        value: 'IMPORTANT', child: Text('Quan trọng')),
-                    DropdownMenuItem(value: 'URGENT', child: Text('Khẩn cấp')),
-                  ],
-                  onChanged: (value) => setState(() => priority = value!),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: titleCtrl,
-                  maxLength: 255,
-                  decoration: const InputDecoration(
-                    labelText: 'Tiêu đề',
-                    isDense: true,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: bodyCtrl,
-                  minLines: 3,
-                  maxLines: 5,
-                  maxLength: 4000,
-                  decoration: const InputDecoration(
-                    labelText: 'Nội dung',
-                    alignLabelWithHint: true,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: recipientCount == 0
-                        ? null
-                        : () async {
-                            if (titleCtrl.text.trim().isEmpty ||
-                                bodyCtrl.text.trim().isEmpty) {
-                              return;
-                            }
-                            try {
-                              await sl<ApiService>().sendTeacherAnnouncement(
-                                classId: target,
-                                target: recipientTarget,
-                                category: category,
-                                priority: priority,
-                                title: titleCtrl.text.trim(),
-                                body: bodyCtrl.text.trim(),
-                              );
-                              if (!ctx.mounted) return;
-                              Navigator.pop(ctx);
-                              messenger.showSnackBar(SnackBar(
-                                content: Text(
-                                    'Đã gửi thông báo tới $recipientCount người nhận'),
-                                backgroundColor: AppColors.success,
-                                behavior: SnackBarBehavior.floating,
-                              ));
-                            } catch (e) {
-                              if (!ctx.mounted) return;
-                              messenger.showSnackBar(
-                                  SnackBar(content: Text('Không thể gửi: $e')));
-                            }
-                          },
-                    style:
-                        FilledButton.styleFrom(backgroundColor: widget.accent),
-                    icon: const Icon(Icons.send_rounded),
-                    label: Text('Gửi tới $recipientCount người'),
+                Icon(Icons.auto_awesome_rounded,
+                    color: AppColors.teacherAccent),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Điểm mới và thay đổi trạng thái điểm danh được gửi ngay tới học sinh và phụ huynh, không gửi trùng khi dữ liệu không đổi.',
+                    style: TextStyle(fontSize: 11, height: 1.4),
                   ),
                 ),
               ],
             ),
-          );
-        },
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            initialValue: _recipientTarget,
+            decoration:
+                const InputDecoration(labelText: 'Người nhận', isDense: true),
+            items: [
+              DropdownMenuItem(
+                  value: 'CLASS_ALL',
+                  child: Text(
+                      'Học sinh & phụ huynh (${studentCount + parentCount})')),
+              DropdownMenuItem(
+                  value: 'CLASS_STUDENTS',
+                  child: Text('Học sinh ($studentCount)')),
+              DropdownMenuItem(
+                  value: 'CLASS_PARENTS',
+                  child: Text('Phụ huynh ($parentCount)')),
+            ],
+            onChanged: (value) => setState(() => _recipientTarget = value!),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            initialValue: _priority,
+            decoration:
+                const InputDecoration(labelText: 'Mức độ', isDense: true),
+            items: const [
+              DropdownMenuItem(value: 'NORMAL', child: Text('Thông thường')),
+              DropdownMenuItem(value: 'IMPORTANT', child: Text('Quan trọng')),
+              DropdownMenuItem(value: 'URGENT', child: Text('Khẩn cấp')),
+            ],
+            onChanged: (value) => setState(() => _priority = value!),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _titleCtrl,
+            maxLength: 255,
+            decoration:
+                const InputDecoration(labelText: 'Tiêu đề', isDense: true),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _bodyCtrl,
+            minLines: 3,
+            maxLines: 5,
+            maxLength: 4000,
+            decoration: const InputDecoration(
+              labelText: 'Nội dung',
+              alignLabelWithHint: true,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: recipientCount == 0 || _sending ? null : _send,
+              style: FilledButton.styleFrom(backgroundColor: widget.accent),
+              icon: const Icon(Icons.send_rounded),
+              label: Text(
+                  _sending ? 'Đang gửi...' : 'Gửi tới $recipientCount người'),
+            ),
+          ),
+        ],
       ),
     );
-    titleCtrl.dispose();
-    bodyCtrl.dispose();
   }
 }
 
@@ -481,7 +547,34 @@ class _ThreadList extends StatelessWidget {
           ),
           onTap: () async {
             final userId = t.userId;
-            if (userId != null && userId.isNotEmpty) {
+            if (t.isBroadcast) {
+              await showDialog<void>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: Text(t.name),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(t.role,
+                          style: TextStyle(
+                              color: accent, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 12),
+                      Text(t.lastMessage),
+                      const SizedBox(height: 12),
+                      Text(t.lastTime,
+                          style: const TextStyle(
+                              color: AppColors.textSecondary, fontSize: 12)),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Đóng')),
+                  ],
+                ),
+              );
+            } else if (userId != null && userId.isNotEmpty) {
               await Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => _ChatThreadPage(
@@ -527,11 +620,13 @@ class ChatMessage {
     required this.fromMe,
     required this.time,
     this.senderName,
+    this.read = false,
   });
   final String text;
   final bool fromMe;
   final String time;
   final String? senderName;
+  final bool read;
 }
 
 class ChatRoomPage extends StatefulWidget {
@@ -735,7 +830,9 @@ class _Bubble extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  message.time,
+                  message.fromMe
+                      ? '${message.time} · ${message.read ? 'Đã xem' : 'Đã gửi'}'
+                      : message.time,
                   style: TextStyle(
                     fontSize: 10,
                     color: message.fromMe
@@ -785,8 +882,12 @@ class _ChatThreadPageState extends State<_ChatThreadPage> {
     final realtime = sl<RealtimeService>()..connect();
     _subscription = realtime.events.where((event) {
       if (event.type != 'CHAT' && event.type != 'CHAT_READ') return false;
-      final sender = (event.data['senderId'] ?? '').toString();
-      final receiver = (event.data['receiverId'] ?? '').toString();
+      if (event.type == 'CHAT_READ') {
+        return (event.data['readByUserId'] ?? '').toString() ==
+            widget.withUserId;
+      }
+      final sender = (event.data['fromUserId'] ?? '').toString();
+      final receiver = (event.data['toUserId'] ?? '').toString();
       return sender == widget.withUserId || receiver == widget.withUserId;
     }).listen((_) => _reload());
   }
@@ -847,6 +948,7 @@ class _ChatThreadPageState extends State<_ChatThreadPage> {
       fromMe: senderId == myId,
       time: time,
       senderName: (m['senderName'] ?? '').toString(),
+      read: m['readFlag'] == true,
     );
   }
 

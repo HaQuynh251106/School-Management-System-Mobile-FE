@@ -21,11 +21,14 @@ class AdminClassDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final title = className.trim().toLowerCase().startsWith('lớp ')
+        ? className.trim()
+        : 'Lớp ${className.trim()}';
     return DefaultTabController(
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: Text('Lớp $className'),
+          title: Text(title),
           backgroundColor: AppColors.adminAccent,
           bottom: const TabBar(
             labelColor: Colors.white,
@@ -80,23 +83,26 @@ class _InfoTab extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
             children: [
               Container(
-                width: 64,
-                height: 64,
+                width: 56,
+                height: 56,
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
-                  child: Text(className,
-                      style: const TextStyle(
+                  child: Text(
+                    className,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold)),
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
                 ),
               ),
               const SizedBox(width: 14),
@@ -104,18 +110,28 @@ class _InfoTab extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(gradeName,
-                        style: const TextStyle(
+                    Text(
+                      gradeName,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600)),
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
                     const SizedBox(height: 4),
-                    Text('GVCN: $homeroom',
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 13)),
-                    Text('Sĩ số: $studentCount HS',
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 13)),
+                    Text(
+                      'GVCN: $homeroom',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: Colors.white70),
+                    ),
+                    Text(
+                      'Sĩ số: $studentCount HS',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: Colors.white70),
+                    ),
                   ],
                 ),
               ),
@@ -202,13 +218,21 @@ class _StatCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 14),
         child: Column(
           children: [
-            Text(value,
-                style: TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 20, color: color)),
+            Text(
+              value,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+            ),
             const SizedBox(height: 4),
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.textSecondary)),
+            Text(
+              label,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: AppColors.textSecondary),
+            ),
           ],
         ),
       ),
@@ -316,18 +340,29 @@ class _StudentsTabState extends State<_StudentsTab> {
                       radius: 18,
                       backgroundColor:
                           AppColors.studentAccent.withValues(alpha: 0.14),
-                      child: Text('${i + 1}',
-                          style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.studentAccent)),
+                      child: Text(
+                        '${i + 1}',
+                        style:
+                            Theme.of(context).textTheme.labelMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.studentAccent,
+                                ),
+                      ),
                     ),
-                    title: Text(name,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w500, fontSize: 14)),
-                    subtitle: Text(code,
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.textSecondary)),
+                    title: Text(
+                      name,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      code,
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: AppColors.textSecondary),
+                    ),
                     trailing: const Icon(Icons.chevron_right_rounded,
                         color: AppColors.textSecondary, size: 18),
                     onTap: () {},
@@ -363,16 +398,18 @@ class _TimetableSummaryTab extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: AppColors.success.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(8),
           ),
-          child: const Row(
+          child: Row(
             children: [
-              Icon(Icons.check_circle_outline_rounded,
+              const Icon(Icons.check_circle_outline_rounded,
                   color: AppColors.success, size: 18),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Expanded(
-                child: Text('TKB HK2 đã hoàn tất, không có xung đột',
-                    style: TextStyle(fontSize: 12)),
+                child: Text(
+                  'TKB HK2 đã hoàn tất, không có xung đột',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               ),
             ],
           ),
@@ -381,11 +418,13 @@ class _TimetableSummaryTab extends StatelessWidget {
         for (var d = 0; d < _days.length; d++) ...[
           Padding(
             padding: const EdgeInsets.only(bottom: 8, top: 8),
-            child: Text(_days[d],
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: AppColors.adminAccent)),
+            child: Text(
+              _days[d],
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.adminAccent,
+                  ),
+            ),
           ),
           ..._slots[d]!.asMap().entries.map(
                 (e) => Card(
@@ -405,12 +444,20 @@ class _TimetableSummaryTab extends StatelessWidget {
                                 color: AppColors.adminAccent)),
                       ),
                     ),
-                    title: Text(e.value,
-                        style: const TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w500)),
-                    subtitle: Text('Tiết ${e.key + 1}',
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.textSecondary)),
+                    title: Text(
+                      e.value,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      'Tiết ${e.key + 1}',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: AppColors.textSecondary),
+                    ),
                   ),
                 ),
               ),

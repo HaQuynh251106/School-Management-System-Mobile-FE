@@ -7,15 +7,16 @@ import '../../../../core/di/service_locator.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../shared/widgets/notification_center.dart';
 import '../../../../shared/widgets/section_header.dart';
-import '../../../../shared/widgets/stat_card.dart';
 import '../../../../shared/widgets/adaptive_role_scaffold.dart';
 import '../../../../shared/widgets/mobile_workspace_page.dart';
 import '../../../../shared/widgets/quick_create.dart';
-import '../../../../shared/widgets/role_page_intro.dart';
+import '../../../../shared/widgets/real_dashboard_panel.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_event.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 import 'class_detail.dart';
+import 'admin_reports_view.dart';
+import 'club_management_page.dart';
 import 'exam_categories_page.dart';
 import 'fee_period_detail.dart';
 import 'notification_templates_page.dart';
@@ -44,11 +45,11 @@ class _AdminHomeState extends State<AdminHome> {
           ? const QuickCreateButton(
               role: 'ADMIN', accent: AppColors.adminAccent)
           : null,
-      pages: const [
-        _DashboardTab(),
-        _UsersTab(),
-        _StructureTab(),
-        _SettingsTab(),
+      pages: [
+        _DashboardTab(onNavigate: (index) => setState(() => _tab = index)),
+        const _UsersTab(),
+        const _StructureTab(),
+        const _SettingsTab(),
       ],
       destinations: const [
         RoleDestination(
@@ -79,7 +80,9 @@ class _AdminHomeState extends State<AdminHome> {
 // =================== TAB 1: DASHBOARD ===================
 
 class _DashboardTab extends StatelessWidget {
-  const _DashboardTab();
+  const _DashboardTab({required this.onNavigate});
+
+  final ValueChanged<int> onNavigate;
 
   @override
   Widget build(BuildContext context) {
@@ -101,11 +104,11 @@ class _DashboardTab extends StatelessWidget {
             ],
           ),
         ),
-        body: const TabBarView(
+        body: TabBarView(
           children: [
-            _OverviewView(),
-            _ReportsView(),
-            _AuditLogView(),
+            _OverviewView(onNavigate: onNavigate),
+            const AdminReportsView(),
+            const _AuditLogView(),
           ],
         ),
       ),
@@ -114,130 +117,66 @@ class _DashboardTab extends StatelessWidget {
 }
 
 class _OverviewView extends StatefulWidget {
-  const _OverviewView();
+  const _OverviewView({required this.onNavigate});
+
+  final ValueChanged<int> onNavigate;
 
   @override
   State<_OverviewView> createState() => _OverviewViewState();
 }
 
 class _OverviewViewState extends State<_OverviewView> {
-  // Tải song song danh sách user + lớp để suy ra số liệu thống kê nhanh.
-  late final Future<List<List<Map<String, dynamic>>>> _statsFuture =
-      Future.wait([
-    sl<ApiService>().users(),
-    sl<ApiService>().classes(),
-  ]);
+  late Future<Map<String, dynamic>> _future = sl<ApiService>().dashboard();
+
+  Future<void> _refresh() async {
+    setState(() => _future = sl<ApiService>().dashboard());
+    await _future;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final user = (context.read<AuthBloc>().state as AuthAuthenticated).user;
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        RolePageIntro(
-          title: 'Xin chào, ${user.fullName}',
-          subtitle:
-              'Tổng hợp vận hành toàn trường. Nhấn “Thêm mới” để tạo nhanh dữ liệu.',
-          accent: AppColors.adminAccent,
-          icon: Icons.admin_panel_settings_rounded,
-          badges: const ['Quản trị hệ thống', 'Dữ liệu thời gian thực'],
-        ),
-        const SizedBox(height: 20),
-        const SectionHeader(title: 'Thống kê nhanh'),
-        const SizedBox(height: 12),
-        FutureBuilder<List<List<Map<String, dynamic>>>>(
-          future: _statsFuture,
-          builder: (context, snap) {
-            final data = snap.data;
-            final users = (data != null && data.isNotEmpty)
-                ? data[0]
-                : const <Map<String, dynamic>>[];
-            final classes = (data != null && data.length > 1)
-                ? data[1]
-                : const <Map<String, dynamic>>[];
-            String count(int n) =>
-                snap.connectionState == ConnectionState.done ? '$n' : '—';
-            final students = users.where((u) => u['role'] == 'STUDENT').length;
-            final teachers = users.where((u) => u['role'] == 'TEACHER').length;
-            final parents = users.where((u) => u['role'] == 'PARENT').length;
-            return GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              childAspectRatio: 1.4,
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: FutureBuilder<Map<String, dynamic>>(
+        future: _future,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return ListView(
+              padding: const EdgeInsets.all(24),
               children: [
-                StatCard(
-                  label: 'Học sinh',
-                  value: count(students),
-                  icon: Icons.school_rounded,
-                  color: AppColors.studentAccent,
-                ),
-                StatCard(
-                  label: 'Giáo viên',
-                  value: count(teachers),
-                  icon: Icons.person_rounded,
-                  color: AppColors.teacherAccent,
-                ),
-                StatCard(
-                  label: 'Lớp học',
-                  value: count(classes.length),
-                  icon: Icons.class_rounded,
-                  color: AppColors.adminAccent,
-                ),
-                StatCard(
-                  label: 'Phụ huynh',
-                  value: count(parents),
-                  icon: Icons.family_restroom_rounded,
-                  color: AppColors.parentAccent,
+                const Icon(Icons.error_outline_rounded, size: 44),
+                const SizedBox(height: 12),
+                const Text('Không thể tải dashboard dữ liệu thật',
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: _refresh,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Thử lại'),
                 ),
               ],
             );
-          },
-        ),
-        const SizedBox(height: 20),
-        const SectionHeader(title: 'Cảnh báo'),
-        const SizedBox(height: 10),
-        const _AlertCard(
-          color: AppColors.error,
-          icon: Icons.warning_amber_rounded,
-          title: '266 hóa đơn quá hạn',
-          subtitle: 'Tổng ~ 1,2 tỷ đồng — cần gửi nhắc nợ',
-        ),
-        const SizedBox(height: 8),
-        const _AlertCard(
-          color: AppColors.warning,
-          icon: Icons.event_busy_rounded,
-          title: '12 GV chưa nhập điểm GK',
-          subtitle: 'Hạn chót 25/05',
-        ),
-        const SizedBox(height: 20),
-        const SectionHeader(title: 'Hoạt động gần đây', action: 'Xem tất cả'),
-        const SizedBox(height: 12),
-        const Column(
-          children: [
-            _ActivityRow(
-              icon: Icons.person_add_rounded,
-              title: 'Thêm 15 HS vào lớp 10A1',
-              time: '2 giờ trước',
-              color: AppColors.studentAccent,
-            ),
-            _ActivityRow(
-              icon: Icons.schedule_rounded,
-              title: 'Xếp TKB HK2 hoàn tất',
-              time: 'Hôm nay',
-              color: AppColors.adminAccent,
-            ),
-            _ActivityRow(
-              icon: Icons.receipt_long_rounded,
-              title: 'Phát hành hóa đơn HK2',
-              time: 'Hôm qua',
-              color: AppColors.parentAccent,
-            ),
-          ],
-        ),
-      ],
+          }
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              RealDashboardPanel(
+                dashboard: snapshot.data!,
+                accent: AppColors.adminAccent,
+                onRetry: _refresh,
+                onShortcut: (shortcut) {
+                  final target = '${shortcut['target'] ?? ''}';
+                  widget.onNavigate(target == 'users' ? 1 : 2);
+                },
+              ),
+              const SizedBox(height: 80),
+            ],
+          );
+        },
+      ),
     );
   }
 }
@@ -707,7 +646,13 @@ class _UsersTabState extends State<_UsersTab> {
           ),
         ),
         floatingActionButton: FloatingActionButton.extended(
-          onPressed: () {},
+          onPressed: () => openQuickCreate(
+            context,
+            role: 'ADMIN',
+            accent: AppColors.adminAccent,
+            initialType: 'USER',
+            onCreated: _refresh,
+          ),
           icon: const Icon(Icons.person_add_rounded),
           label: const Text('Thêm'),
           backgroundColor: AppColors.adminAccent,
@@ -1303,7 +1248,7 @@ class _ClassesViewState extends State<_ClassesView> {
             return Card(
               margin: EdgeInsets.zero,
               child: InkWell(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => AdminClassDetail(
@@ -1318,18 +1263,29 @@ class _ClassesViewState extends State<_ClassesView> {
                   leading: CircleAvatar(
                     backgroundColor:
                         AppColors.adminAccent.withValues(alpha: 0.12),
-                    child: Text(name.isEmpty ? '?' : name,
-                        style: const TextStyle(
+                    child: Text(
+                      name.isEmpty ? '?' : name,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
                             color: AppColors.adminAccent,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12)),
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
                   ),
-                  title: Text(name,
-                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                  title: Text(
+                    name,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
                   subtitle: Text(
-                      '$gradeName${homeroom.isEmpty ? '' : ' • GVCN: $homeroom'}',
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.textSecondary)),
+                    '$gradeName${homeroom.isEmpty ? '' : ' • GVCN: $homeroom'}',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: AppColors.textSecondary),
+                  ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -1340,11 +1296,14 @@ class _ClassesViewState extends State<_ClassesView> {
                           color: AppColors.adminAccent.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: Text('$count HS',
-                            style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.adminAccent)),
+                        child: Text(
+                          '$count HS',
+                          style:
+                              Theme.of(context).textTheme.labelMedium?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.adminAccent,
+                                  ),
+                        ),
                       ),
                       IconButton(
                         tooltip: 'Phân công giáo viên chủ nhiệm',
@@ -1589,7 +1548,17 @@ class _FinanceViewState extends State<_FinanceView> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              const SectionHeader(title: 'Đợt thu đang mở', action: 'Tạo mới'),
+              SectionHeader(
+                title: 'Đợt thu',
+                action: 'Tạo mới',
+                onAction: () => openQuickCreate(
+                  context,
+                  role: 'ADMIN',
+                  accent: AppColors.adminAccent,
+                  initialType: 'FEE',
+                  onCreated: _refresh,
+                ),
+              ),
               const SizedBox(height: 10),
               if (periods.isEmpty)
                 const Padding(
@@ -1611,9 +1580,7 @@ class _FinanceViewState extends State<_FinanceView> {
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => AdminFeePeriodDetail(
-                          code: code,
-                          title: name,
-                          status: status,
+                          periodId: id,
                         ),
                       ),
                     ),
@@ -1640,13 +1607,6 @@ class _FinanceViewState extends State<_FinanceView> {
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (isOpen && id.isNotEmpty)
-                            IconButton(
-                              tooltip: 'Phát hành hóa đơn',
-                              icon: const Icon(Icons.playlist_add_rounded,
-                                  color: AppColors.adminAccent, size: 20),
-                              onPressed: () => _generateInvoices(id),
-                            ),
                           Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 3),
@@ -1776,6 +1736,13 @@ class _SettingsTab extends StatelessWidget {
                 label: 'Tổng kết và xét lên lớp',
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const YearEndPage()),
+                ),
+              ),
+              _AdminSettingsTile(
+                icon: Icons.groups_rounded,
+                label: 'Quản lý câu lạc bộ',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ClubManagementPage()),
                 ),
               ),
               _AdminSettingsTile(

@@ -70,7 +70,7 @@ class RolePageIntro extends StatelessWidget {
             Text(title,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 22,
+                  fontSize: 18,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -.35,
                 )),

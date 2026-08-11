@@ -1828,6 +1828,7 @@ class _ProfileTab extends StatelessWidget {
 
 class _TAssignment {
   const _TAssignment({
+    required this.id,
     required this.title,
     required this.subject,
     required this.className,
@@ -1835,7 +1836,10 @@ class _TAssignment {
     required this.status,
     required this.submitted,
     required this.total,
+    this.deadlineAt,
+    this.allowLate = false,
   });
+  final String id;
   final String title;
   final String subject;
   final String className;
@@ -1843,10 +1847,13 @@ class _TAssignment {
   final String status; // DRAFT / PUBLISHED / CLOSED
   final int submitted;
   final int total;
+  final DateTime? deadlineAt;
+  final bool allowLate;
 }
 
 const _teacherAssignments = <_TAssignment>[
   _TAssignment(
+    id: 'demo-1',
     title: 'Bài tập Hàm số bậc hai',
     subject: 'Toán',
     className: '10A1',
@@ -1856,6 +1863,7 @@ const _teacherAssignments = <_TAssignment>[
     total: 38,
   ),
   _TAssignment(
+    id: 'demo-2',
     title: 'Đề ôn tập GK',
     subject: 'Toán',
     className: '10A2',
@@ -1865,6 +1873,7 @@ const _teacherAssignments = <_TAssignment>[
     total: 40,
   ),
   _TAssignment(
+    id: 'demo-3',
     title: 'Bài tập Phép tính ma trận',
     subject: 'Toán',
     className: '10A1',
@@ -1874,6 +1883,7 @@ const _teacherAssignments = <_TAssignment>[
     total: 38,
   ),
   _TAssignment(
+    id: 'demo-4',
     title: 'Bài tập Chương 1 — Đại số',
     subject: 'Toán',
     className: '10A1',
@@ -1883,6 +1893,7 @@ const _teacherAssignments = <_TAssignment>[
     total: 38,
   ),
   _TAssignment(
+    id: 'demo-5',
     title: 'Bài tập Chương 2 — Hình học',
     subject: 'Toán',
     className: '8A1',
@@ -1900,7 +1911,9 @@ class _AssignmentsTab extends StatefulWidget {
 }
 
 class _AssignmentsTabState extends State<_AssignmentsTab> {
-  late final Future<List<_TAssignment>> _future = _load();
+  late Future<List<_TAssignment>> _future = _load();
+
+  void _refresh() => setState(() => _future = _load());
 
   Future<List<_TAssignment>> _load() async {
     final raw = await sl<ApiService>().teacherAssignments();
@@ -1917,14 +1930,96 @@ class _AssignmentsTabState extends State<_AssignmentsTab> {
           : rawDeadline.toString();
     }
     return _TAssignment(
+      id: (a['id'] ?? '').toString(),
       title: (a['title'] ?? '').toString(),
       subject: (a['subjectName'] ?? '').toString(),
       className: (a['classId'] ?? '').toString(),
       deadline: deadline,
       status: (a['status'] ?? 'DRAFT').toString(),
-      submitted: 0,
-      total: 0,
+      submitted: (a['submissionCount'] as num?)?.toInt() ?? 0,
+      total: (a['studentCount'] as num?)?.toInt() ?? 0,
+      deadlineAt:
+          DateTime.tryParse((a['deadline'] ?? '').toString())?.toLocal(),
+      allowLate: a['allowLate'] == true,
     );
+  }
+
+  Future<void> _publish(_TAssignment assignment) async {
+    try {
+      await sl<ApiService>().publishAssignment(assignment.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã phát hành bài tập')),
+      );
+      _refresh();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Không thể phát hành: $error')),
+      );
+    }
+  }
+
+  Future<void> _assignmentAction(
+    _TAssignment assignment,
+    String action,
+  ) async {
+    try {
+      String message;
+      switch (action) {
+        case 'close':
+          await sl<ApiService>().closeAssignment(assignment.id);
+          message = 'Đã đóng nhận bài';
+          break;
+        case 'reopen':
+          await sl<ApiService>().reopenAssignment(assignment.id);
+          message = 'Đã mở lại nhận bài';
+          break;
+        case 'late':
+          await sl<ApiService>().updateAssignment(
+            assignment.id,
+            {'allowLate': !assignment.allowLate},
+          );
+          message =
+              assignment.allowLate ? 'Đã tắt nộp muộn' : 'Đã cho phép nộp muộn';
+          break;
+        case 'extend':
+          final now = DateTime.now();
+          final tomorrow = DateTime(now.year, now.month, now.day + 1);
+          final currentDeadline = assignment.deadlineAt;
+          final initial = currentDeadline != null &&
+                  !DateTime(
+                    currentDeadline.year,
+                    currentDeadline.month,
+                    currentDeadline.day,
+                  ).isBefore(tomorrow)
+              ? currentDeadline
+              : tomorrow;
+          final date = await showDatePicker(
+            context: context,
+            initialDate: initial,
+            firstDate: tomorrow,
+            lastDate: DateTime.now().add(const Duration(days: 730)),
+          );
+          if (date == null) return;
+          final deadline = DateTime(date.year, date.month, date.day, 23, 59);
+          await sl<ApiService>().extendAssignment(assignment.id, deadline);
+          message = 'Đã gia hạn và mở nhận bài';
+          break;
+        default:
+          return;
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+      _refresh();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Không thể cập nhật bài tập: $error')),
+      );
+    }
   }
 
   @override
@@ -1978,17 +2073,32 @@ class _AssignmentsTabState extends State<_AssignmentsTab> {
                 ],
               ),
             ),
-            floatingActionButton: FloatingActionButton.extended(
-              onPressed: () => _showCreateSheet(context),
-              backgroundColor: AppColors.teacherAccent,
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Tạo bài'),
+            floatingActionButton: QuickCreateButton(
+              role: 'TEACHER',
+              accent: AppColors.teacherAccent,
+              initialType: 'ASSIGNMENT',
+              onCreated: _refresh,
             ),
             body: TabBarView(
               children: [
-                _TAssignmentList(items: published),
-                _TAssignmentList(items: drafts, isDraft: true),
-                _TAssignmentList(items: closed, isClosed: true),
+                _TAssignmentList(
+                  items: published,
+                  onChanged: _refresh,
+                  onAction: _assignmentAction,
+                ),
+                _TAssignmentList(
+                  items: drafts,
+                  isDraft: true,
+                  onChanged: _refresh,
+                  onPublish: _publish,
+                  onAction: _assignmentAction,
+                ),
+                _TAssignmentList(
+                  items: closed,
+                  isClosed: true,
+                  onChanged: _refresh,
+                  onAction: _assignmentAction,
+                ),
               ],
             ),
           ),
@@ -2129,10 +2239,16 @@ class _TAssignmentList extends StatelessWidget {
     required this.items,
     this.isDraft = false,
     this.isClosed = false,
+    this.onChanged,
+    this.onPublish,
+    this.onAction,
   });
   final List<_TAssignment> items;
   final bool isDraft;
   final bool isClosed;
+  final VoidCallback? onChanged;
+  final Future<void> Function(_TAssignment assignment)? onPublish;
+  final Future<void> Function(_TAssignment assignment, String action)? onAction;
 
   Color _statusColor(String s) => switch (s) {
         'DRAFT' => AppColors.textSecondary,
@@ -2165,26 +2281,24 @@ class _TAssignmentList extends StatelessWidget {
           margin: EdgeInsets.zero,
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
-            onTap: () {
+            onTap: () async {
               if (isDraft) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Mở form chỉnh sửa bản nháp'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
+                await onPublish?.call(a);
                 return;
               }
-              Navigator.of(context).push(
+              final changed = await Navigator.of(context).push<bool>(
                 MaterialPageRoute(
                   builder: (_) => TeacherAssignmentGrading(
+                    assignmentId: a.id,
                     assignmentTitle: a.title,
                     subject: a.subject,
                     className: a.className,
                     deadline: a.deadline,
+                    studentCount: a.total,
                   ),
                 ),
               );
+              if (changed == true) onChanged?.call();
             },
             child: Padding(
               padding: const EdgeInsets.all(12),
@@ -2222,8 +2336,38 @@ class _TAssignmentList extends StatelessWidget {
                                 color: AppColors.teacherAccent)),
                       ),
                       const Spacer(),
-                      const Icon(Icons.chevron_right_rounded,
-                          color: AppColors.textSecondary, size: 18),
+                      if (a.status == 'DRAFT')
+                        const Icon(Icons.publish_rounded,
+                            color: AppColors.textSecondary)
+                      else
+                        PopupMenuButton<String>(
+                          tooltip: 'Quản lý bài tập',
+                          onSelected: (action) => onAction?.call(a, action),
+                          itemBuilder: (_) => [
+                            if (a.status == 'PUBLISHED') ...[
+                              const PopupMenuItem(
+                                value: 'close',
+                                child: Text('Đóng nhận bài'),
+                              ),
+                              PopupMenuItem(
+                                value: 'late',
+                                child: Text(a.allowLate
+                                    ? 'Tắt nộp muộn'
+                                    : 'Cho phép nộp muộn'),
+                              ),
+                            ],
+                            if (a.status == 'CLOSED')
+                              const PopupMenuItem(
+                                value: 'reopen',
+                                child: Text('Mở lại nhận bài'),
+                              ),
+                            const PopupMenuItem(
+                              value: 'extend',
+                              child: Text('Gia hạn'),
+                            ),
+                          ],
+                          icon: const Icon(Icons.more_vert_rounded),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -2241,6 +2385,17 @@ class _TAssignmentList extends StatelessWidget {
                               fontSize: 11, color: AppColors.textSecondary)),
                     ],
                   ),
+                  if (a.allowLate) ...[
+                    const SizedBox(height: 5),
+                    const Text(
+                      'Cho phép nộp muộn',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.warning,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                   if (!isDraft && a.total > 0) ...[
                     const SizedBox(height: 8),
                     Row(

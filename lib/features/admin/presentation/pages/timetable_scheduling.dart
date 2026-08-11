@@ -105,6 +105,13 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
     return null;
   }
 
+  Future<void> _openAssignments() async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => const TeachingAssignmentsPage(),
+    ));
+    await _loadSlots();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -113,12 +120,7 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
         backgroundColor: AppColors.adminAccent,
         actions: [
           IconButton(
-            onPressed: () async {
-              await Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => const TeachingAssignmentsPage(),
-              ));
-              await _loadSlots();
-            },
+            onPressed: _openAssignments,
             tooltip: 'Phân công giáo viên bộ môn',
             icon: const Icon(Icons.person_add_alt_1_rounded),
           ),
@@ -136,10 +138,21 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
             width: double.infinity,
             color: AppColors.adminAccent.withValues(alpha: 0.06),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Text(
-              'Đã xếp ${_assignments.fold<int>(0, (sum, item) => sum + ((item['scheduledPeriods'] as num?)?.toInt() ?? 0))}/${_assignments.fold<int>(0, (sum, item) => sum + ((item['weeklyPeriods'] as num?)?.toInt() ?? 0))} tiết theo phân công · ${_assignments.where((item) => item['fullyScheduled'] == true).length}/${_assignments.length} môn đã đủ lịch',
-              style:
-                  const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Đã xếp ${_assignments.fold<int>(0, (sum, item) => sum + ((item['scheduledPeriods'] as num?)?.toInt() ?? 0))}/${_assignments.fold<int>(0, (sum, item) => sum + ((item['weeklyPeriods'] as num?)?.toInt() ?? 0))} tiết theo phân công · ${_assignments.where((item) => item['fullyScheduled'] == true).length}/${_assignments.length} môn đã đủ lịch',
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: _openAssignments,
+                  icon: const Icon(Icons.tune_rounded, size: 17),
+                  label: const Text('Phân công'),
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -260,6 +273,8 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
           }
           final canSave = selected != null &&
               (current != null || selected['canSchedule'] == true);
+          final hasSchedulable =
+              available.any((item) => item['canSchedule'] == true);
           return Padding(
             padding: EdgeInsets.fromLTRB(
                 20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
@@ -301,6 +316,40 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
                     child: Text(
                       'Lớp chưa có phân công bộ môn. Hãy tạo phân công trước khi xếp lịch.',
                       style: TextStyle(fontSize: 12, color: AppColors.error),
+                    ),
+                  ),
+                if (current == null && available.isNotEmpty && !hasSchedulable)
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(top: 10),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                          color: AppColors.warning.withValues(alpha: 0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Tất cả phân công của lớp đã đủ số tiết mỗi tuần.',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Để xếp thêm, hãy tăng số tiết/tuần của môn hoặc sửa một tiết đang có.',
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.textSecondary),
+                        ),
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          onPressed: () =>
+                              Navigator.pop(sheetContext, 'assignments'),
+                          icon: const Icon(Icons.tune_rounded),
+                          label: const Text('Điều chỉnh phân công'),
+                        ),
+                      ],
                     ),
                   ),
                 const SizedBox(height: 10),
@@ -372,6 +421,10 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
       ),
     );
     if (action == null) return;
+    if (action == 'assignments') {
+      await _openAssignments();
+      return;
+    }
     try {
       if (action == 'delete' && current != null) {
         await _api.deleteTimetableSlot(current['id'].toString());
