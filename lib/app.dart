@@ -6,6 +6,8 @@ import 'core/theme/app_theme.dart';
 import 'core/di/service_locator.dart';
 import 'core/theme/theme_controller.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
+import 'features/auth/presentation/bloc/auth_event.dart';
+import 'features/auth/presentation/bloc/auth_state.dart';
 
 class SseApp extends StatefulWidget {
   const SseApp({super.key});
@@ -20,7 +22,13 @@ class _SseAppState extends State<SseApp> {
   @override
   void initState() {
     super.initState();
-    _router = AppRouter(context.read<AuthBloc>());
+    final authBloc = context.read<AuthBloc>();
+    _router = AppRouter(authBloc);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && authBloc.state is AuthInitial) {
+        authBloc.add(const AuthStarted());
+      }
+    });
   }
 
   @override

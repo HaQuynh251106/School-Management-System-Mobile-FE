@@ -5,7 +5,6 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'app.dart';
 import 'core/di/service_locator.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
-import 'features/auth/presentation/bloc/auth_event.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,7 +12,7 @@ void main() async {
   await setupServiceLocator();
   runApp(
     BlocProvider(
-      create: (_) => sl<AuthBloc>()..add(const AuthStarted()),
+      create: (_) => sl<AuthBloc>(),
       child: const SseApp(),
     ),
   );
