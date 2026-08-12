@@ -34,9 +34,9 @@ class _MobileWorkspacePageState extends State<MobileWorkspacePage> {
       await api.dashboard(childId: widget.childId),
     );
     final errors = <Map<String, dynamic>>[
-      ...?((dashboard['errors'] as List?)
-          ?.whereType<Map>()
-          .map((item) => item.cast<String, dynamic>())),
+      ...?((dashboard['errors'] as List?)?.whereType<Map>().map(
+        (item) => item.cast<String, dynamic>(),
+      )),
     ];
 
     var leaves = <Map<String, dynamic>>[];
@@ -44,8 +44,9 @@ class _MobileWorkspacePageState extends State<MobileWorkspacePage> {
       try {
         leaves = await api.leaveRequests();
       } catch (_) {
-        errors
-            .add(_partialError('leaveRequests', 'Không tải được đơn xin nghỉ'));
+        errors.add(
+          _partialError('leaveRequests', 'Không tải được đơn xin nghỉ'),
+        );
       }
     }
 
@@ -66,7 +67,8 @@ class _MobileWorkspacePageState extends State<MobileWorkspacePage> {
         report = await api.personalReport(childId: widget.childId);
       } catch (_) {
         errors.add(
-            _partialError('personalReport', 'Không tải được báo cáo cá nhân'));
+          _partialError('personalReport', 'Không tải được báo cáo cá nhân'),
+        );
       }
     }
     dashboard['errors'] = errors;
@@ -74,11 +76,11 @@ class _MobileWorkspacePageState extends State<MobileWorkspacePage> {
   }
 
   Map<String, dynamic> _partialError(String widget, String message) => {
-        'widget': widget,
-        'code': 'PARTIAL_SOURCE_ERROR',
-        'message': message,
-        'retryable': true,
-      };
+    'widget': widget,
+    'code': 'PARTIAL_SOURCE_ERROR',
+    'message': message,
+    'retryable': true,
+  };
 
   Future<void> _refresh() async {
     setState(() {
@@ -120,8 +122,8 @@ class _MobileWorkspacePageState extends State<MobileWorkspacePage> {
                   title: widget.role == 'ADMIN'
                       ? 'Kỳ thi đang quản lý'
                       : widget.role == 'TEACHER'
-                          ? 'Nhiệm vụ khảo thí'
-                          : 'Lịch kiểm tra sắp tới',
+                      ? 'Nhiệm vụ khảo thí'
+                      : 'Lịch kiểm tra sắp tới',
                   count: data.exams.length,
                 ),
                 const SizedBox(height: 10),
@@ -185,8 +187,10 @@ class _MobileWorkspacePageState extends State<MobileWorkspacePage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Tạo đơn xin nghỉ',
-                  style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                'Tạo đơn xin nghỉ',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -198,8 +202,9 @@ class _MobileWorkspacePageState extends State<MobileWorkspacePage> {
                         final picked = await showDatePicker(
                           context: context,
                           firstDate: DateTime.now(),
-                          lastDate:
-                              DateTime.now().add(const Duration(days: 365)),
+                          lastDate: DateTime.now().add(
+                            const Duration(days: 365),
+                          ),
                           initialDate: start,
                         );
                         if (picked != null) update(() => start = picked);
@@ -215,8 +220,9 @@ class _MobileWorkspacePageState extends State<MobileWorkspacePage> {
                         final picked = await showDatePicker(
                           context: context,
                           firstDate: start,
-                          lastDate:
-                              DateTime.now().add(const Duration(days: 365)),
+                          lastDate: DateTime.now().add(
+                            const Duration(days: 365),
+                          ),
                           initialDate: end.isBefore(start) ? start : end,
                         );
                         if (picked != null) update(() => end = picked);
@@ -289,9 +295,9 @@ class _MobileWorkspacePageState extends State<MobileWorkspacePage> {
         bytes: Uint8List.fromList(bytes),
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã tạo báo cáo cá nhân')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Đã tạo báo cáo cá nhân')));
       }
     } catch (error) {
       if (mounted) _showError('Không thể export báo cáo: $error');
@@ -299,8 +305,9 @@ class _MobileWorkspacePageState extends State<MobileWorkspacePage> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -344,23 +351,34 @@ class _Hero extends StatelessWidget {
               color: Colors.white.withValues(alpha: .16),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: const Icon(Icons.auto_awesome_rounded,
-                color: Colors.white, size: 27),
+            child: const Icon(
+              Icons.auto_awesome_rounded,
+              color: Colors.white,
+              size: 27,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Hôm nay của bạn',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18)),
+                const Text(
+                  'Hôm nay của bạn',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(subtitle,
-                    style: const TextStyle(
-                        color: Colors.white70, fontSize: 13, height: 1.4)),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
               ],
             ),
           ),
@@ -397,16 +415,19 @@ class _DashboardMetrics extends StatelessWidget {
                 children: [
                   Icon(Icons.trending_up_rounded, color: accent, size: 21),
                   const SizedBox(height: 10),
-                  Text('${metric['value'] ?? '—'}',
-                      style: Theme.of(context).textTheme.titleLarge),
+                  Text(
+                    '${metric['value'] ?? '—'}',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
                   const SizedBox(height: 2),
-                  Text('${metric['label'] ?? ''}',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                          )),
+                  Text(
+                    '${metric['label'] ?? ''}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -433,21 +454,23 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        children: [
-          Icon(icon, size: 21, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Text('$title ($count)',
-                style: Theme.of(context).textTheme.titleMedium),
-          ),
-          if (actionLabel != null)
-            TextButton.icon(
-              onPressed: onAction,
-              icon: const Icon(Icons.add_rounded, size: 18),
-              label: Text(actionLabel!),
-            ),
-        ],
-      );
+    children: [
+      Icon(icon, size: 21, color: Theme.of(context).colorScheme.primary),
+      const SizedBox(width: 9),
+      Expanded(
+        child: Text(
+          '$title ($count)',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+      ),
+      if (actionLabel != null)
+        TextButton.icon(
+          onPressed: onAction,
+          icon: const Icon(Icons.add_rounded, size: 18),
+          label: Text(actionLabel!),
+        ),
+    ],
+  );
 }
 
 enum _CardType { exam }
@@ -469,7 +492,9 @@ class _DataCards extends StatelessWidget {
     if (items.isEmpty) return _EmptyCard(text: emptyText);
     return Column(
       children: items.take(6).map((item) {
-        final title = item['examName'] ??
+        final title =
+            item['examName'] ??
+            item['examPeriodName'] ??
             item['periodName'] ??
             item['name'] ??
             item['subjectName'] ??
@@ -477,7 +502,8 @@ class _DataCards extends StatelessWidget {
             'Nội dung khảo thí';
         final status =
             item['status'] ?? item['taskStatus'] ?? item['scheduleStatus'];
-        final detail = item['examDate'] ??
+        final detail =
+            item['examDate'] ??
             item['startDate'] ??
             item['date'] ??
             item['startsAt'] ??
@@ -487,16 +513,23 @@ class _DataCards extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: 9),
           child: Card(
             child: ListTile(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 7,
+              ),
               leading: CircleAvatar(
                 backgroundColor: accent.withValues(alpha: .12),
                 child: Icon(Icons.event_note_rounded, color: accent),
               ),
-              title: Text('$title',
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle:
-                  Text('$detail', maxLines: 2, overflow: TextOverflow.ellipsis),
+              title: Text(
+                '$title',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              subtitle: Text(
+                '$detail',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
               trailing: status == null
                   ? const Icon(Icons.chevron_right_rounded)
                   : _StatusChip('$status', accent),
@@ -531,29 +564,36 @@ class _LeaveCards extends StatelessWidget {
         if (role == 'PARENT' && status == 'PENDING_PARENT') {
           actions.addAll([
             TextButton(
-                onPressed: () => onDecision(id, 'parent-reject'),
-                child: const Text('Từ chối')),
+              onPressed: () => onDecision(id, 'parent-reject'),
+              child: const Text('Từ chối'),
+            ),
             FilledButton(
-                onPressed: () => onDecision(id, 'parent-confirm'),
-                child: const Text('Xác nhận')),
+              onPressed: () => onDecision(id, 'parent-confirm'),
+              child: const Text('Xác nhận'),
+            ),
           ]);
         }
         if (role == 'TEACHER' &&
             (status == 'PARENT_CONFIRMED' || status == 'PENDING_TEACHER')) {
           actions.addAll([
             TextButton(
-                onPressed: () => onDecision(id, 'reject'),
-                child: const Text('Từ chối')),
+              onPressed: () => onDecision(id, 'reject'),
+              child: const Text('Từ chối'),
+            ),
             FilledButton(
-                onPressed: () => onDecision(id, 'approve'),
-                child: const Text('Duyệt')),
+              onPressed: () => onDecision(id, 'approve'),
+              child: const Text('Duyệt'),
+            ),
           ]);
         }
         if (role == 'STUDENT' &&
             (status.startsWith('PENDING') || status == 'PARENT_CONFIRMED')) {
-          actions.add(OutlinedButton(
+          actions.add(
+            OutlinedButton(
               onPressed: () => onDecision(id, 'cancel'),
-              child: const Text('Hủy đơn')));
+              child: const Text('Hủy đơn'),
+            ),
+          );
         }
         return Padding(
           padding: const EdgeInsets.only(bottom: 9),
@@ -566,9 +606,10 @@ class _LeaveCards extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Text('${item['studentName'] ?? 'Học sinh'}',
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w700)),
+                        child: Text(
+                          '${item['studentName'] ?? 'Học sinh'}',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
                       ),
                       _StatusChip(status, accent),
                     ],
@@ -576,19 +617,24 @@ class _LeaveCards extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text('${item['startDate'] ?? ''} → ${item['endDate'] ?? ''}'),
                   const SizedBox(height: 5),
-                  Text('${item['reason'] ?? ''}',
-                      style: TextStyle(
-                          color:
-                              Theme.of(context).colorScheme.onSurfaceVariant)),
+                  Text(
+                    '${item['reason'] ?? ''}',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                   if (actions.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: actions
-                            .expand(
-                                (button) => [button, const SizedBox(width: 8)])
-                            .toList()
-                          ..removeLast()),
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children:
+                          actions
+                              .expand(
+                                (button) => [button, const SizedBox(width: 8)],
+                              )
+                              .toList()
+                            ..removeLast(),
+                    ),
                   ],
                 ],
               ),
@@ -610,25 +656,32 @@ class _ReportCard extends StatelessWidget {
       return const _EmptyCard(text: 'Chưa có dữ liệu báo cáo');
     }
     final entries = report.entries
-        .where((entry) =>
-            entry.value is String || entry.value is num || entry.value is bool)
+        .where(
+          (entry) =>
+              entry.value is String ||
+              entry.value is num ||
+              entry.value is bool,
+        )
         .take(6);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: entries
-              .map((entry) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 7),
-                    child: Row(
-                      children: [
-                        Expanded(child: Text(_humanize(entry.key))),
-                        Text('${entry.value}',
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w700)),
-                      ],
-                    ),
-                  ))
+              .map(
+                (entry) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 7),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text(_humanize(entry.key))),
+                      Text(
+                        '${entry.value}',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                ),
+              )
               .toList(),
         ),
       ),
@@ -637,23 +690,26 @@ class _ReportCard extends StatelessWidget {
 }
 
 class _DateButton extends StatelessWidget {
-  const _DateButton(
-      {required this.label, required this.date, required this.onPick});
+  const _DateButton({
+    required this.label,
+    required this.date,
+    required this.onPick,
+  });
   final String label;
   final DateTime date;
   final VoidCallback onPick;
 
   @override
   Widget build(BuildContext context) => OutlinedButton(
-        onPressed: onPick,
-        child: Column(
-          children: [
-            Text(label, style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 3),
-            Text(DateFormat('dd/MM/yyyy').format(date)),
-          ],
-        ),
-      );
+    onPressed: onPick,
+    child: Column(
+      children: [
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
+        const SizedBox(height: 3),
+        Text(DateFormat('dd/MM/yyyy').format(date)),
+      ],
+    ),
+  );
 }
 
 class _StatusChip extends StatelessWidget {
@@ -663,20 +719,23 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        constraints: const BoxConstraints(maxWidth: 110),
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-        decoration: BoxDecoration(
-          color: accent.withValues(alpha: .1),
-          borderRadius: BorderRadius.circular(99),
-        ),
-        child: Text(
-          _humanize(status),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-              color: accent, fontSize: 10, fontWeight: FontWeight.w700),
-        ),
-      );
+    constraints: const BoxConstraints(maxWidth: 110),
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+    decoration: BoxDecoration(
+      color: accent.withValues(alpha: .1),
+      borderRadius: BorderRadius.circular(99),
+    ),
+    child: Text(
+      _humanize(status),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        color: accent,
+        fontSize: 10,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+  );
 }
 
 class _EmptyCard extends StatelessWidget {
@@ -685,16 +744,19 @@ class _EmptyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Center(
-            child: Text(text,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Center(
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class _ErrorView extends StatelessWidget {
@@ -704,25 +766,29 @@ class _ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView(
-        padding: const EdgeInsets.all(32),
-        children: [
-          const Icon(Icons.cloud_off_rounded, size: 52, color: AppColors.error),
-          const SizedBox(height: 16),
-          Text('Không thể tải trung tâm công việc',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
-          Text('$error',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: 20),
-          FilledButton.icon(
-            onPressed: onRetry,
-            icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Thử lại'),
-          ),
-        ],
-      );
+    padding: const EdgeInsets.all(32),
+    children: [
+      const Icon(Icons.cloud_off_rounded, size: 52, color: AppColors.error),
+      const SizedBox(height: 16),
+      Text(
+        'Không thể tải trung tâm công việc',
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.titleLarge,
+      ),
+      const SizedBox(height: 8),
+      Text(
+        '$error',
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
+      const SizedBox(height: 20),
+      FilledButton.icon(
+        onPressed: onRetry,
+        icon: const Icon(Icons.refresh_rounded),
+        label: const Text('Thử lại'),
+      ),
+    ],
+  );
 }
 
 String _humanize(String value) => value

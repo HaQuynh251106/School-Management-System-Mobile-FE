@@ -4,7 +4,7 @@ publish_to: 'none'
 version: 0.1.0+1
 
 environment:
-  sdk: ">=3.3.0 <4.0.0"
+  sdk: ">=3.8.0 <4.0.0"
   flutter: ">=3.19.0"
 
 dependencies:
@@ -21,6 +21,15 @@ dependencies:
   get_it: ^7.7.0
   file_picker: ^10.3.10
   http_parser: ^4.1.2
+  url_launcher: ^6.3.2
+  sse_finance_api:
+    path: packages/sse_finance_api
+  sse_identity_api:
+    path: packages/sse_identity_api
+  sse_academic_api:
+    path: packages/sse_academic_api
+  sse_report_api:
+    path: packages/sse_report_api
 
 dev_dependencies:
   flutter_lints: ^4.0.0

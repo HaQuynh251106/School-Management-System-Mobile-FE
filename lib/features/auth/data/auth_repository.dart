@@ -12,12 +12,12 @@ class AuthRepository {
     required String username,
     required String password,
   }) async {
-    final data = await api.login(username: username, password: password);
+    final session = await api.login(username: username, password: password);
     await storage.saveTokens(
-      accessToken: data['accessToken'] as String,
-      refreshToken: data['refreshToken'] as String,
+      accessToken: session.accessToken,
+      refreshToken: session.refreshToken,
     );
-    return UserModel.fromJson(data['user'] as Map<String, dynamic>);
+    return UserModel.fromJson(session.user.toJson());
   }
 
   Future<UserModel?> tryRestoreSession() async {

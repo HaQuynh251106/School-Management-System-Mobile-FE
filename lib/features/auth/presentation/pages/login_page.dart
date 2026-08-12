@@ -34,10 +34,12 @@ class _LoginPageState extends State<LoginPage> {
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
-    context.read<AuthBloc>().add(AuthLoginRequested(
-          username: _usernameCtrl.text.trim(),
-          password: _passwordCtrl.text,
-        ));
+    context.read<AuthBloc>().add(
+      AuthLoginRequested(
+        username: _usernameCtrl.text.trim(),
+        password: _passwordCtrl.text,
+      ),
+    );
   }
 
   @override
@@ -120,14 +122,16 @@ class _LoginPageState extends State<LoginPage> {
           children: [
             if (showHeader) ...[_buildHeader(), const SizedBox(height: 28)],
             if (!showHeader) ...[
-              Text('Chào mừng trở lại',
-                  style: Theme.of(context).textTheme.headlineMedium),
+              Text(
+                'Chào mừng trở lại',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
               const SizedBox(height: 8),
               Text(
                 'Đăng nhập để tiếp tục công việc trong ngày.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: 30),
             ],
@@ -167,8 +171,11 @@ class _LoginPageState extends State<LoginPage> {
               color: Colors.white.withValues(alpha: .16),
               borderRadius: BorderRadius.circular(20),
             ),
-            child:
-                const Icon(Icons.school_rounded, color: Colors.white, size: 36),
+            child: const Icon(
+              Icons.school_rounded,
+              color: Colors.white,
+              size: 36,
+            ),
           ),
           const SizedBox(height: 34),
           const Text(
@@ -211,8 +218,11 @@ class _LoginPageState extends State<LoginPage> {
             color: AppColors.primary,
             borderRadius: BorderRadius.circular(18),
           ),
-          child:
-              const Icon(Icons.school_rounded, color: Colors.white, size: 40),
+          child: const Icon(
+            Icons.school_rounded,
+            color: Colors.white,
+            size: 40,
+          ),
         ),
         const SizedBox(height: 20),
         const Text(
@@ -257,9 +267,11 @@ class _LoginPageState extends State<LoginPage> {
               labelText: 'Mật khẩu',
               prefixIcon: const Icon(Icons.lock_outline_rounded),
               suffixIcon: IconButton(
-                icon: Icon(_obscure
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined),
+                icon: Icon(
+                  _obscure
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                ),
                 onPressed: () => setState(() => _obscure = !_obscure),
               ),
             ),
@@ -311,30 +323,38 @@ class _LoginPageState extends State<LoginPage> {
       (
         'Quản trị',
         String.fromEnvironment('DEMO_ADMIN_USERNAME', defaultValue: 'admin'),
-        String.fromEnvironment('DEMO_ADMIN_PASSWORD',
-            defaultValue: 'admin@123'),
-        AppColors.adminAccent
+        String.fromEnvironment(
+          'DEMO_ADMIN_PASSWORD',
+          defaultValue: 'admin@123',
+        ),
+        AppColors.adminAccent,
       ),
       (
         'Giáo viên',
         String.fromEnvironment('DEMO_TEACHER_USERNAME', defaultValue: 'gv.hoa'),
-        String.fromEnvironment('DEMO_TEACHER_PASSWORD',
-            defaultValue: 'teacher@123'),
-        AppColors.teacherAccent
+        String.fromEnvironment(
+          'DEMO_TEACHER_PASSWORD',
+          defaultValue: 'teacher@123',
+        ),
+        AppColors.teacherAccent,
       ),
       (
         'Học sinh',
         String.fromEnvironment('DEMO_STUDENT_USERNAME', defaultValue: 'hs.an'),
-        String.fromEnvironment('DEMO_STUDENT_PASSWORD',
-            defaultValue: 'student@123'),
-        AppColors.studentAccent
+        String.fromEnvironment(
+          'DEMO_STUDENT_PASSWORD',
+          defaultValue: 'student@123',
+        ),
+        AppColors.studentAccent,
       ),
       (
         'Phụ huynh',
         String.fromEnvironment('DEMO_PARENT_USERNAME', defaultValue: 'ph.pham'),
-        String.fromEnvironment('DEMO_PARENT_PASSWORD',
-            defaultValue: 'parent@123'),
-        AppColors.parentAccent
+        String.fromEnvironment(
+          'DEMO_PARENT_PASSWORD',
+          defaultValue: 'parent@123',
+        ),
+        AppColors.parentAccent,
       ),
     ];
     final configured = accounts
@@ -362,12 +382,23 @@ class _LoginPageState extends State<LoginPage> {
           children: configured.map((a) {
             final (label, user, pass, color) = a;
             return ActionChip(
-              label: Text(label, style: const TextStyle(fontSize: 12)),
+              backgroundColor: Colors.white,
+              side: const BorderSide(color: AppColors.divider),
+              label: Text(
+                label,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               avatar: CircleAvatar(
                 backgroundColor: color,
                 radius: 8,
-                child: Text(label[0],
-                    style: const TextStyle(color: Colors.white, fontSize: 8)),
+                child: Text(
+                  label[0],
+                  style: const TextStyle(color: Colors.white, fontSize: 8),
+                ),
               ),
               onPressed: () {
                 _usernameCtrl.text = user;
@@ -401,9 +432,13 @@ class _BrandChip extends StatelessWidget {
         children: [
           Icon(icon, color: Colors.white, size: 18),
           const SizedBox(width: 8),
-          Text(label,
-              style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.w700)),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );

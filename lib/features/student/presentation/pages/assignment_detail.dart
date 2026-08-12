@@ -54,26 +54,26 @@ class _StudentAssignmentDetailState extends State<StudentAssignmentDetail> {
   bool _submitting = false;
 
   Color get _statusColor => switch (_status) {
-        'GRADED' => AppColors.success,
-        'SUBMITTED' => AppColors.primary,
-        'LATE' => AppColors.warning,
-        'RESUBMISSION_ALLOWED' => AppColors.warning,
-        'LATE_ALLOWED' => AppColors.warning,
-        'OVERDUE' => AppColors.error,
-        'CLOSED' => AppColors.textSecondary,
-        _ => AppColors.error,
-      };
+    'GRADED' => AppColors.success,
+    'SUBMITTED' => AppColors.primary,
+    'LATE' => AppColors.warning,
+    'RESUBMISSION_ALLOWED' => AppColors.warning,
+    'LATE_ALLOWED' => AppColors.warning,
+    'OVERDUE' => AppColors.error,
+    'CLOSED' => AppColors.textSecondary,
+    _ => AppColors.error,
+  };
 
   String get _statusLabel => switch (_status) {
-        'GRADED' => 'Đã chấm',
-        'SUBMITTED' => 'Đã nộp',
-        'LATE' => 'Nộp trễ',
-        'RESUBMISSION_ALLOWED' => 'Được nộp lại',
-        'LATE_ALLOWED' => 'Nộp muộn',
-        'OVERDUE' => 'Quá hạn',
-        'CLOSED' => 'Đã đóng',
-        _ => 'Chưa nộp',
-      };
+    'GRADED' => 'Đã chấm',
+    'SUBMITTED' => 'Đã nộp',
+    'LATE' => 'Nộp trễ',
+    'RESUBMISSION_ALLOWED' => 'Được nộp lại',
+    'LATE_ALLOWED' => 'Nộp muộn',
+    'OVERDUE' => 'Quá hạn',
+    'CLOSED' => 'Đã đóng',
+    _ => 'Chưa nộp',
+  };
 
   bool get _canSubmit =>
       _status == 'PENDING' ||
@@ -90,9 +90,9 @@ class _StudentAssignmentDetailState extends State<StudentAssignmentDetail> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không thể tải tệp: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Không thể tải tệp: $error')));
     }
   }
 
@@ -203,10 +203,7 @@ class _StudentAssignmentDetailState extends State<StudentAssignmentDetail> {
                 ],
                 if (_status == 'GRADED' && widget.score != null) ...[
                   const SizedBox(height: 16),
-                  _GradeCard(
-                    score: widget.score!,
-                    feedback: widget.feedback,
-                  ),
+                  _GradeCard(score: widget.score!, feedback: widget.feedback),
                 ],
               ],
             ),
@@ -281,27 +278,39 @@ class _Header extends StatelessWidget {
                   color: statusColor,
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: Text(statusLabel,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700)),
+                child: Text(
+                  statusLabel,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
               const Spacer(),
-              Text(subject,
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w600)),
+              Text(
+                subject,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
-          Text(title,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700)),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 8),
-          Text('$teacher • Hạn $deadline',
-              style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          Text(
+            '$teacher • Hạn $deadline',
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
+          ),
         ],
       ),
     );
@@ -323,8 +332,10 @@ class _FileTile extends StatelessWidget {
         border: Border.all(color: AppColors.divider),
       ),
       child: ListTile(
-        leading: const Icon(Icons.description_outlined,
-            color: AppColors.studentAccent),
+        leading: const Icon(
+          Icons.description_outlined,
+          color: AppColors.studentAccent,
+        ),
         title: Text(fileName),
         trailing: IconButton(
           tooltip: 'Tải xuống',
@@ -347,8 +358,8 @@ class _GradeCard extends StatelessWidget {
     final color = score >= 8
         ? AppColors.success
         : score >= 6.5
-            ? AppColors.warning
-            : AppColors.error;
+        ? AppColors.warning
+        : AppColors.error;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -361,12 +372,19 @@ class _GradeCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text('Điểm bài tập',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
+              const Text(
+                'Điểm bài tập',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
               const Spacer(),
-              Text('${score.toStringAsFixed(1)} / 10',
-                  style: TextStyle(
-                      color: color, fontSize: 22, fontWeight: FontWeight.w700)),
+              Text(
+                '${score.toStringAsFixed(1)} / 10',
+                style: TextStyle(
+                  color: color,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ],
           ),
           if ((feedback ?? '').trim().isNotEmpty) ...[

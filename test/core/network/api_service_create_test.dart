@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sse_mobile/core/network/api_service.dart';
@@ -14,11 +17,13 @@ void main() {
       InterceptorsWrapper(
         onRequest: (options, handler) {
           requests.add(options);
-          handler.resolve(Response(
-            requestOptions: options,
-            statusCode: 200,
-            data: <String, dynamic>{'id': 'created-id'},
-          ));
+          handler.resolve(
+            Response(
+              requestOptions: options,
+              statusCode: 200,
+              data: _responseFor(options.path),
+            ),
+          );
         },
       ),
     );
@@ -35,7 +40,7 @@ void main() {
 
     expect(requests.single.method, 'POST');
     expect(requests.single.path, '/users');
-    expect((requests.single.data as Map)['role'], 'STUDENT');
+    expect(_requestData(requests.single)['role'], 'STUDENT');
   });
 
   test('loads a parent dashboard with the selected child scope', () async {
@@ -46,20 +51,22 @@ void main() {
     expect(requests.single.queryParameters['childId'], 'u-student-1');
   });
 
-  test('creates and publishes an assignment with its class and subject',
-      () async {
-    await api.createAssignment({
-      'classId': 'class-10a1',
-      'subjectId': 'subject-math',
-      'title': 'Bài tập chương 1',
-      'publishNow': true,
-    });
+  test(
+    'creates and publishes an assignment with its class and subject',
+    () async {
+      await api.createAssignment({
+        'classId': 'class-10a1',
+        'subjectId': 'subject-math',
+        'title': 'Bài tập chương 1',
+        'publishNow': true,
+      });
 
-    expect(requests.single.method, 'POST');
-    expect(requests.single.path, '/assignments');
-    expect((requests.single.data as Map)['classId'], 'class-10a1');
-    expect((requests.single.data as Map)['publishNow'], isTrue);
-  });
+      expect(requests.single.method, 'POST');
+      expect(requests.single.path, '/assignments');
+      expect((requests.single.data as Map)['classId'], 'class-10a1');
+      expect((requests.single.data as Map)['publishNow'], isTrue);
+    },
+  );
 
   test('submits assignment content with a private attachment id', () async {
     await api.submitAssignment(
@@ -87,19 +94,21 @@ void main() {
     expect((requests.single.data as Map)['feedback'], 'Hoàn thành tốt');
   });
 
-  test('uploads a text attachment with the MIME type required by backend',
-      () async {
-    await api.uploadFile(
-      bytes: 'F11 attachment'.codeUnits,
-      fileName: 'bai-nop.txt',
-    );
+  test(
+    'uploads a text attachment with the MIME type required by backend',
+    () async {
+      await api.uploadFile(
+        bytes: 'F11 attachment'.codeUnits,
+        fileName: 'bai-nop.txt',
+      );
 
-    final form = requests.single.data as FormData;
-    final file = form.files.single.value;
-    expect(requests.single.path, '/files');
-    expect(file.filename, 'bai-nop.txt');
-    expect(file.contentType.toString(), 'text/plain');
-  });
+      final form = requests.single.data as FormData;
+      final file = form.files.single.value;
+      expect(requests.single.path, '/files');
+      expect(file.filename, 'bai-nop.txt');
+      expect(file.contentType.toString(), 'text/plain');
+    },
+  );
 
   test('closes and reopens assignment through lifecycle endpoints', () async {
     await api.closeAssignment('assignment-1');
@@ -130,10 +139,11 @@ void main() {
 
     expect(requests.single.method, 'POST');
     expect(requests.single.path, '/payments/cash');
-    expect((requests.single.data as Map)['invoiceId'], 'invoice-1');
-    expect((requests.single.data as Map)['amount'], 250000);
-    expect((requests.single.data as Map)['payerName'], 'Nguyễn Văn Hùng');
-    expect((requests.single.data as Map)['note'], 'Thu tại văn phòng');
+    final data = _requestData(requests.single);
+    expect(data['invoiceId'], 'invoice-1');
+    expect(data['amount'], 250000);
+    expect(data['payerName'], 'Nguyễn Văn Hùng');
+    expect(data['note'], 'Thu tại văn phòng');
   });
 
   test('refunds an invoice with amount and audit reason', () async {
@@ -141,8 +151,36 @@ void main() {
 
     expect(requests.single.method, 'POST');
     expect(requests.single.path, '/invoices/invoice-1/refund');
-    expect((requests.single.data as Map)['amount'], 100000);
-    expect((requests.single.data as Map)['reason'], 'Điều chỉnh khoản thu');
+    final data = _requestData(requests.single);
+    expect(data['amount'], 100000);
+    expect(data['reason'], 'Điều chỉnh khoản thu');
+  });
+
+  test('lists invoices through the generated typed finance contract', () async {
+    await api.invoices(
+      studentId: 'student-1',
+      status: 'UNPAID',
+      feePeriodId: 'period-1',
+      classId: 'class-1',
+      gradeLevel: 'K10',
+      query: 'INV-1',
+    );
+
+    expect(requests.single.method, 'GET');
+    expect(requests.single.path, '/invoices');
+    expect(requests.single.queryParameters['status'].toString(), 'UNPAID');
+    expect({...requests.single.queryParameters}..remove('status'), {
+      'studentId': 'student-1',
+      'periodId': 'period-1',
+      'q': 'INV-1',
+      'classId': 'class-1',
+      'gradeLevel': 'K10',
+    });
+  });
+
+  test('rejects an invoice status outside the S01 contract', () async {
+    expect(() => api.invoices(status: 'PENDING'), throwsArgumentError);
+    expect(requests, isEmpty);
   });
 
   test('previews the exact teacher announcement audience', () async {
@@ -181,35 +219,39 @@ void main() {
     expect((requests.single.data as Map)['studentId'], 'u-student-2');
   });
 
-  test('creates a club with capacity fee approval and registration window',
-      () async {
-    await api.createClub({
-      'code': 'F13-MOBILE',
-      'name': 'CLB Mobile',
-      'schedule': 'Thứ Bảy 08:00',
-      'capacity': 20,
-      'feeAmount': 150000,
-      'approvalRequired': true,
-      'registrationStart': '2026-08-01',
-      'registrationEnd': '2026-08-31',
-    });
+  test(
+    'creates a club with capacity fee approval and registration window',
+    () async {
+      await api.createClub({
+        'code': 'F13-MOBILE',
+        'name': 'CLB Mobile',
+        'schedule': 'Thứ Bảy 08:00',
+        'capacity': 20,
+        'feeAmount': 150000,
+        'approvalRequired': true,
+        'registrationStart': '2026-08-01',
+        'registrationEnd': '2026-08-31',
+      });
 
-    expect(requests.single.method, 'POST');
-    expect(requests.single.path, '/clubs');
-    expect((requests.single.data as Map)['capacity'], 20);
-    expect((requests.single.data as Map)['approvalRequired'], isTrue);
-  });
+      expect(requests.single.method, 'POST');
+      expect(requests.single.path, '/clubs');
+      expect((requests.single.data as Map)['capacity'], 20);
+      expect((requests.single.data as Map)['approvalRequired'], isTrue);
+    },
+  );
 
-  test('approves and rejects club registrations through admin contracts',
-      () async {
-    await api.approveClubRegistration('registration-1', note: 'Đủ điều kiện');
-    await api.rejectClubRegistration('registration-2', note: 'Không phù hợp');
+  test(
+    'approves and rejects club registrations through admin contracts',
+    () async {
+      await api.approveClubRegistration('registration-1', note: 'Đủ điều kiện');
+      await api.rejectClubRegistration('registration-2', note: 'Không phù hợp');
 
-    expect(requests[0].path, '/club-registrations/registration-1/approve');
-    expect((requests[0].data as Map)['note'], 'Đủ điều kiện');
-    expect(requests[1].path, '/club-registrations/registration-2/reject');
-    expect((requests[1].data as Map)['note'], 'Không phù hợp');
-  });
+      expect(requests[0].path, '/club-registrations/registration-1/approve');
+      expect((requests[0].data as Map)['note'], 'Đủ điều kiện');
+      expect(requests[1].path, '/club-registrations/registration-2/reject');
+      expect((requests[1].data as Map)['note'], 'Không phù hợp');
+    },
+  );
 
   test('exports the filtered admin report as bytes', () async {
     final exportRequests = <RequestOptions>[];
@@ -218,11 +260,13 @@ void main() {
       InterceptorsWrapper(
         onRequest: (options, handler) {
           exportRequests.add(options);
-          handler.resolve(Response<List<int>>(
-            requestOptions: options,
-            statusCode: 200,
-            data: const [0x50, 0x4b, 0x03, 0x04],
-          ));
+          handler.resolve(
+            Response<Uint8List>(
+              requestOptions: options,
+              statusCode: 200,
+              data: Uint8List.fromList(const [0x50, 0x4b, 0x03, 0x04]),
+            ),
+          );
         },
       ),
     );
@@ -239,15 +283,25 @@ void main() {
     expect(exportRequests.single.path, '/reports/export');
     expect(exportRequests.single.responseType, ResponseType.bytes);
     expect(
-        exportRequests.single.queryParameters, containsPair('type', 'grades'));
+      exportRequests.single.queryParameters,
+      containsPair('type', 'grades'),
+    );
     expect(
-        exportRequests.single.queryParameters, containsPair('format', 'xlsx'));
-    expect(exportRequests.single.queryParameters,
-        containsPair('semesterId', 'semester-1'));
-    expect(exportRequests.single.queryParameters,
-        containsPair('classId', 'class-10a1'));
-    expect(exportRequests.single.queryParameters,
-        containsPair('subjectId', 'subject-math'));
+      exportRequests.single.queryParameters,
+      containsPair('format', 'xlsx'),
+    );
+    expect(
+      exportRequests.single.queryParameters,
+      containsPair('semesterId', 'semester-1'),
+    );
+    expect(
+      exportRequests.single.queryParameters,
+      containsPair('classId', 'class-10a1'),
+    );
+    expect(
+      exportRequests.single.queryParameters,
+      containsPair('subjectId', 'subject-math'),
+    );
   });
 
   test('updates an F16 fee period with an explicit class scope', () async {
@@ -299,4 +353,111 @@ void main() {
     expect(requests.single.path, '/club-registrations/registration-1/cancel');
     expect((requests.single.data as Map)['reason'], 'Trùng lịch');
   });
+
+  test('rewrites sandbox checkout URL to the configured API host', () async {
+    dio.options.baseUrl = 'http://10.0.2.2:4000';
+
+    final result = await api.createSandboxPayment('invoice-1', 'mobile-key-1');
+
+    expect(requests.single.path, '/payments');
+    expect((requests.single.data as Map)['method'], 'SANDBOX');
+    expect((requests.single.data as Map)['idempotencyKey'], 'mobile-key-1');
+    expect(
+      result['paymentUrl'],
+      'http://10.0.2.2:4000/payments/sandbox/checkout?txnRef=SBX-1',
+    );
+  });
+}
+
+Object _responseFor(String path) {
+  if (path == '/dashboard') {
+    return {
+      'asOf': '2026-08-12T00:00:00Z',
+      'scope': {
+        'role': 'PARENT',
+        'objectType': 'STUDENT',
+        'objectIds': ['u-student-1'],
+      },
+      'metrics': <Object>[],
+      'charts': <Object>[],
+      'shortcuts': <Object>[],
+      'errors': <Object>[],
+    };
+  }
+  if (path == '/users') {
+    return {
+      'id': 'created-user',
+      'username': 'hs.test',
+      'fullName': 'Hoc sinh kiem thu',
+      'role': 'STUDENT',
+      'status': 'ACTIVE',
+      'passwordChangeRequired': true,
+    };
+  }
+  final invoice = <String, dynamic>{
+    'id': 'invoice-1',
+    'code': 'INV-1',
+    'studentId': 'student-1',
+    'totalAmount': 500000,
+    'paidAmount': 250000,
+    'refundedAmount': 0,
+    'status': 'PARTIAL',
+    'version': 1,
+  };
+  if (path == '/invoices') {
+    return [invoice];
+  }
+  if (path == '/payments/cash') {
+    return {
+      'payment': {
+        'id': 'payment-1',
+        'invoiceId': 'invoice-1',
+        'amount': 250000,
+        'method': 'CASH',
+        'status': 'SUCCESS',
+        'txnRef': 'CASH-1',
+        'createdAt': '2026-08-12T00:00:00Z',
+      },
+      'invoice': invoice,
+    };
+  }
+  if (path == '/payments') {
+    return {
+      'payment': {
+        'id': 'payment-sandbox-1',
+        'invoiceId': 'invoice-1',
+        'amount': 250000,
+        'method': 'SANDBOX',
+        'status': 'PENDING',
+        'txnRef': 'SBX-1',
+      },
+      'invoice': invoice,
+      'paymentUrl':
+          'http://127.0.0.1:4000/payments/sandbox/checkout?txnRef=SBX-1',
+    };
+  }
+  if (path == '/invoices/invoice-1/refund') {
+    return {
+      'refund': {
+        'id': 'refund-1',
+        'invoiceId': 'invoice-1',
+        'amount': 100000,
+        'method': 'CASH',
+        'reason': 'Điều chỉnh khoản thu',
+        'status': 'SUCCESS',
+        'createdBy': 'accountant-1',
+        'createdAt': '2026-08-12T00:00:00Z',
+      },
+      'invoice': {...invoice, 'refundedAmount': 100000},
+    };
+  }
+  return <String, dynamic>{'id': 'created-id'};
+}
+
+Map<String, dynamic> _requestData(RequestOptions request) {
+  final data = request.data;
+  if (data is String) {
+    return (jsonDecode(data) as Map).cast<String, dynamic>();
+  }
+  return (data as Map).cast<String, dynamic>();
 }

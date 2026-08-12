@@ -12,6 +12,8 @@ import '../../../../shared/widgets/section_header.dart';
 import '../../../../shared/widgets/adaptive_role_scaffold.dart';
 import '../../../../shared/widgets/mobile_workspace_page.dart';
 import '../../../../shared/widgets/theme_mode_tile.dart';
+import '../../../../shared/widgets/upcoming_exam_banner.dart';
+import '../../../../shared/widgets/yearly_summary_page.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_event.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
@@ -203,7 +205,8 @@ class _ParentHomeState extends State<ParentHome> {
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const Scaffold(
-              body: Center(child: CircularProgressIndicator()));
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
         final children = snapshot.data ?? [];
         if (children.isEmpty) {
@@ -297,8 +300,10 @@ class _ParentHomeState extends State<ParentHome> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Chọn học sinh',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const Text(
+              'Chọn học sinh',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
             const SizedBox(height: 16),
             ...children.asMap().entries.map((e) {
               final idx = e.key;
@@ -307,15 +312,21 @@ class _ParentHomeState extends State<ParentHome> {
                 contentPadding: EdgeInsets.zero,
                 leading: CircleAvatar(
                   backgroundColor: c.avatarColor.withValues(alpha: 0.14),
-                  child: Text(c.name[0],
-                      style: TextStyle(
-                          color: c.avatarColor, fontWeight: FontWeight.bold)),
+                  child: Text(
+                    c.name[0],
+                    style: TextStyle(
+                      color: c.avatarColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
                 title: Text(c.name),
                 subtitle: Text('Lớp ${c.className}'),
                 trailing: _activeChild == idx
-                    ? const Icon(Icons.check_circle_rounded,
-                        color: AppColors.parentAccent)
+                    ? const Icon(
+                        Icons.check_circle_rounded,
+                        color: AppColors.parentAccent,
+                      )
                     : null,
                 onTap: () {
                   setState(() => _activeChild = idx);
@@ -366,18 +377,27 @@ class _MonitorTabState extends State<_MonitorTab> {
     _future = Future.wait([
       api.attendance(studentId: widget.child.id),
       api.grades(studentId: widget.child.id),
+      api.examAgenda(childId: widget.child.id),
     ]);
-    _pendingInvoice = api.invoices(studentId: widget.child.id).then(
-        (items) =>
-            items
-                .where((item) => const {'UNPAID', 'PARTIAL', 'OVERDUE'}
-                    .contains(item['status']))
-                .fold<int>(
-                    0,
-                    (total, item) =>
-                        total +
-                        ((item['totalAmount'] as num?)?.toInt() ?? 0) -
-                        ((item['paidAmount'] as num?)?.toInt() ?? 0)));
+    _pendingInvoice = api
+        .invoices(studentId: widget.child.id)
+        .then(
+          (items) => items
+              .where(
+                (item) => const {
+                  'UNPAID',
+                  'PARTIAL',
+                  'OVERDUE',
+                }.contains(item['status']),
+              )
+              .fold<int>(
+                0,
+                (total, item) =>
+                    total +
+                    ((item['totalAmount'] as num?)?.toInt() ?? 0) -
+                    ((item['paidAmount'] as num?)?.toInt() ?? 0),
+              ),
+        );
   }
 
   @override
@@ -427,19 +447,41 @@ class _MonitorTabState extends State<_MonitorTab> {
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   child: Center(
-                      child: Text('Lỗi: ${snap.error}',
-                          style:
-                              const TextStyle(color: AppColors.textSecondary))),
+                    child: Text(
+                      'Lỗi: ${snap.error}',
+                      style: const TextStyle(color: AppColors.textSecondary),
+                    ),
+                  ),
                 );
               }
               final data = snap.data ?? const <List<Map<String, dynamic>>>[];
-              final List<Map<String, dynamic>> attRaw =
-                  data.isNotEmpty ? data[0] : const [];
-              final List<Map<String, dynamic>> gradeRaw =
-                  data.length > 1 ? data[1] : const [];
+              final List<Map<String, dynamic>> attRaw = data.isNotEmpty
+                  ? data[0]
+                  : const [];
+              final List<Map<String, dynamic>> gradeRaw = data.length > 1
+                  ? data[1]
+                  : const [];
+              final List<Map<String, dynamic>> exams = data.length > 2
+                  ? data[2]
+                  : const [];
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  UpcomingExamBanner(
+                    exams: exams,
+                    accent: AppColors.parentAccent,
+                    studentName: child.name,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => MobileWorkspacePage(
+                          role: 'PARENT',
+                          accent: AppColors.parentAccent,
+                          childId: child.id,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (exams.isNotEmpty) const SizedBox(height: 16),
                   _RecentAttendanceSection(child: child, records: attRaw),
                   const SizedBox(height: 16),
                   _RecentGradesSection(grades: gradeRaw),
@@ -462,8 +504,12 @@ class _RecentAttendanceSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Sort by date descending so the newest records show first.
-    final sorted = [...records]..sort((a, b) =>
-        (b['date'] ?? '').toString().compareTo((a['date'] ?? '').toString()));
+    final sorted = [...records]
+      ..sort(
+        (a, b) => (b['date'] ?? '').toString().compareTo(
+          (a['date'] ?? '').toString(),
+        ),
+      );
     final recent = sorted.take(4).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -473,8 +519,10 @@ class _RecentAttendanceSection extends StatelessWidget {
         if (recent.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 8),
-            child: Text('Chưa có dữ liệu',
-                style: TextStyle(color: AppColors.textSecondary)),
+            child: Text(
+              'Chưa có dữ liệu',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           )
         else
           ...recent.map((r) {
@@ -496,19 +544,28 @@ class _RecentAttendanceSection extends StatelessWidget {
                     ),
                   ),
                 ),
-                title: Text(subject,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w500, fontSize: 14)),
-                subtitle: Text(note ?? date,
-                    style: const TextStyle(fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
+                title: Text(
+                  subject,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                ),
+                subtitle: Text(
+                  note ?? date,
+                  style: const TextStyle(fontSize: 12),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     AttendanceBadge(status),
-                    const Icon(Icons.chevron_right_rounded,
-                        color: AppColors.textSecondary, size: 18),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppColors.textSecondary,
+                      size: 18,
+                    ),
                   ],
                 ),
               ),
@@ -535,9 +592,11 @@ class _RecentGradesSection extends StatelessWidget {
   Widget build(BuildContext context) {
     // Only entries with a real score, newest (by recordedAt) first.
     final scored = grades.where((g) => g['score'] is num).toList()
-      ..sort((a, b) => (b['recordedAt'] ?? '')
-          .toString()
-          .compareTo((a['recordedAt'] ?? '').toString()));
+      ..sort(
+        (a, b) => (b['recordedAt'] ?? '').toString().compareTo(
+          (a['recordedAt'] ?? '').toString(),
+        ),
+      );
     final recent = scored.take(3).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -547,8 +606,10 @@ class _RecentGradesSection extends StatelessWidget {
         if (recent.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 8),
-            child: Text('Chưa có dữ liệu',
-                style: TextStyle(color: AppColors.textSecondary)),
+            child: Text(
+              'Chưa có dữ liệu',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           )
         else
           Card(
@@ -559,11 +620,12 @@ class _RecentGradesSection extends StatelessWidget {
                   _RecentGradeRow(
                     subject: (recent[i]['subjectName'] ?? '').toString(),
                     score: (recent[i]['score'] as num).toDouble(),
-                    note: (recent[i]['categoryName'] ??
-                            _categoryLabels[
-                                (recent[i]['category'] ?? '').toString()] ??
-                            '')
-                        .toString(),
+                    note:
+                        (recent[i]['categoryName'] ??
+                                _categoryLabels[(recent[i]['category'] ?? '')
+                                    .toString()] ??
+                                '')
+                            .toString(),
                   ),
                 ],
               ],
@@ -601,15 +663,24 @@ class _RecentGradeRow extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
         ),
         child: Center(
-          child: Text(score.toStringAsFixed(1),
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, color: _color, fontSize: 14)),
+          child: Text(
+            score.toStringAsFixed(1),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: _color,
+              fontSize: 14,
+            ),
+          ),
         ),
       ),
-      title: Text(subject,
-          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
-      subtitle: Text(note,
-          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+      title: Text(
+        subject,
+        style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+      ),
+      subtitle: Text(
+        note,
+        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+      ),
     );
   }
 }
@@ -622,13 +693,17 @@ class _AlertBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.absentUnexcused.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border:
-            Border.all(color: AppColors.absentUnexcused.withValues(alpha: 0.3)),
+        border: Border.all(
+          color: AppColors.absentUnexcused.withValues(alpha: 0.3),
+        ),
       ),
       child: const Row(
         children: [
-          Icon(Icons.warning_amber_rounded,
-              color: AppColors.absentUnexcused, size: 22),
+          Icon(
+            Icons.warning_amber_rounded,
+            color: AppColors.absentUnexcused,
+            size: 22,
+          ),
           SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -643,10 +718,7 @@ class _AlertBanner extends StatelessWidget {
 }
 
 class _InvoiceBanner extends StatelessWidget {
-  const _InvoiceBanner({
-    required this.totalPending,
-    required this.onTap,
-  });
+  const _InvoiceBanner({required this.totalPending, required this.onTap});
   final int totalPending;
   final VoidCallback onTap;
 
@@ -676,21 +748,30 @@ class _InvoiceBanner extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const Icon(Icons.payment_rounded,
-                  color: AppColors.warning, size: 24),
+              const Icon(
+                Icons.payment_rounded,
+                color: AppColors.warning,
+                size: 24,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Có hóa đơn cần thanh toán',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w600, fontSize: 13)),
+                    const Text(
+                      'Có hóa đơn cần thanh toán',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       'Tổng: ${_formatVnd(totalPending)}',
                       style: const TextStyle(
-                          fontSize: 12, color: AppColors.warning),
+                        fontSize: 12,
+                        color: AppColors.warning,
+                      ),
                     ),
                   ],
                 ),
@@ -760,13 +841,22 @@ class _SummaryCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Text(value,
-                style: TextStyle(
-                    fontSize: 22, fontWeight: FontWeight.bold, color: color)),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
             const SizedBox(height: 4),
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 12, color: AppColors.textSecondary)),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
+            ),
           ],
         ),
       ),
@@ -792,24 +882,35 @@ class _ChildCard extends StatelessWidget {
               CircleAvatar(
                 radius: 26,
                 backgroundColor: child.avatarColor.withValues(alpha: 0.14),
-                child: Text(child.name[0],
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                        color: child.avatarColor)),
+                child: Text(
+                  child.name[0],
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    color: child.avatarColor,
+                  ),
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(child.name,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w600, fontSize: 15)),
+                    Text(
+                      child.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
                     const SizedBox(height: 2),
-                    Text('Lớp ${child.className}',
-                        style: const TextStyle(
-                            color: AppColors.textSecondary, fontSize: 12)),
+                    Text(
+                      'Lớp ${child.className}',
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -822,12 +923,19 @@ class _ChildCard extends StatelessWidget {
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('Đổi con',
-                        style: TextStyle(
-                            fontSize: 12, color: AppColors.parentAccent)),
+                    Text(
+                      'Đổi con',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.parentAccent,
+                      ),
+                    ),
                     SizedBox(width: 4),
-                    Icon(Icons.swap_horiz_rounded,
-                        size: 14, color: AppColors.parentAccent),
+                    Icon(
+                      Icons.swap_horiz_rounded,
+                      size: 14,
+                      color: AppColors.parentAccent,
+                    ),
                   ],
                 ),
               ),
@@ -868,11 +976,11 @@ class _AttendanceTabState extends State<_AttendanceTab> {
   }
 
   _ARecord _map(Map<String, dynamic> r) => _ARecord(
-        (r['subjectName'] ?? '').toString(),
-        (r['date'] ?? '').toString(),
-        (r['status'] ?? '').toString(),
-        r['note']?.toString(),
-      );
+    (r['subjectName'] ?? '').toString(),
+    (r['date'] ?? '').toString(),
+    (r['status'] ?? '').toString(),
+    r['note']?.toString(),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -890,17 +998,26 @@ class _AttendanceTabState extends State<_AttendanceTab> {
           }
           if (snap.hasError) {
             return Center(
-                child: Text('Lỗi: ${snap.error}',
-                    style: const TextStyle(color: AppColors.textSecondary)));
+              child: Text(
+                'Lỗi: ${snap.error}',
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+            );
           }
           final records = (snap.data ?? []).map(_map).toList();
           if (records.isEmpty) {
             return const Center(
-                child: Text('Chưa có dữ liệu',
-                    style: TextStyle(color: AppColors.textSecondary)));
+              child: Text(
+                'Chưa có dữ liệu',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            );
           }
           return _AttendanceRange(
-              child: widget.child, records: records, rangeLabel: 'học kỳ');
+            child: widget.child,
+            records: records,
+            rangeLabel: 'học kỳ',
+          );
         },
       ),
     );
@@ -937,38 +1054,50 @@ class _AttendanceRange extends StatelessWidget {
         const SizedBox(height: 16),
         const SectionHeader(title: 'Lịch sử'),
         const SizedBox(height: 10),
-        ...records.map((r) => Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ParentAttendanceDetail(
-                      childName: child.name,
-                      subject: r.subject,
-                      date: r.date,
-                      status: r.status,
-                      note: r.note,
-                    ),
+        ...records.map(
+          (r) => Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ParentAttendanceDetail(
+                    childName: child.name,
+                    subject: r.subject,
+                    date: r.date,
+                    status: r.status,
+                    note: r.note,
                   ),
                 ),
-                leading: const Icon(Icons.schedule_rounded,
-                    color: AppColors.textSecondary, size: 20),
-                title: Text(r.subject,
-                    style: const TextStyle(fontWeight: FontWeight.w500)),
-                subtitle: Text(r.note ?? r.date,
-                    style: const TextStyle(fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    AttendanceBadge(r.status),
-                    const Icon(Icons.chevron_right_rounded,
-                        color: AppColors.textSecondary, size: 18),
-                  ],
-                ),
               ),
-            )),
+              leading: const Icon(
+                Icons.schedule_rounded,
+                color: AppColors.textSecondary,
+                size: 20,
+              ),
+              title: Text(
+                r.subject,
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+              subtitle: Text(
+                r.note ?? r.date,
+                style: const TextStyle(fontSize: 12),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AttendanceBadge(r.status),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.textSecondary,
+                    size: 18,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -996,16 +1125,23 @@ class _StatsRow extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Column(
                 children: [
-                  Text('${entry.value}',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                          color: colors[i])),
+                  Text(
+                    '${entry.value}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: colors[i],
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(entry.key,
-                      style: const TextStyle(
-                          fontSize: 10, color: AppColors.textSecondary),
-                      textAlign: TextAlign.center),
+                  Text(
+                    entry.key,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: AppColors.textSecondary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ],
               ),
             ),
@@ -1051,11 +1187,14 @@ class _RateBanner extends StatelessWidget {
                   backgroundColor: _color.withValues(alpha: 0.18),
                   strokeWidth: 5,
                 ),
-                Text('$percent%',
-                    style: TextStyle(
-                        color: _color,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11)),
+                Text(
+                  '$percent%',
+                  style: TextStyle(
+                    color: _color,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1064,16 +1203,20 @@ class _RateBanner extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Tỉ lệ chuyên cần $rangeLabel',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 13)),
+                Text(
+                  'Tỉ lệ chuyên cần $rangeLabel',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
                 const SizedBox(height: 2),
                 Text(
                   rate >= 0.9
                       ? 'Rất tốt — duy trì nhé!'
                       : rate >= 0.75
-                          ? 'Cần lưu ý'
-                          : 'Cảnh báo — đã thông báo',
+                      ? 'Cần lưu ý'
+                      : 'Cảnh báo — đã thông báo',
                   style: TextStyle(color: _color, fontSize: 12),
                 ),
               ],
@@ -1121,15 +1264,18 @@ class _GradesTabState extends State<_GradesTab> {
     for (final g in raw) {
       final subject = (g['subjectName'] ?? '').toString();
       final scores = bySubject.putIfAbsent(
-          subject, () => List<double?>.filled(order.length, null));
+        subject,
+        () => List<double?>.filled(order.length, null),
+      );
       final idx = order.indexOf((g['category'] ?? '').toString());
       if (idx >= 0) {
         final score = g['score'];
         if (score is num) scores[idx] = score.toDouble();
       }
     }
-    final result =
-        bySubject.entries.map((e) => _SubjectGrade(e.key, e.value)).toList();
+    final result = bySubject.entries
+        .map((e) => _SubjectGrade(e.key, e.value))
+        .toList();
     result.sort((a, b) => a.subject.compareTo(b.subject));
     return result;
   }
@@ -1150,19 +1296,26 @@ class _GradesTabState extends State<_GradesTab> {
           }
           if (snap.hasError) {
             return Center(
-                child: Text('Lỗi: ${snap.error}',
-                    style: const TextStyle(color: AppColors.textSecondary)));
+              child: Text(
+                'Lỗi: ${snap.error}',
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+            );
           }
           final subjects = _group(snap.data ?? []);
           if (subjects.isEmpty) {
             return const Center(
-                child: Text('Chưa có dữ liệu',
-                    style: TextStyle(color: AppColors.textSecondary)));
+              child: Text(
+                'Chưa có dữ liệu',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            );
           }
           return _SemesterGrades(
-              child: widget.child,
-              semester: 'Năm học 2025/2026',
-              subjects: subjects);
+            child: widget.child,
+            semester: 'Năm học 2025/2026',
+            subjects: subjects,
+          );
         },
       ),
     );
@@ -1207,6 +1360,32 @@ class _SemesterGrades extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        Card(
+          child: ListTile(
+            leading: const Icon(
+              Icons.school_outlined,
+              color: AppColors.parentAccent,
+            ),
+            title: const Text(
+              'Tổng kết năm học',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            subtitle: const Text(
+              'Xem điểm cả năm, hạnh kiểm và kết quả lên lớp.',
+            ),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => YearlySummaryPage(
+                  studentId: child.id,
+                  studentName: child.name,
+                  accent: AppColors.parentAccent,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -1222,25 +1401,33 @@ class _SemesterGrades extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const Icon(Icons.auto_graph_rounded,
-                  color: Colors.white70, size: 36),
+              const Icon(
+                Icons.auto_graph_rounded,
+                color: Colors.white70,
+                size: 36,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(semester,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14)),
+                    Text(
+                      semester,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       overall == null
                           ? 'Chưa có điểm'
                           : 'TB: ${overall.toStringAsFixed(2)}',
-                      style:
-                          const TextStyle(color: Colors.white70, fontSize: 12),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -1283,11 +1470,12 @@ class _SemesterGrades extends StatelessWidget {
                         child: Text(
                           avg?.toStringAsFixed(1) ?? '—',
                           style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: avg != null
-                                  ? _avgColor(avg)
-                                  : AppColors.textSecondary),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: avg != null
+                                ? _avgColor(avg)
+                                : AppColors.textSecondary,
+                          ),
                         ),
                       ),
                     ),
@@ -1296,9 +1484,13 @@ class _SemesterGrades extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(sg.subject,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w600, fontSize: 14)),
+                          Text(
+                            sg.subject,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
                           const SizedBox(height: 4),
                           Text(
                             'M: ${sg.scores[0]?.toStringAsFixed(1) ?? "—"} • '
@@ -1306,13 +1498,17 @@ class _SemesterGrades extends StatelessWidget {
                             'GK: ${sg.scores[2]?.toStringAsFixed(1) ?? "—"} • '
                             'CK: ${sg.scores[3]?.toStringAsFixed(1) ?? "—"}',
                             style: const TextStyle(
-                                fontSize: 11, color: AppColors.textSecondary),
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    const Icon(Icons.chevron_right_rounded,
-                        color: AppColors.textSecondary),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppColors.textSecondary,
+                    ),
                   ],
                 ),
               ),
@@ -1364,66 +1560,79 @@ class _InvoicesTabState extends State<_InvoicesTab> {
 
   Future<void> _openDetail(Map<String, dynamic> summary) async {
     try {
-      final detail =
-          await sl<ApiService>().invoiceDetail(summary['id'].toString());
+      final detail = await sl<ApiService>().invoiceDetail(
+        summary['id'].toString(),
+      );
       if (!mounted) return;
       final invoice = (detail['invoice'] as Map).cast<String, dynamic>();
       final items = (detail['items'] as List? ?? const [])
           .map((raw) => (raw as Map).cast<String, dynamic>())
-          .map((item) => InvoiceLineItem(
-                (item['name'] ?? '').toString(),
-                (item['amount'] as num?)?.toInt() ?? 0,
-              ))
+          .map(
+            (item) => InvoiceLineItem(
+              (item['name'] ?? '').toString(),
+              (item['amount'] as num?)?.toInt() ?? 0,
+            ),
+          )
           .toList();
       final payments = (detail['payments'] as List? ?? const [])
           .map((raw) => (raw as Map).cast<String, dynamic>())
           .toList();
       final paymentHistory = payments
           .where((item) => item['status'] == 'SUCCESS')
-          .map((item) => InvoicePaymentItem(
-                amount: (item['amount'] as num?)?.toInt() ?? 0,
-                method: (item['method'] ?? '').toString(),
-                paidAt: (item['paidAt'] ?? item['createdAt'] ?? '').toString(),
-                receiptCode:
-                    (item['receiptCode'] ?? item['txnRef'] ?? '').toString(),
-                payerName: item['payerName']?.toString(),
-                note: item['note']?.toString(),
-              ))
+          .map(
+            (item) => InvoicePaymentItem(
+              amount: (item['amount'] as num?)?.toInt() ?? 0,
+              method: (item['method'] ?? '').toString(),
+              paidAt: (item['paidAt'] ?? item['createdAt'] ?? '').toString(),
+              receiptCode: (item['receiptCode'] ?? item['txnRef'] ?? '')
+                  .toString(),
+              payerName: item['payerName']?.toString(),
+              note: item['note']?.toString(),
+            ),
+          )
           .toList();
       final refunds = (detail['refunds'] as List? ?? const [])
           .map((raw) => (raw as Map).cast<String, dynamic>())
-          .map((item) => InvoiceRefundItem(
-                (item['amount'] as num?)?.toInt() ?? 0,
-                (item['reason'] ?? '').toString(),
-                (item['createdAt'] ?? '').toString(),
-              ))
+          .map(
+            (item) => InvoiceRefundItem(
+              (item['amount'] as num?)?.toInt() ?? 0,
+              (item['reason'] ?? '').toString(),
+              (item['createdAt'] ?? '').toString(),
+            ),
+          )
           .toList();
-      await Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => InvoiceDetailPage(
-          invoiceId: (invoice['id'] ?? summary['id']).toString(),
-          invoiceCode: (invoice['code'] ?? '').toString(),
-          childName: (invoice['studentName'] ?? widget.child.name).toString(),
-          semester: (invoice['feePeriodId'] ?? 'Hóa đơn học phí').toString(),
-          dueDate: (invoice['dueDate'] ?? '').toString(),
-          status: (invoice['status'] ?? '').toString(),
-          paidAmount: (invoice['paidAmount'] as num?)?.toInt() ?? 0,
-          refundedAmount: (invoice['refundedAmount'] as num?)?.toInt() ?? 0,
-          refunds: refunds,
-          payments: paymentHistory,
-          paidAt: payments.isEmpty ? null : payments.last['paidAt']?.toString(),
-          paidMethod:
-              payments.isEmpty ? null : payments.last['method']?.toString(),
-          transactionRef:
-              payments.isEmpty ? null : payments.last['txnRef']?.toString(),
-          items: items,
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => InvoiceDetailPage(
+            invoiceId: (invoice['id'] ?? summary['id']).toString(),
+            invoiceCode: (invoice['code'] ?? '').toString(),
+            childName: (invoice['studentName'] ?? widget.child.name).toString(),
+            semester: (invoice['feePeriodId'] ?? 'Hóa đơn học phí').toString(),
+            dueDate: (invoice['dueDate'] ?? '').toString(),
+            status: (invoice['status'] ?? '').toString(),
+            paidAmount: (invoice['paidAmount'] as num?)?.toInt() ?? 0,
+            refundedAmount: (invoice['refundedAmount'] as num?)?.toInt() ?? 0,
+            refunds: refunds,
+            payments: paymentHistory,
+            paidAt: payments.isEmpty
+                ? null
+                : payments.last['paidAt']?.toString(),
+            paidMethod: payments.isEmpty
+                ? null
+                : payments.last['method']?.toString(),
+            transactionRef: payments.isEmpty
+                ? null
+                : payments.last['txnRef']?.toString(),
+            items: items,
+          ),
         ),
-      ));
+      );
       if (mounted) setState(_reload);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không thể tải chi tiết: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Không thể tải chi tiết: $e')));
     }
   }
 
@@ -1443,14 +1652,20 @@ class _InvoicesTabState extends State<_InvoicesTab> {
           }
           if (snap.hasError) {
             return Center(
-                child: Text('Lỗi: ${snap.error}',
-                    style: const TextStyle(color: AppColors.textSecondary)));
+              child: Text(
+                'Lỗi: ${snap.error}',
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+            );
           }
           final invoices = snap.data ?? [];
           if (invoices.isEmpty) {
             return const Center(
-                child: Text('Chưa có hóa đơn. Vui lòng liên hệ nhà trường.',
-                    style: TextStyle(color: AppColors.textSecondary)));
+              child: Text(
+                'Chưa có hóa đơn. Vui lòng liên hệ nhà trường.',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            );
           }
           return ListView.separated(
             padding: const EdgeInsets.all(16),
@@ -1459,8 +1674,11 @@ class _InvoicesTabState extends State<_InvoicesTab> {
             itemBuilder: (_, i) {
               final inv = invoices[i];
               final status = (inv['status'] ?? '').toString();
-              final payable =
-                  const {'UNPAID', 'PARTIAL', 'OVERDUE'}.contains(status);
+              final payable = const {
+                'UNPAID',
+                'PARTIAL',
+                'OVERDUE',
+              }.contains(status);
               final color = switch (status) {
                 'PAID' => AppColors.success,
                 'OVERDUE' => AppColors.error,
@@ -1484,58 +1702,85 @@ class _InvoicesTabState extends State<_InvoicesTab> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                              color: color,
-                              borderRadius: BorderRadius.circular(6)),
-                          child: Text(label,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold)),
-                        ),
-                        const Spacer(),
-                        Text((inv['code'] ?? '').toString(),
-                            style: const TextStyle(
-                                fontSize: 11, color: AppColors.textSecondary)),
-                      ]),
-                      const SizedBox(height: 8),
-                      Text('HS: ${inv['studentName'] ?? ''}',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 14)),
-                      const SizedBox(height: 6),
-                      Row(children: [
-                        Text(_vnd((inv['totalAmount'] ?? 0) as num),
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: color,
-                                fontSize: 16)),
-                        const Spacer(),
-                        TextButton(
-                          onPressed: () => _openDetail(inv),
-                          child: const Text('Chi tiết'),
-                        ),
-                        if (payable)
-                          FilledButton.icon(
-                            onPressed: () => _openDetail(inv),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.parentAccent,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 8),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
                             ),
-                            icon: const Icon(Icons.payment_rounded, size: 16),
-                            label: const Text('Tạo VietQR',
-                                style: TextStyle(fontSize: 12)),
-                          )
-                        else
-                          Text(label,
-                              style: TextStyle(fontSize: 12, color: color)),
-                      ]),
+                            decoration: BoxDecoration(
+                              color: color,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              label,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            (inv['code'] ?? '').toString(),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'HS: ${inv['studentName'] ?? ''}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Text(
+                            _vnd((inv['totalAmount'] ?? 0) as num),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: color,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const Spacer(),
+                          TextButton(
+                            onPressed: () => _openDetail(inv),
+                            child: const Text('Chi tiết'),
+                          ),
+                          if (payable)
+                            FilledButton.icon(
+                              onPressed: () => _openDetail(inv),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.parentAccent,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              icon: const Icon(Icons.payment_rounded, size: 16),
+                              label: const Text(
+                                'Tạo VietQR',
+                                style: TextStyle(fontSize: 12),
+                              ),
+                            )
+                          else
+                            Text(
+                              label,
+                              style: TextStyle(fontSize: 12, color: color),
+                            ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -1569,23 +1814,25 @@ class _InvoiceList extends StatelessWidget {
   }
 
   Color _statusColor(String status) => switch (status) {
-        'PAID' => AppColors.success,
-        'OVERDUE' => AppColors.error,
-        _ => AppColors.warning,
-      };
+    'PAID' => AppColors.success,
+    'OVERDUE' => AppColors.error,
+    _ => AppColors.warning,
+  };
 
   String _statusLabel(String status) => switch (status) {
-        'PAID' => 'Đã thanh toán',
-        'OVERDUE' => 'Quá hạn',
-        _ => 'Chưa TT',
-      };
+    'PAID' => 'Đã thanh toán',
+    'OVERDUE' => 'Quá hạn',
+    _ => 'Chưa TT',
+  };
 
   @override
   Widget build(BuildContext context) {
     if (invoices.isEmpty) {
       return Center(
-        child:
-            Text(empty, style: const TextStyle(color: AppColors.textSecondary)),
+        child: Text(
+          empty,
+          style: const TextStyle(color: AppColors.textSecondary),
+        ),
       );
     }
     return ListView.separated(
@@ -1621,7 +1868,9 @@ class _InvoiceList extends StatelessWidget {
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: color,
                           borderRadius: BorderRadius.circular(6),
@@ -1629,41 +1878,56 @@ class _InvoiceList extends StatelessWidget {
                         child: Text(
                           _statusLabel(inv.status),
                           style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold),
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       const Spacer(),
-                      Text(inv.code,
-                          style: const TextStyle(
-                              fontSize: 11, color: AppColors.textSecondary)),
+                      Text(
+                        inv.code,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Text(inv.title,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 14)),
+                  Text(
+                    inv.title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      const Icon(Icons.event_rounded,
-                          size: 14, color: AppColors.textSecondary),
+                      const Icon(
+                        Icons.event_rounded,
+                        size: 14,
+                        color: AppColors.textSecondary,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         inv.status == 'PAID'
                             ? 'Đã TT: ${inv.paidAt}'
                             : 'Hạn: ${inv.dueDate}',
                         style: const TextStyle(
-                            fontSize: 12, color: AppColors.textSecondary),
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                       const Spacer(),
                       Text(
                         _formatVnd(inv.total),
                         style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: color,
-                            fontSize: 16),
+                          fontWeight: FontWeight.bold,
+                          color: color,
+                          fontSize: 16,
+                        ),
                       ),
                     ],
                   ),
@@ -1730,21 +1994,34 @@ class _ProfileTab extends StatelessWidget {
                   const CircleAvatar(
                     radius: 36,
                     backgroundColor: AppColors.parentAccent,
-                    child: Icon(Icons.family_restroom_rounded,
-                        color: Colors.white, size: 32),
+                    child: Icon(
+                      Icons.family_restroom_rounded,
+                      color: Colors.white,
+                      size: 32,
+                    ),
                   ),
                   const SizedBox(height: 12),
-                  Text(user.fullName,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text(
+                    user.fullName,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text(user.email ?? user.username,
-                      style: const TextStyle(
-                          color: AppColors.textSecondary, fontSize: 13)),
+                  Text(
+                    user.email ?? user.username,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.parentAccent.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
@@ -1752,9 +2029,10 @@ class _ProfileTab extends StatelessWidget {
                     child: Text(
                       'Đang xem: ${activeChild.name} (${activeChild.className})',
                       style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.parentAccent,
-                          fontWeight: FontWeight.w600),
+                        fontSize: 11,
+                        color: AppColors.parentAccent,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
@@ -1770,22 +2048,32 @@ class _ProfileTab extends StatelessWidget {
                 const ThemeModeTile(accent: AppColors.parentAccent),
                 const Divider(height: 0),
                 ListTile(
-                  leading: const Icon(Icons.swap_horiz_rounded,
-                      color: AppColors.parentAccent),
+                  leading: const Icon(
+                    Icons.swap_horiz_rounded,
+                    color: AppColors.parentAccent,
+                  ),
                   title: const Text('Chuyển học sinh'),
-                  subtitle: Text('$childrenCount con liên kết',
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.textSecondary)),
+                  subtitle: Text(
+                    '$childrenCount con liên kết',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: onSwitchChild,
                 ),
                 const Divider(height: 0),
                 ListTile(
-                  leading: const Icon(Icons.auto_awesome_rounded,
-                      color: AppColors.parentAccent),
+                  leading: const Icon(
+                    Icons.auto_awesome_rounded,
+                    color: AppColors.parentAccent,
+                  ),
                   title: const Text('Trung tâm công việc'),
-                  subtitle: const Text('Lịch thi, đơn xin nghỉ và báo cáo',
-                      style: TextStyle(fontSize: 11)),
+                  subtitle: const Text(
+                    'Lịch thi, đơn xin nghỉ và báo cáo',
+                    style: TextStyle(fontSize: 11),
+                  ),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
@@ -1799,11 +2087,15 @@ class _ProfileTab extends StatelessWidget {
                 ),
                 const Divider(height: 0),
                 ListTile(
-                  leading: const Icon(Icons.groups_outlined,
-                      color: AppColors.parentAccent),
+                  leading: const Icon(
+                    Icons.groups_outlined,
+                    color: AppColors.parentAccent,
+                  ),
                   title: const Text('Câu lạc bộ'),
-                  subtitle: Text('Đăng ký cho ${activeChild.name}',
-                      style: const TextStyle(fontSize: 11)),
+                  subtitle: Text(
+                    'Đăng ký cho ${activeChild.name}',
+                    style: const TextStyle(fontSize: 11),
+                  ),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
@@ -1817,8 +2109,10 @@ class _ProfileTab extends StatelessWidget {
                 ),
                 const Divider(height: 0),
                 ListTile(
-                  leading: const Icon(Icons.chat_bubble_outline_rounded,
-                      color: AppColors.parentAccent),
+                  leading: const Icon(
+                    Icons.chat_bubble_outline_rounded,
+                    color: AppColors.parentAccent,
+                  ),
                   title: const Text('Liên lạc với GVCN / GV bộ môn'),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => Navigator.of(context).push(
@@ -1840,26 +2134,34 @@ class _ProfileTab extends StatelessWidget {
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.notifications_outlined,
-                      color: AppColors.parentAccent),
+                  leading: const Icon(
+                    Icons.notifications_outlined,
+                    color: AppColors.parentAccent,
+                  ),
                   title: const Text('Cài đặt thông báo'),
                   trailing: Switch(value: true, onChanged: (_) {}),
                 ),
                 const Divider(height: 0),
                 ListTile(
-                  leading: const Icon(Icons.security_outlined,
-                      color: AppColors.parentAccent),
+                  leading: const Icon(
+                    Icons.security_outlined,
+                    color: AppColors.parentAccent,
+                  ),
                   title: const Text('Đổi mật khẩu'),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () {},
                 ),
                 const Divider(height: 0),
                 const ListTile(
-                  leading: Icon(Icons.info_outline_rounded,
-                      color: AppColors.parentAccent),
+                  leading: Icon(
+                    Icons.info_outline_rounded,
+                    color: AppColors.parentAccent,
+                  ),
                   title: Text('Phiên bản'),
-                  trailing: Text('0.1.0',
-                      style: TextStyle(color: AppColors.textSecondary)),
+                  trailing: Text(
+                    '0.1.0',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
                 ),
               ],
             ),
@@ -1867,8 +2169,10 @@ class _ProfileTab extends StatelessWidget {
           const SizedBox(height: 12),
           ListTile(
             leading: const Icon(Icons.logout_rounded, color: AppColors.error),
-            title: const Text('Đăng xuất',
-                style: TextStyle(color: AppColors.error)),
+            title: const Text(
+              'Đăng xuất',
+              style: TextStyle(color: AppColors.error),
+            ),
             onTap: () =>
                 context.read<AuthBloc>().add(const AuthLogoutRequested()),
           ),
@@ -1953,12 +2257,15 @@ class _PChatAction extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 constraints: const BoxConstraints(minWidth: 14),
-                child: Text('$unread',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center),
+                child: Text(
+                  '$unread',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
         ],

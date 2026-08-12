@@ -1,39 +1,47 @@
 import 'package:dio/dio.dart';
+import 'package:sse_identity_api/sse_identity_api.dart' as identity;
+
 import 'models/user_model.dart';
 
 class AuthApi {
-  AuthApi(this._dio);
-  final Dio _dio;
+  AuthApi(Dio dio) : _api = identity.IdentityApi(dio);
 
-  Future<Map<String, dynamic>> login({
+  final identity.IdentityApi _api;
+
+  Future<identity.LoginResponse> login({
     required String username,
     required String password,
   }) async {
-    final resp = await _dio.post(
-      '/auth/login',
-      data: {'username': username, 'password': password},
+    final response = await _api.login(
+      loginRequest: identity.LoginRequest(
+        username: username,
+        password: password,
+      ),
     );
-    return resp.data as Map<String, dynamic>;
+    return response.data!;
   }
 
-  Future<Map<String, dynamic>> refresh(String refreshToken) async {
-    final resp = await _dio.post(
-      '/auth/refresh',
-      data: {'refreshToken': refreshToken},
+  Future<identity.TokenResponse> refresh(String refreshToken) async {
+    final response = await _api.refreshSession(
+      refreshRequest: identity.RefreshRequest(refreshToken: refreshToken),
     );
-    return resp.data as Map<String, dynamic>;
+    return response.data!;
   }
 
   Future<void> forgotPassword(String email) async {
-    await _dio.post('/auth/forgot-password', data: {'email': email});
+    await _api.forgotPassword(
+      forgotPasswordRequest: identity.ForgotPasswordRequest(email: email),
+    );
   }
 
   Future<UserModel> getMe() async {
-    final resp = await _dio.get('/me');
-    return UserModel.fromJson(resp.data as Map<String, dynamic>);
+    final response = await _api.getCurrentUser();
+    return UserModel.fromJson(response.data!.toJson());
   }
 
   Future<void> logout(String? refreshToken) async {
-    await _dio.post('/auth/logout', data: {'refreshToken': refreshToken});
+    await _api.logout(
+      logoutRequest: identity.LogoutRequest(refreshToken: refreshToken),
+    );
   }
 }

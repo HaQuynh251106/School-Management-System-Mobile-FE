@@ -1,14 +1,18 @@
 import 'package:dio/dio.dart';
+import 'package:sse_identity_api/sse_identity_api.dart' as identity;
+
 import '../config/env.dart';
 import '../storage/token_storage.dart';
 
 Dio createDioClient(TokenStorage storage) {
-  final dio = Dio(BaseOptions(
-    baseUrl: Env.baseUrl,
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 15),
-    headers: {'Content-Type': 'application/json'},
-  ));
+  final dio = Dio(
+    BaseOptions(
+      baseUrl: Env.baseUrl,
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 15),
+      headers: {'Content-Type': 'application/json'},
+    ),
+  );
 
   dio.interceptors.add(_AuthInterceptor(dio, storage));
   return dio;
@@ -53,11 +57,14 @@ class _AuthInterceptor extends QueuedInterceptor {
     try {
       final resp = await _dio.post(
         '/auth/refresh',
-        data: {'refreshToken': refreshToken},
+        data: identity.RefreshRequest(refreshToken: refreshToken).toJson(),
         options: Options(headers: {'Authorization': null}),
       );
-      final newAccess = resp.data['accessToken'] as String;
-      final newRefresh = resp.data['refreshToken'] as String;
+      final session = identity.TokenResponse.fromJson(
+        resp.data as Map<String, dynamic>,
+      );
+      final newAccess = session.accessToken;
+      final newRefresh = session.refreshToken;
       await _storage.saveTokens(
         accessToken: newAccess,
         refreshToken: newRefresh,

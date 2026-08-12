@@ -14,8 +14,9 @@ import 'package:sse_mobile/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:sse_mobile/features/auth/presentation/bloc/auth_event.dart';
 
 const _adminPassword = String.fromEnvironment('E2E_ADMIN_PASSWORD');
-const _academicStaffPassword =
-    String.fromEnvironment('E2E_ACADEMIC_STAFF_PASSWORD');
+const _academicStaffPassword = String.fromEnvironment(
+  'E2E_ACADEMIC_STAFF_PASSWORD',
+);
 const _accountantPassword = String.fromEnvironment('E2E_ACCOUNTANT_PASSWORD');
 const _teacherPassword = String.fromEnvironment('E2E_TEACHER_PASSWORD');
 const _studentPassword = String.fromEnvironment('E2E_STUDENT_PASSWORD');
@@ -28,16 +29,17 @@ void main() {
   test('mobile API đăng nhập đúng đủ sáu vai trò', () async {
     final dio = Dio(BaseOptions(baseUrl: Env.baseUrl));
     expect(
-        [
-          _adminPassword,
-          _academicStaffPassword,
-          _accountantPassword,
-          _teacherPassword,
-          _studentPassword,
-          _parentPassword
-        ].every((value) => value.isNotEmpty),
-        isTrue,
-        reason: 'Thiếu biến E2E_*_PASSWORD');
+      [
+        _adminPassword,
+        _academicStaffPassword,
+        _accountantPassword,
+        _teacherPassword,
+        _studentPassword,
+        _parentPassword,
+      ].every((value) => value.isNotEmpty),
+      isTrue,
+      reason: 'Thiếu biến E2E_*_PASSWORD',
+    );
     final accounts = <(String, String, String)>[
       ('admin', _adminPassword, 'ADMIN'),
       ('giaovu', _academicStaffPassword, 'ACADEMIC_STAFF'),
@@ -53,25 +55,100 @@ void main() {
       );
       expect(response.statusCode, 200);
       expect(
-          (response.data!['user'] as Map<String, dynamic>)['role'], account.$3);
+        (response.data!['user'] as Map<String, dynamic>)['role'],
+        account.$3,
+      );
       expect(response.data!['accessToken'], isNotEmpty);
     }
   }, skip: !runLive);
 
-  testWidgets('mobile UI đăng nhập học sinh và điều hướng đúng vai trò',
-      (tester) async {
+  testWidgets('mobile UI đăng nhập học sinh và điều hướng đúng vai trò', (
+    tester,
+  ) async {
     await _loginAndExpect(
-        tester, 'hs.nguyenminhan', _studentPassword, 'Thời khóa biểu');
+      tester,
+      'hs.nguyenminhan',
+      _studentPassword,
+      'Thời khóa biểu',
+    );
+  }, skip: !runLive);
+
+  testWidgets('học sinh thấy rõ kỳ thi sắp diễn ra trên màn chính', (
+    tester,
+  ) async {
+    await _loginAndExpect(
+      tester,
+      'hs.nguyenminhan',
+      _studentPassword,
+      'Thời khóa biểu',
+    );
+    for (var attempt = 0; attempt < 30; attempt++) {
+      await tester.pump(const Duration(milliseconds: 500));
+      if (find.text('Kỳ thi sắp diễn ra').evaluate().isNotEmpty) break;
+    }
+    expect(find.text('Kỳ thi sắp diễn ra'), findsOneWidget);
+    expect(find.textContaining('Phòng P201'), findsOneWidget);
+  }, skip: !runLive);
+
+  testWidgets('phụ huynh thấy kỳ thi sắp diễn ra của đúng con', (tester) async {
+    await _loginAndExpect(
+      tester,
+      'ph.nguyenvanhung',
+      _parentPassword,
+      'Giám sát con',
+    );
+    for (var attempt = 0; attempt < 30; attempt++) {
+      await tester.pump(const Duration(milliseconds: 500));
+      if (find
+          .textContaining('Kỳ thi sắp diễn ra của Nguyễn Minh An')
+          .evaluate()
+          .isNotEmpty) {
+        break;
+      }
+    }
+    expect(
+      find.textContaining('Kỳ thi sắp diễn ra của Nguyễn Minh An'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Phòng P201'), findsOneWidget);
   }, skip: !runLive);
 
   testWidgets('mobile UI mở đúng không gian Giáo vụ', (tester) async {
     await _loginAndExpect(
-        tester, 'giaovu', _academicStaffPassword, 'Trung tâm Giáo vụ');
+      tester,
+      'giaovu',
+      _academicStaffPassword,
+      'Trung tâm Giáo vụ',
+    );
+  }, skip: !runLive);
+
+  testWidgets('Giáo vụ xem đúng kỳ thi thật và có thể bắt đầu tạo kỳ thi', (
+    tester,
+  ) async {
+    await _loginAndExpect(
+      tester,
+      'giaovu',
+      _academicStaffPassword,
+      'Trung tâm Giáo vụ',
+    );
+    await tester.tap(find.text('Kỳ thi'));
+    for (var attempt = 0; attempt < 30; attempt++) {
+      await tester.pump(const Duration(milliseconds: 500));
+      if (find.text('Mobile Chi Duc - Ky thi giu lai').evaluate().isNotEmpty) {
+        break;
+      }
+    }
+    expect(find.text('Mobile Chi Duc - Ky thi giu lai'), findsOneWidget);
+    expect(find.text('Tạo kỳ thi'), findsOneWidget);
   }, skip: !runLive);
 
   testWidgets('mobile UI mở đúng không gian Kế toán', (tester) async {
     await _loginAndExpect(
-        tester, 'ketoan', _accountantPassword, 'Trung tâm Kế toán');
+      tester,
+      'ketoan',
+      _accountantPassword,
+      'Trung tâm Kế toán',
+    );
   }, skip: !runLive);
 }
 
@@ -86,8 +163,9 @@ Future<void> _loginAndExpect(
   if (!sl.isRegistered<ApiService>()) await setupServiceLocator();
   await sl<TokenStorage>().clearAll();
   final authBloc = sl<AuthBloc>()..add(const AuthStarted());
-  await tester
-      .pumpWidget(BlocProvider.value(value: authBloc, child: const SseApp()));
+  await tester.pumpWidget(
+    BlocProvider.value(value: authBloc, child: const SseApp()),
+  );
   await tester.pumpAndSettle(const Duration(seconds: 2));
   final fields = find.byType(TextFormField);
   await tester.enterText(fields.at(0), username);

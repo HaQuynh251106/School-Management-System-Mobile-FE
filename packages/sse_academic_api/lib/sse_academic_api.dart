@@ -1,0 +1,72 @@
+//
+// AUTO-GENERATED FILE, DO NOT MODIFY!
+//
+
+export 'package:sse_academic_api/src/api.dart';
+export 'package:sse_academic_api/src/auth/api_key_auth.dart';
+export 'package:sse_academic_api/src/auth/basic_auth.dart';
+export 'package:sse_academic_api/src/auth/bearer_auth.dart';
+export 'package:sse_academic_api/src/auth/oauth.dart';
+
+export 'package:sse_academic_api/src/api/academic_api.dart';
+
+export 'package:sse_academic_api/src/model/academic_year.dart';
+export 'package:sse_academic_api/src/model/allocate_exam_candidates_request.dart';
+export 'package:sse_academic_api/src/model/api_error.dart';
+export 'package:sse_academic_api/src/model/approved_leave.dart';
+export 'package:sse_academic_api/src/model/attendance_day_status.dart';
+export 'package:sse_academic_api/src/model/attendance_mark.dart';
+export 'package:sse_academic_api/src/model/attendance_record.dart';
+export 'package:sse_academic_api/src/model/attendance_session_status.dart';
+export 'package:sse_academic_api/src/model/attendance_status.dart';
+export 'package:sse_academic_api/src/model/bulk_attendance_request.dart';
+export 'package:sse_academic_api/src/model/bulk_grade_request.dart';
+export 'package:sse_academic_api/src/model/conduct_request.dart';
+export 'package:sse_academic_api/src/model/create_class_request.dart';
+export 'package:sse_academic_api/src/model/create_exam_review_request.dart';
+export 'package:sse_academic_api/src/model/create_grade_request.dart';
+export 'package:sse_academic_api/src/model/create_room_request.dart';
+export 'package:sse_academic_api/src/model/create_subject_request.dart';
+export 'package:sse_academic_api/src/model/eligible_exam_grader.dart';
+export 'package:sse_academic_api/src/model/exam_agenda_item.dart';
+export 'package:sse_academic_api/src/model/exam_candidate.dart';
+export 'package:sse_academic_api/src/model/exam_category.dart';
+export 'package:sse_academic_api/src/model/exam_grading_assignment.dart';
+export 'package:sse_academic_api/src/model/exam_period.dart';
+export 'package:sse_academic_api/src/model/exam_period_summary.dart';
+export 'package:sse_academic_api/src/model/exam_result.dart';
+export 'package:sse_academic_api/src/model/exam_result_entry.dart';
+export 'package:sse_academic_api/src/model/exam_review.dart';
+export 'package:sse_academic_api/src/model/exam_room.dart';
+export 'package:sse_academic_api/src/model/exam_schedule.dart';
+export 'package:sse_academic_api/src/model/exam_score_adjustment.dart';
+export 'package:sse_academic_api/src/model/grade.dart';
+export 'package:sse_academic_api/src/model/grade_change_log.dart';
+export 'package:sse_academic_api/src/model/grade_entry.dart';
+export 'package:sse_academic_api/src/model/gradebook_subject.dart';
+export 'package:sse_academic_api/src/model/resolve_exam_review_request.dart';
+export 'package:sse_academic_api/src/model/room.dart';
+export 'package:sse_academic_api/src/model/save_exam_category_request.dart';
+export 'package:sse_academic_api/src/model/save_exam_grader_request.dart';
+export 'package:sse_academic_api/src/model/save_exam_period_request.dart';
+export 'package:sse_academic_api/src/model/save_exam_results_request.dart';
+export 'package:sse_academic_api/src/model/save_exam_room_request.dart';
+export 'package:sse_academic_api/src/model/save_exam_schedule_request.dart';
+export 'package:sse_academic_api/src/model/save_teaching_assignment_request.dart';
+export 'package:sse_academic_api/src/model/save_timetable_slot_request.dart';
+export 'package:sse_academic_api/src/model/school_class.dart';
+export 'package:sse_academic_api/src/model/semester.dart';
+export 'package:sse_academic_api/src/model/student_exam_result.dart';
+export 'package:sse_academic_api/src/model/student_yearly_summary.dart';
+export 'package:sse_academic_api/src/model/subject.dart';
+export 'package:sse_academic_api/src/model/teacher_exam_candidate.dart';
+export 'package:sse_academic_api/src/model/teacher_gradebook_context.dart';
+export 'package:sse_academic_api/src/model/teacher_grading_task.dart';
+export 'package:sse_academic_api/src/model/teaching_assignment.dart';
+export 'package:sse_academic_api/src/model/timetable_slot.dart';
+export 'package:sse_academic_api/src/model/unlock_attendance_request.dart';
+export 'package:sse_academic_api/src/model/update_grade_request.dart';
+export 'package:sse_academic_api/src/model/year_rollover_class_plan.dart';
+export 'package:sse_academic_api/src/model/year_rollover_preview.dart';
+export 'package:sse_academic_api/src/model/year_rollover_request.dart';
+export 'package:sse_academic_api/src/model/year_rollover_result.dart';

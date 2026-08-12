@@ -45,18 +45,18 @@ class _TeacherAssignmentGradingState extends State<TeacherAssignmentGrading> {
   }
 
   Color _statusColor(String status) => switch (status) {
-        'GRADED' => AppColors.success,
-        'LATE' => AppColors.warning,
-        'RESUBMISSION_ALLOWED' => AppColors.warning,
-        _ => AppColors.primary,
-      };
+    'GRADED' => AppColors.success,
+    'LATE' => AppColors.warning,
+    'RESUBMISSION_ALLOWED' => AppColors.warning,
+    _ => AppColors.primary,
+  };
 
   String _statusLabel(String status) => switch (status) {
-        'GRADED' => 'Đã chấm',
-        'LATE' => 'Nộp trễ',
-        'RESUBMISSION_ALLOWED' => 'Được nộp lại',
-        _ => 'Chờ chấm',
-      };
+    'GRADED' => 'Đã chấm',
+    'LATE' => 'Nộp trễ',
+    'RESUBMISSION_ALLOWED' => 'Được nộp lại',
+    _ => 'Chờ chấm',
+  };
 
   String _submittedAt(Object? raw) {
     final value = DateTime.tryParse((raw ?? '').toString())?.toLocal();
@@ -76,9 +76,9 @@ class _TeacherAssignmentGradingState extends State<TeacherAssignmentGrading> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không thể tải file: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Không thể tải file: $error')));
     }
   }
 
@@ -121,8 +121,10 @@ class _TeacherAssignmentGradingState extends State<TeacherAssignmentGrading> {
                 ),
                 if ((submission['content'] ?? '').toString().isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  const Text('Nội dung bài làm',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text(
+                    'Nội dung bài làm',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 6),
                   Container(
                     width: double.infinity,
@@ -154,8 +156,9 @@ class _TeacherAssignmentGradingState extends State<TeacherAssignmentGrading> {
                 const SizedBox(height: 14),
                 TextField(
                   controller: scoreController,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   decoration: const InputDecoration(labelText: 'Điểm (0-10)'),
                 ),
                 const SizedBox(height: 12),
@@ -171,12 +174,14 @@ class _TeacherAssignmentGradingState extends State<TeacherAssignmentGrading> {
                     onPressed: saving
                         ? null
                         : () async {
-                            final score =
-                                double.tryParse(scoreController.text.trim());
+                            final score = double.tryParse(
+                              scoreController.text.trim(),
+                            );
                             if (score == null || score < 0 || score > 10) {
                               ScaffoldMessenger.of(sheetContext).showSnackBar(
                                 const SnackBar(
-                                    content: Text('Điểm phải từ 0 đến 10')),
+                                  content: Text('Điểm phải từ 0 đến 10'),
+                                ),
                               );
                               return;
                             }
@@ -195,7 +200,8 @@ class _TeacherAssignmentGradingState extends State<TeacherAssignmentGrading> {
                               setSheetState(() => saving = false);
                               ScaffoldMessenger.of(sheetContext).showSnackBar(
                                 SnackBar(
-                                    content: Text('Không thể chấm: $error')),
+                                  content: Text('Không thể chấm: $error'),
+                                ),
                               );
                             }
                           },
@@ -243,9 +249,9 @@ class _TeacherAssignmentGradingState extends State<TeacherAssignmentGrading> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không thể cho nộp lại: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Không thể cho nộp lại: $error')));
     }
   }
 
@@ -268,11 +274,13 @@ class _TeacherAssignmentGradingState extends State<TeacherAssignmentGrading> {
           }
           if (snapshot.hasError) {
             return Center(
-                child: Text('Không thể tải bài nộp: ${snapshot.error}'));
+              child: Text('Không thể tải bài nộp: ${snapshot.error}'),
+            );
           }
           final submissions = snapshot.data ?? const [];
-          final graded =
-              submissions.where((item) => item['status'] == 'GRADED').length;
+          final graded = submissions
+              .where((item) => item['status'] == 'GRADED')
+              .length;
           final pending = submissions.length - graded;
           final missing = (widget.studentCount - submissions.length).clamp(
             0,
@@ -287,35 +295,47 @@ class _TeacherAssignmentGradingState extends State<TeacherAssignmentGrading> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(widget.assignmentTitle,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 15)),
+                    Text(
+                      widget.assignmentTitle,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       '${widget.className} • ${widget.subject} • Hạn ${widget.deadline}',
                       style: const TextStyle(
-                          fontSize: 12, color: AppColors.textSecondary),
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
-                            child: _StatBox(
-                                label: 'Đã chấm',
-                                value: graded,
-                                color: AppColors.success)),
+                          child: _StatBox(
+                            label: 'Đã chấm',
+                            value: graded,
+                            color: AppColors.success,
+                          ),
+                        ),
                         const SizedBox(width: 6),
                         Expanded(
-                            child: _StatBox(
-                                label: 'Chờ chấm',
-                                value: pending,
-                                color: AppColors.primary)),
+                          child: _StatBox(
+                            label: 'Chờ chấm',
+                            value: pending,
+                            color: AppColors.primary,
+                          ),
+                        ),
                         const SizedBox(width: 6),
                         Expanded(
-                            child: _StatBox(
-                                label: 'Chưa nộp',
-                                value: missing,
-                                color: AppColors.error)),
+                          child: _StatBox(
+                            label: 'Chưa nộp',
+                            value: missing,
+                            color: AppColors.error,
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -342,14 +362,17 @@ class _TeacherAssignmentGradingState extends State<TeacherAssignmentGrading> {
                             return ListTile(
                               leading: CircleAvatar(
                                 backgroundColor: color.withValues(alpha: .12),
-                                child: Text('${index + 1}',
-                                    style: TextStyle(color: color)),
+                                child: Text(
+                                  '${index + 1}',
+                                  style: TextStyle(color: color),
+                                ),
                               ),
                               title: Text(
                                 (submission['studentName'] ?? 'Học sinh')
                                     .toString(),
                                 style: const TextStyle(
-                                    fontWeight: FontWeight.w600),
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                               subtitle: Text(
                                 '${_statusLabel(status)} • ${_submittedAt(submission['submittedAt'])}',
@@ -366,11 +389,13 @@ class _TeacherAssignmentGradingState extends State<TeacherAssignmentGrading> {
                                       },
                                       itemBuilder: (_) => const [
                                         PopupMenuItem(
-                                            value: 'grade',
-                                            child: Text('Sửa điểm')),
+                                          value: 'grade',
+                                          child: Text('Sửa điểm'),
+                                        ),
                                         PopupMenuItem(
-                                            value: 'resubmit',
-                                            child: Text('Cho nộp lại')),
+                                          value: 'resubmit',
+                                          child: Text('Cho nộp lại'),
+                                        ),
                                       ],
                                     )
                                   : const Icon(Icons.chevron_right_rounded),
@@ -410,12 +435,21 @@ class _StatBox extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text('$value',
-              style: TextStyle(
-                  fontWeight: FontWeight.w700, color: color, fontSize: 18)),
-          Text(label,
-              style: const TextStyle(
-                  fontSize: 10, color: AppColors.textSecondary)),
+          Text(
+            '$value',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: color,
+              fontSize: 18,
+            ),
+          ),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 10,
+              color: AppColors.textSecondary,
+            ),
+          ),
         ],
       ),
     );

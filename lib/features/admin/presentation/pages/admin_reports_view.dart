@@ -138,11 +138,15 @@ class _AdminReportsViewState extends State<AdminReportsView> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('Báo cáo dữ liệu thật',
-              style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            'Báo cáo dữ liệu thật',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 4),
-          Text('Chọn loại báo cáo và bộ lọc trước khi xem hoặc export.',
-              style: Theme.of(context).textTheme.bodySmall),
+          Text(
+            'Chọn loại báo cáo và bộ lọc trước khi xem hoặc export.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
           const SizedBox(height: 14),
           DropdownButtonFormField<String>(
             initialValue: _type,
@@ -151,9 +155,13 @@ class _AdminReportsViewState extends State<AdminReportsView> {
               DropdownMenuItem(value: 'grades', child: Text('Phổ điểm')),
               DropdownMenuItem(value: 'attendance', child: Text('Chuyên cần')),
               DropdownMenuItem(
-                  value: 'revenue', child: Text('Doanh thu và công nợ')),
+                value: 'revenue',
+                child: Text('Doanh thu và công nợ'),
+              ),
               DropdownMenuItem(
-                  value: 'overview', child: Text('Tổng quan hệ thống')),
+                value: 'overview',
+                child: Text('Tổng quan hệ thống'),
+              ),
             ],
             onChanged: (value) {
               if (value == null) return;
@@ -169,9 +177,10 @@ class _AdminReportsViewState extends State<AdminReportsView> {
             builder: (context, snapshot) {
               if (snapshot.hasError) {
                 return _InlineError(
-                    onRetry: () => setState(() {
-                          _options = _loadOptions();
-                        }));
+                  onRetry: () => setState(() {
+                    _options = _loadOptions();
+                  }),
+                );
               }
               if (!snapshot.hasData) return const LinearProgressIndicator();
               return _Filters(
@@ -199,14 +208,17 @@ class _AdminReportsViewState extends State<AdminReportsView> {
             builder: (context, snapshot) {
               if (snapshot.connectionState != ConnectionState.done) {
                 return const Center(
-                    child: Padding(
-                  padding: EdgeInsets.all(28),
-                  child: CircularProgressIndicator(),
-                ));
+                  child: Padding(
+                    padding: EdgeInsets.all(28),
+                    child: CircularProgressIndicator(),
+                  ),
+                );
               }
               if (snapshot.hasError) return _ReportError(onRetry: _refresh);
               return _Result(
-                  data: snapshot.data!, accent: AppColors.adminAccent);
+                data: snapshot.data!,
+                accent: AppColors.adminAccent,
+              );
             },
           ),
           const SizedBox(height: 16),
@@ -273,69 +285,83 @@ class _Filters extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        children: [
-          if (type != 'overview')
-            _OptionField(
-              label: 'Lớp',
-              value: classId,
-              rows: options.classes,
-              onChanged: onClass,
+    children: [
+      if (type != 'overview')
+        _OptionField(
+          label: 'Lớp',
+          value: classId,
+          rows: options.classes,
+          onChanged: onClass,
+        ),
+      if (type == 'grades') ...[
+        const SizedBox(height: 8),
+        _OptionField(
+          label: 'Học kỳ',
+          value: semesterId,
+          rows: options.semesters,
+          onChanged: onSemester,
+        ),
+        const SizedBox(height: 8),
+        _OptionField(
+          label: 'Môn học',
+          value: subjectId,
+          rows: options.subjects,
+          onChanged: onSubject,
+        ),
+      ],
+      if (type == 'revenue') ...[
+        const SizedBox(height: 8),
+        _OptionField(
+          label: 'Đợt thu',
+          value: periodId,
+          rows: options.periods,
+          onChanged: onPeriod,
+        ),
+      ],
+      if (type == 'attendance') ...[
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _DateField(
+                label: 'Từ ngày',
+                value: startDate,
+                onChanged: onStart,
+              ),
             ),
-          if (type == 'grades') ...[
-            const SizedBox(height: 8),
-            _OptionField(
-                label: 'Học kỳ',
-                value: semesterId,
-                rows: options.semesters,
-                onChanged: onSemester),
-            const SizedBox(height: 8),
-            _OptionField(
-                label: 'Môn học',
-                value: subjectId,
-                rows: options.subjects,
-                onChanged: onSubject),
-          ],
-          if (type == 'revenue') ...[
-            const SizedBox(height: 8),
-            _OptionField(
-                label: 'Đợt thu',
-                value: periodId,
-                rows: options.periods,
-                onChanged: onPeriod),
-          ],
-          if (type == 'attendance') ...[
-            const SizedBox(height: 8),
-            Row(children: [
-              Expanded(
-                  child: _DateField(
-                      label: 'Từ ngày', value: startDate, onChanged: onStart)),
-              const SizedBox(width: 8),
-              Expanded(
-                  child: _DateField(
-                      label: 'Đến ngày', value: endDate, onChanged: onEnd)),
-            ]),
-          ],
-          if (type != 'overview') ...[
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: onApply,
-                icon: const Icon(Icons.filter_alt_outlined),
-                label: const Text('Áp dụng bộ lọc'),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _DateField(
+                label: 'Đến ngày',
+                value: endDate,
+                onChanged: onEnd,
               ),
             ),
           ],
-        ],
-      );
+        ),
+      ],
+      if (type != 'overview') ...[
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: onApply,
+            icon: const Icon(Icons.filter_alt_outlined),
+            label: const Text('Áp dụng bộ lọc'),
+          ),
+        ),
+      ],
+    ],
+  );
 }
 
 class _OptionField extends StatelessWidget {
-  const _OptionField(
-      {required this.label,
-      required this.value,
-      required this.rows,
-      required this.onChanged});
+  const _OptionField({
+    required this.label,
+    required this.value,
+    required this.rows,
+    required this.onChanged,
+  });
   final String label;
   final String? value;
   final List<Map<String, dynamic>> rows;
@@ -343,43 +369,50 @@ class _OptionField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DropdownButtonFormField<String?>(
-        initialValue: value,
-        decoration: InputDecoration(labelText: label),
-        items: [
-          const DropdownMenuItem<String?>(value: null, child: Text('Tất cả')),
-          ...rows.map((row) => DropdownMenuItem<String?>(
-                value: '${row['id']}',
-                child: Text(
-                    '${row['name'] ?? row['code'] ?? row['title'] ?? row['id']}',
-                    overflow: TextOverflow.ellipsis),
-              )),
-        ],
-        onChanged: onChanged,
-      );
+    initialValue: value,
+    decoration: InputDecoration(labelText: label),
+    items: [
+      const DropdownMenuItem<String?>(value: null, child: Text('Tất cả')),
+      ...rows.map(
+        (row) => DropdownMenuItem<String?>(
+          value: '${row['id']}',
+          child: Text(
+            '${row['name'] ?? row['code'] ?? row['title'] ?? row['id']}',
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
+    ],
+    onChanged: onChanged,
+  );
 }
 
 class _DateField extends StatelessWidget {
-  const _DateField(
-      {required this.label, required this.value, required this.onChanged});
+  const _DateField({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
   final String label;
   final DateTime? value;
   final ValueChanged<DateTime?> onChanged;
 
   @override
   Widget build(BuildContext context) => OutlinedButton.icon(
-        onPressed: () async {
-          final date = await showDatePicker(
-            context: context,
-            firstDate: DateTime(2020),
-            lastDate: DateTime(2035),
-            initialDate: value ?? DateTime.now(),
-          );
-          if (date != null) onChanged(date);
-        },
-        icon: const Icon(Icons.calendar_today_outlined, size: 18),
-        label: Text(
-            value == null ? label : DateFormat('dd/MM/yyyy').format(value!)),
+    onPressed: () async {
+      final date = await showDatePicker(
+        context: context,
+        firstDate: DateTime(2020),
+        lastDate: DateTime(2035),
+        initialDate: value ?? DateTime.now(),
       );
+      if (date != null) onChanged(date);
+    },
+    icon: const Icon(Icons.calendar_today_outlined, size: 18),
+    label: Text(
+      value == null ? label : DateFormat('dd/MM/yyyy').format(value!),
+    ),
+  );
 }
 
 class _Result extends StatelessWidget {
@@ -403,34 +436,46 @@ class _Result extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Cập nhật ${DateFormat('dd/MM/yyyy HH:mm').format(data.asOf)}',
-              style: Theme.of(context).textTheme.bodySmall),
+          Text(
+            'Cập nhật ${DateFormat('dd/MM/yyyy HH:mm').format(data.asOf)}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
           const SizedBox(height: 12),
           if (data.rows.isEmpty)
             const Text('Không có dữ liệu với bộ lọc đang áp dụng')
           else
             ...data.rows.map((row) {
-              final number =
-                  row.value is num ? (row.value as num).toDouble() : 0;
+              final number = row.value is num
+                  ? (row.value as num).toDouble()
+                  : 0;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: Row(children: [
-                  SizedBox(
+                child: Row(
+                  children: [
+                    SizedBox(
                       width: 112,
-                      child: Text(_label(row.label),
-                          maxLines: 2, overflow: TextOverflow.ellipsis)),
-                  const SizedBox(width: 8),
-                  Expanded(
+                      child: Text(
+                        _label(row.label),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
                       child: LinearProgressIndicator(
-                    value: max == 0 ? 0 : (number / max).clamp(0.0, 1.0),
-                    minHeight: 8,
-                    color: accent,
-                    borderRadius: BorderRadius.circular(4),
-                  )),
-                  const SizedBox(width: 8),
-                  Text(_value(row.value),
-                      style: Theme.of(context).textTheme.labelMedium),
-                ]),
+                        value: max == 0 ? 0 : (number / max).clamp(0.0, 1.0),
+                        minHeight: 8,
+                        color: accent,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _value(row.value),
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                  ],
+                ),
               );
             }),
         ],
@@ -460,15 +505,18 @@ class _ReportError extends StatelessWidget {
   const _ReportError({required this.onRetry});
   final Future<void> Function() onRetry;
   @override
-  Widget build(BuildContext context) => Column(children: [
-        const Icon(Icons.error_outline_rounded, size: 38),
-        const SizedBox(height: 8),
-        const Text('Không thể tải báo cáo dữ liệu thật'),
-        TextButton.icon(
-            onPressed: onRetry,
-            icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Thử lại')),
-      ]);
+  Widget build(BuildContext context) => Column(
+    children: [
+      const Icon(Icons.error_outline_rounded, size: 38),
+      const SizedBox(height: 8),
+      const Text('Không thể tải báo cáo dữ liệu thật'),
+      TextButton.icon(
+        onPressed: onRetry,
+        icon: const Icon(Icons.refresh_rounded),
+        label: const Text('Thử lại'),
+      ),
+    ],
+  );
 }
 
 class _InlineError extends StatelessWidget {
@@ -476,13 +524,14 @@ class _InlineError extends StatelessWidget {
   final VoidCallback onRetry;
   @override
   Widget build(BuildContext context) => ListTile(
-        leading: const Icon(Icons.error_outline_rounded),
-        title: const Text('Không tải được danh sách bộ lọc'),
-        trailing: IconButton(
-            tooltip: 'Thử lại',
-            onPressed: onRetry,
-            icon: const Icon(Icons.refresh_rounded)),
-      );
+    leading: const Icon(Icons.error_outline_rounded),
+    title: const Text('Không tải được danh sách bộ lọc'),
+    trailing: IconButton(
+      tooltip: 'Thử lại',
+      onPressed: onRetry,
+      icon: const Icon(Icons.refresh_rounded),
+    ),
+  );
 }
 
 class _Options {
