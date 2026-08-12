@@ -168,7 +168,9 @@ class _ChatListPageState extends State<ChatListPage> {
         final threadList = RefreshIndicator(
           onRefresh: () async {
             final future = _load();
-            setState(() => _future = future);
+            setState(() {
+              _future = future;
+            });
             await future;
           },
           child: _ThreadList(

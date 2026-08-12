@@ -38,7 +38,11 @@ class _TeacherAssignmentGradingState extends State<TeacherAssignmentGrading> {
   Future<List<Map<String, dynamic>>> _load() =>
       _api.assignmentSubmissions(widget.assignmentId);
 
-  void _refresh() => setState(() => _future = _load());
+  void _refresh() {
+    setState(() {
+      _future = _load();
+    });
+  }
 
   Color _statusColor(String status) => switch (status) {
         'GRADED' => AppColors.success,

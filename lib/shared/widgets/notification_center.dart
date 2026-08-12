@@ -156,7 +156,9 @@ class _LiveNotificationActionState extends State<LiveNotificationAction> {
 
   void _refresh() {
     if (mounted) {
-      setState(() => _count = sl<ApiService>().notificationUnreadCount());
+      setState(() {
+        _count = sl<ApiService>().notificationUnreadCount();
+      });
     }
   }
 
@@ -494,7 +496,9 @@ class _NotificationPreferenceSheetState
   Future<void> _toggle(String channel, bool enabled) async {
     await sl<ApiService>().updateNotificationPreference(channel, enabled);
     if (mounted) {
-      setState(() => _future = sl<ApiService>().notificationPreferences());
+      setState(() {
+        _future = sl<ApiService>().notificationPreferences();
+      });
     }
   }
 

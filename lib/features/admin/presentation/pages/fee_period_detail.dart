@@ -34,7 +34,9 @@ class _AdminFeePeriodDetailState extends State<AdminFeePeriodDetail> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = _load());
+    setState(() {
+      _future = _load();
+    });
     await _future;
   }
 

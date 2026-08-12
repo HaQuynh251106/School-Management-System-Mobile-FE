@@ -415,7 +415,9 @@ class _AsyncScaffold<T> extends StatefulWidget {
 class _AsyncScaffoldState<T> extends State<_AsyncScaffold<T>> {
   late Future<T> _future = widget.load();
   Future<void> _reload() async {
-    setState(() => _future = widget.load());
+    setState(() {
+      _future = widget.load();
+    });
     await _future;
   }
 

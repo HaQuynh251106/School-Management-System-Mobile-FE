@@ -220,8 +220,9 @@ class _ParentHomeState extends State<ParentHome> {
                     const Text('Chưa có học sinh được liên kết'),
                     const SizedBox(height: 14),
                     OutlinedButton.icon(
-                      onPressed: () =>
-                          setState(() => _childrenFuture = _loadChildren()),
+                      onPressed: () => setState(() {
+                        _childrenFuture = _loadChildren();
+                      }),
                       icon: const Icon(Icons.refresh_rounded),
                       label: const Text('Tải lại'),
                     ),

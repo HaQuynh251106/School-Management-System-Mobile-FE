@@ -84,11 +84,17 @@ class _AdminReportsViewState extends State<AdminReportsView> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = _load());
+    setState(() {
+      _future = _load();
+    });
     await _future;
   }
 
-  void _apply() => setState(() => _future = _load());
+  void _apply() {
+    setState(() {
+      _future = _load();
+    });
+  }
 
   Future<void> _export(String format) async {
     setState(() => _exporting = true);
@@ -163,7 +169,9 @@ class _AdminReportsViewState extends State<AdminReportsView> {
             builder: (context, snapshot) {
               if (snapshot.hasError) {
                 return _InlineError(
-                    onRetry: () => setState(() => _options = _loadOptions()));
+                    onRetry: () => setState(() {
+                          _options = _loadOptions();
+                        }));
               }
               if (!snapshot.hasData) return const LinearProgressIndicator();
               return _Filters(

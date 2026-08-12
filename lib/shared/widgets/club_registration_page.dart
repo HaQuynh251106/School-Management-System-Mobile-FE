@@ -36,7 +36,11 @@ class _ClubRegistrationPageState extends State<ClubRegistrationPage> {
     return _ClubData(values[0], values[1]);
   }
 
-  void _reload() => setState(() => _future = _load());
+  void _reload() {
+    setState(() {
+      _future = _load();
+    });
+  }
 
   Future<void> _register(Map<String, dynamic> club) async {
     final id = club['id'].toString();

@@ -20,18 +20,22 @@ class AccountantHome extends StatefulWidget {
 
 class _AccountantHomeState extends State<AccountantHome> {
   int _tab = 0;
+  int _dataRevision = 0;
 
   @override
   Widget build(BuildContext context) => AdaptiveRoleScaffold(
         index: _tab,
-        onSelected: (value) => setState(() => _tab = value),
+        onSelected: (value) => setState(() {
+          _tab = value;
+          _dataRevision++;
+        }),
         accent: AppColors.accountantAccent,
-        pages: const [
-          _FinanceOverviewPage(),
-          _FeePeriodsPage(),
-          _DebtPage(),
-          _ReconciliationPage(),
-          _AccountantProfilePage(),
+        pages: [
+          _FinanceOverviewPage(refreshToken: _dataRevision),
+          _FeePeriodsPage(refreshToken: _dataRevision),
+          _DebtPage(refreshToken: _dataRevision),
+          _ReconciliationPage(refreshToken: _dataRevision),
+          const _AccountantProfilePage(),
         ],
         destinations: const [
           RoleDestination(
@@ -79,12 +83,15 @@ String _money(num amount) =>
         .format(amount);
 
 class _FinanceOverviewPage extends StatelessWidget {
-  const _FinanceOverviewPage();
+  const _FinanceOverviewPage({required this.refreshToken});
+
+  final int refreshToken;
 
   @override
   Widget build(BuildContext context) => _FinanceFuture<_FinanceData>(
         title: 'Tổng quan tài chính',
         load: _loadFinance,
+        refreshToken: refreshToken,
         builder: (context, data, reload) {
           final total = data.invoices
               .fold<num>(0, (sum, item) => sum + _number(item['totalAmount']));
@@ -151,13 +158,16 @@ class _FinanceOverviewPage extends StatelessWidget {
 }
 
 class _FeePeriodsPage extends StatelessWidget {
-  const _FeePeriodsPage();
+  const _FeePeriodsPage({required this.refreshToken});
+
+  final int refreshToken;
 
   @override
   Widget build(BuildContext context) =>
       _FinanceFuture<List<Map<String, dynamic>>>(
         title: 'Đợt thu',
         load: sl<ApiService>().feePeriods,
+        refreshToken: refreshToken,
         builder: (context, periods, reload) => RefreshIndicator(
           onRefresh: reload,
           child: ListView(padding: const EdgeInsets.all(16), children: [
@@ -217,20 +227,36 @@ class _FeePeriodsPage extends StatelessWidget {
 }
 
 class _DebtPage extends StatefulWidget {
-  const _DebtPage();
+  const _DebtPage({required this.refreshToken});
+
+  final int refreshToken;
   @override
   State<_DebtPage> createState() => _DebtPageState();
 }
+
+enum _DebtAction { collectCash, refund }
 
 class _DebtPageState extends State<_DebtPage> {
   String _status = 'ALL';
   String _query = '';
   late Future<List<Map<String, dynamic>>> _future = _load();
 
+  @override
+  void didUpdateWidget(covariant _DebtPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshToken != widget.refreshToken) {
+      _future = _load();
+    }
+  }
+
   Future<List<Map<String, dynamic>>> _load() => sl<ApiService>().invoices(
       status: _status == 'ALL' ? null : _status,
       query: _query.trim().isEmpty ? null : _query.trim());
-  void _reload() => setState(() => _future = _load());
+  void _reload() {
+    setState(() {
+      _future = _load();
+    });
+  }
 
   int _parseAmount(String value) =>
       int.tryParse(value.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
@@ -291,6 +317,7 @@ class _DebtPageState extends State<_DebtPage> {
         ],
       ),
     );
+    await Future<void>.delayed(const Duration(milliseconds: 300));
     controller.dispose();
     payerController.dispose();
     noteController.dispose();
@@ -364,6 +391,7 @@ class _DebtPageState extends State<_DebtPage> {
         ],
       ),
     );
+    await Future<void>.delayed(const Duration(milliseconds: 300));
     amountController.dispose();
     reasonController.dispose();
     if (result == null) return;
@@ -381,11 +409,11 @@ class _DebtPageState extends State<_DebtPage> {
     }
   }
 
-  void _showActions(Map<String, dynamic> invoice) {
+  Future<void> _showActions(Map<String, dynamic> invoice) async {
     final status = (invoice['status'] ?? '').toString();
     final canCollect = const {'UNPAID', 'PARTIAL', 'OVERDUE'}.contains(status);
     final canRefund = const {'PAID', 'PARTIALLY_REFUNDED'}.contains(status);
-    showModalBottomSheet<void>(
+    final action = await showModalBottomSheet<_DebtAction>(
       context: context,
       builder: (sheetContext) => SafeArea(
         child: Padding(
@@ -404,19 +432,15 @@ class _DebtPageState extends State<_DebtPage> {
               const SizedBox(height: 16),
               if (canCollect)
                 FilledButton.icon(
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-                    _recordCash(invoice);
-                  },
+                  onPressed: () =>
+                      Navigator.pop(sheetContext, _DebtAction.collectCash),
                   icon: const Icon(Icons.payments_rounded),
                   label: const Text('Ghi nhận tiền mặt'),
                 ),
               if (canRefund)
                 OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-                    _refund(invoice);
-                  },
+                  onPressed: () =>
+                      Navigator.pop(sheetContext, _DebtAction.refund),
                   icon: const Icon(Icons.undo_rounded),
                   label: const Text('Hoàn tiền'),
                 ),
@@ -428,6 +452,18 @@ class _DebtPageState extends State<_DebtPage> {
         ),
       ),
     );
+    if (action == null || !mounted) return;
+
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    if (!mounted) return;
+    switch (action) {
+      case _DebtAction.collectCash:
+        await _recordCash(invoice);
+        break;
+      case _DebtAction.refund:
+        await _refund(invoice);
+        break;
+    }
   }
 
   @override
@@ -516,7 +552,9 @@ class _DebtPageState extends State<_DebtPage> {
 }
 
 class _ReconciliationPage extends StatefulWidget {
-  const _ReconciliationPage();
+  const _ReconciliationPage({required this.refreshToken});
+
+  final int refreshToken;
   @override
   State<_ReconciliationPage> createState() => _ReconciliationPageState();
 }
@@ -524,8 +562,18 @@ class _ReconciliationPage extends StatefulWidget {
 class _ReconciliationPageState extends State<_ReconciliationPage> {
   late Future<List<Map<String, dynamic>>> _future =
       sl<ApiService>().pendingVietQrPayments();
-  void _reload() =>
-      setState(() => _future = sl<ApiService>().pendingVietQrPayments());
+
+  @override
+  void didUpdateWidget(covariant _ReconciliationPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshToken != widget.refreshToken) {
+      _future = sl<ApiService>().pendingVietQrPayments();
+    }
+  }
+
+  void _reload() => setState(() {
+        _future = sl<ApiService>().pendingVietQrPayments();
+      });
 
   Future<void> _confirm(String paymentId) async {
     final controller = TextEditingController();
@@ -672,18 +720,33 @@ class _AccountantProfilePage extends StatelessWidget {
 
 class _FinanceFuture<T> extends StatefulWidget {
   const _FinanceFuture(
-      {required this.title, required this.load, required this.builder});
+      {required this.title,
+      required this.load,
+      required this.builder,
+      required this.refreshToken});
   final String title;
   final Future<T> Function() load;
   final Widget Function(BuildContext, T, Future<void> Function()) builder;
+  final int refreshToken;
   @override
   State<_FinanceFuture<T>> createState() => _FinanceFutureState<T>();
 }
 
 class _FinanceFutureState<T> extends State<_FinanceFuture<T>> {
   late Future<T> _future = widget.load();
+
+  @override
+  void didUpdateWidget(covariant _FinanceFuture<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshToken != widget.refreshToken) {
+      _future = widget.load();
+    }
+  }
+
   Future<void> _reload() async {
-    setState(() => _future = widget.load());
+    setState(() {
+      _future = widget.load();
+    });
     await _future;
   }
 

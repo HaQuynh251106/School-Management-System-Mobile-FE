@@ -129,7 +129,9 @@ class _OverviewViewState extends State<_OverviewView> {
   late Future<Map<String, dynamic>> _future = sl<ApiService>().dashboard();
 
   Future<void> _refresh() async {
-    setState(() => _future = sl<ApiService>().dashboard());
+    setState(() {
+      _future = sl<ApiService>().dashboard();
+    });
     await _future;
   }
 
@@ -1124,7 +1126,9 @@ class _ClassesViewState extends State<_ClassesView> {
   }
 
   void _reloadClasses() {
-    setState(() => _future = _api.classes());
+    setState(() {
+      _future = _api.classes();
+    });
   }
 
   Future<void> _assignHomeroomTeacher(Map<String, dynamic> schoolClass) async {

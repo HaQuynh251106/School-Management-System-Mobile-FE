@@ -1913,7 +1913,11 @@ class _AssignmentsTab extends StatefulWidget {
 class _AssignmentsTabState extends State<_AssignmentsTab> {
   late Future<List<_TAssignment>> _future = _load();
 
-  void _refresh() => setState(() => _future = _load());
+  void _refresh() {
+    setState(() {
+      _future = _load();
+    });
+  }
 
   Future<List<_TAssignment>> _load() async {
     final raw = await sl<ApiService>().teacherAssignments();
