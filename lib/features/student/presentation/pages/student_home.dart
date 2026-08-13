@@ -13,6 +13,7 @@ import '../../../../shared/widgets/section_header.dart';
 import '../../../../shared/widgets/adaptive_role_scaffold.dart';
 import '../../../../shared/widgets/mobile_workspace_page.dart';
 import '../../../../shared/widgets/role_page_intro.dart';
+import '../../../../shared/widgets/school_day_status.dart';
 import '../../../../shared/widgets/theme_mode_tile.dart';
 import '../../../../shared/widgets/upcoming_exam_banner.dart';
 import '../../../../shared/widgets/yearly_summary_page.dart';
@@ -120,25 +121,38 @@ class _TimetableTab extends StatefulWidget {
 class _TimetableTabState extends State<_TimetableTab>
     with SingleTickerProviderStateMixin {
   late TabController _ctrl;
-  static const _days = ['T2', 'T3', 'T4', 'T5', 'T6'];
-  static const _dayCodes = ['MON', 'TUE', 'WED', 'THU', 'FRI'];
+  static const _days = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+  static const _dayCodes = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
   static const _dayLabels = [
     'Thứ Hai',
     'Thứ Ba',
     'Thứ Tư',
     'Thứ Năm',
     'Thứ Sáu',
+    'Thứ Bảy',
   ];
-  late final Future<List<List<Map<String, dynamic>>>> _future = Future.wait([
-    sl<ApiService>().myTimetable(),
-    sl<ApiService>().examAgenda(),
-  ]);
+  late final List<DateTime> _weekDates;
+  late final Future<_StudentTimetableData> _future;
 
   @override
   void initState() {
     super.initState();
-    final idx = (DateTime.now().weekday - 1).clamp(0, 4);
+    _weekDates = schoolWeekDates(DateTime.now());
+    _future = _load();
+    final idx = (DateTime.now().weekday - 1).clamp(0, 5);
     _ctrl = TabController(length: _days.length, vsync: this, initialIndex: idx);
+  }
+
+  Future<_StudentTimetableData> _load() async {
+    final api = sl<ApiService>();
+    final timetable = api.myTimetable();
+    final exams = api.examAgenda();
+    final statuses = loadSchoolWeekStatuses(api, _weekDates);
+    return _StudentTimetableData(
+      timetable: await timetable,
+      exams: await exams,
+      statuses: await statuses,
+    );
   }
 
   @override
@@ -162,20 +176,24 @@ class _TimetableTabState extends State<_TimetableTab>
           tabs: _days.map((d) => Tab(text: d)).toList(),
         ),
       ),
-      body: FutureBuilder<List<List<Map<String, dynamic>>>>(
+      body: FutureBuilder<_StudentTimetableData>(
         future: _future,
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
             return const Center(child: CircularProgressIndicator());
           }
-          final data = snap.data ?? const <List<Map<String, dynamic>>>[];
-          final all = data.isEmpty ? const <Map<String, dynamic>>[] : data[0];
-          final exams = data.length > 1
-              ? data[1]
-              : const <Map<String, dynamic>>[];
+          if (snap.hasError || snap.data == null) {
+            return Center(
+              child: Text('Không thể tải thời khóa biểu: ${snap.error}'),
+            );
+          }
+          final data = snap.data!;
+          final all = data.timetable;
+          final exams = data.exams;
           return TabBarView(
             controller: _ctrl,
-            children: List.generate(5, (i) {
+            children: List.generate(_days.length, (i) {
+              final status = data.statuses[i];
               final slots =
                   all
                       .where((s) => s['dayOfWeek'] == _dayCodes[i])
@@ -189,6 +207,30 @@ class _TimetableTabState extends State<_TimetableTab>
                       )
                       .toList()
                     ..sort((a, b) => a.period.compareTo(b.period));
+              if (status.isHoliday) {
+                return ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    UpcomingExamBanner(
+                      exams: exams,
+                      accent: AppColors.studentAccent,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const MobileWorkspacePage(
+                            role: 'STUDENT',
+                            accent: AppColors.studentAccent,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (exams.isNotEmpty) const SizedBox(height: 12),
+                    SchoolHolidayBanner(
+                      status: status,
+                      accent: AppColors.studentAccent,
+                    ),
+                  ],
+                );
+              }
               return ListView.builder(
                 padding: const EdgeInsets.all(16),
                 itemCount: slots.length + 1,
@@ -282,6 +324,18 @@ class _TimetableTabState extends State<_TimetableTab>
       ),
     );
   }
+}
+
+class _StudentTimetableData {
+  const _StudentTimetableData({
+    required this.timetable,
+    required this.exams,
+    required this.statuses,
+  });
+
+  final List<Map<String, dynamic>> timetable;
+  final List<Map<String, dynamic>> exams;
+  final List<SchoolDayStatus> statuses;
 }
 
 // ===================== GRADES (sub-tabs HK1 / HK2 / Cả năm) =====================

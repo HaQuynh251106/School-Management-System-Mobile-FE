@@ -13,6 +13,7 @@ import '../../../../shared/widgets/adaptive_role_scaffold.dart';
 import '../../../../shared/widgets/mobile_workspace_page.dart';
 import '../../../../shared/widgets/quick_create.dart';
 import '../../../../shared/widgets/role_page_intro.dart';
+import '../../../../shared/widgets/school_day_status.dart';
 import '../../../../shared/widgets/theme_mode_tile.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_event.dart';
@@ -133,8 +134,18 @@ class _TimetableTab extends StatefulWidget {
 class _TimetableTabState extends State<_TimetableTab> {
   static const _days = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
   static const _dayCodes = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-  late final Future<List<Map<String, dynamic>>> _future = sl<ApiService>()
-      .myTimetable();
+  late final List<DateTime> _weekDates = schoolWeekDates(DateTime.now());
+  late final Future<_TeacherTimetableData> _future = _load();
+
+  Future<_TeacherTimetableData> _load() async {
+    final api = sl<ApiService>();
+    final timetable = api.myTimetable();
+    final statuses = loadSchoolWeekStatuses(api, _weekDates);
+    return _TeacherTimetableData(
+      timetable: await timetable,
+      statuses: await statuses,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -155,7 +166,7 @@ class _TimetableTabState extends State<_TimetableTab> {
             tabs: _days.map((d) => Tab(text: d)).toList(),
           ),
         ),
-        body: FutureBuilder<List<Map<String, dynamic>>>(
+        body: FutureBuilder<_TeacherTimetableData>(
           future: _future,
           builder: (context, snap) {
             if (snap.connectionState != ConnectionState.done) {
@@ -169,9 +180,11 @@ class _TimetableTabState extends State<_TimetableTab> {
                 ),
               );
             }
-            final all = snap.data ?? [];
+            final data = snap.data!;
+            final all = data.timetable;
             return TabBarView(
               children: List.generate(_days.length, (dayIdx) {
+                final status = data.statuses[dayIdx];
                 final slots =
                     all
                         .where((s) => s['dayOfWeek'] == _dayCodes[dayIdx])
@@ -181,6 +194,17 @@ class _TimetableTabState extends State<_TimetableTab> {
                           b['periodNo'] as int,
                         ),
                       );
+                if (status.isHoliday) {
+                  return ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      SchoolHolidayBanner(
+                        status: status,
+                        accent: AppColors.teacherAccent,
+                      ),
+                    ],
+                  );
+                }
                 if (slots.isEmpty) {
                   return const Center(
                     child: Text(
@@ -226,6 +250,16 @@ class _TimetableTabState extends State<_TimetableTab> {
       ),
     );
   }
+}
+
+class _TeacherTimetableData {
+  const _TeacherTimetableData({
+    required this.timetable,
+    required this.statuses,
+  });
+
+  final List<Map<String, dynamic>> timetable;
+  final List<SchoolDayStatus> statuses;
 }
 
 class _SlotCard extends StatelessWidget {

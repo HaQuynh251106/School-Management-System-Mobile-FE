@@ -11,6 +11,7 @@ import '../../../../shared/widgets/notification_center.dart';
 import '../../../../shared/widgets/section_header.dart';
 import '../../../../shared/widgets/adaptive_role_scaffold.dart';
 import '../../../../shared/widgets/mobile_workspace_page.dart';
+import '../../../../shared/widgets/school_day_status.dart';
 import '../../../../shared/widgets/theme_mode_tile.dart';
 import '../../../../shared/widgets/upcoming_exam_banner.dart';
 import '../../../../shared/widgets/yearly_summary_page.dart';
@@ -359,6 +360,7 @@ class _MonitorTab extends StatefulWidget {
 class _MonitorTabState extends State<_MonitorTab> {
   late Future<List<List<Map<String, dynamic>>>> _future;
   late Future<int> _pendingInvoice;
+  late Future<SchoolDayStatus> _todayStatus;
 
   @override
   void initState() {
@@ -374,6 +376,7 @@ class _MonitorTabState extends State<_MonitorTab> {
 
   void _reload() {
     final api = sl<ApiService>();
+    _todayStatus = loadSchoolDayStatus(api, DateTime.now());
     _future = Future.wait([
       api.attendance(studentId: widget.child.id),
       api.grades(studentId: widget.child.id),
@@ -413,8 +416,22 @@ class _MonitorTabState extends State<_MonitorTab> {
         padding: const EdgeInsets.all(16),
         children: [
           _ChildCard(child: child, onSwitch: widget.onSwitchChild),
-          const SizedBox(height: 16),
-          _AlertBanner(),
+          FutureBuilder<SchoolDayStatus>(
+            future: _todayStatus,
+            builder: (context, snapshot) {
+              final status = snapshot.data;
+              if (status == null || !status.isHoliday) {
+                return const SizedBox.shrink();
+              }
+              return Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: SchoolHolidayBanner(
+                  status: status,
+                  accent: AppColors.parentAccent,
+                ),
+              );
+            },
+          ),
           FutureBuilder<int>(
             future: _pendingInvoice,
             builder: (context, snapshot) {
@@ -680,38 +697,6 @@ class _RecentGradeRow extends StatelessWidget {
       subtitle: Text(
         note,
         style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-      ),
-    );
-  }
-}
-
-class _AlertBanner extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.absentUnexcused.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.absentUnexcused.withValues(alpha: 0.3),
-        ),
-      ),
-      child: const Row(
-        children: [
-          Icon(
-            Icons.warning_amber_rounded,
-            color: AppColors.absentUnexcused,
-            size: 22,
-          ),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Con vắng mặt không phép ngày 19/05 — Tiếng Anh tiết 1',
-              style: TextStyle(fontSize: 13, color: AppColors.absentUnexcused),
-            ),
-          ),
-        ],
       ),
     );
   }
