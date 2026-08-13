@@ -71,11 +71,13 @@ class _AcademicSnapshot {
     this.semesters,
     this.classes,
     this.subjects,
+    this.rooms,
   );
   final List<Map<String, dynamic>> years;
   final List<Map<String, dynamic>> semesters;
   final List<Map<String, dynamic>> classes;
   final List<Map<String, dynamic>> subjects;
+  final List<Map<String, dynamic>> rooms;
 }
 
 Future<_AcademicSnapshot> _loadSnapshot() async {
@@ -85,8 +87,15 @@ Future<_AcademicSnapshot> _loadSnapshot() async {
     api.semesters(),
     api.classes(),
     api.subjects(),
+    api.rooms(),
   ]);
-  return _AcademicSnapshot(values[0], values[1], values[2], values[3]);
+  return _AcademicSnapshot(
+    values[0],
+    values[1],
+    values[2],
+    values[3],
+    values[4],
+  );
 }
 
 class _AcademicOverview extends StatelessWidget {
@@ -188,6 +197,15 @@ class _StructurePage extends StatelessWidget {
           'Danh sách lớp (${data.classes.length})',
           Icons.groups_rounded,
         ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: FilledButton.icon(
+            onPressed: () => _openClassEditor(context, data, reload),
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Thêm lớp'),
+          ),
+        ),
+        const SizedBox(height: 8),
         ...data.classes.map(
           (classroom) => Card(
             child: ListTile(
@@ -198,9 +216,19 @@ class _StructurePage extends StatelessWidget {
               subtitle: Text(
                 '${classroom['gradeLevel'] ?? ''} • ${_shift(classroom['studyShift'])} • Phòng ${classroom['roomCode'] ?? 'chưa xếp'}',
               ),
-              trailing: Text(
-                (classroom['homeroomTeacherName'] ?? 'Chưa có GVCN').toString(),
-                textAlign: TextAlign.end,
+              trailing: PopupMenuButton<String>(
+                tooltip: 'Thao tác lớp',
+                onSelected: (action) async {
+                  if (action == 'edit') {
+                    await _openClassEditor(context, data, reload, classroom);
+                  } else {
+                    await _deleteClass(context, classroom, reload);
+                  }
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'edit', child: Text('Sửa lớp')),
+                  PopupMenuItem(value: 'delete', child: Text('Xóa lớp')),
+                ],
               ),
             ),
           ),
@@ -209,6 +237,261 @@ class _StructurePage extends StatelessWidget {
     ),
   );
 }
+
+Future<void> _openClassEditor(
+  BuildContext context,
+  _AcademicSnapshot data,
+  VoidCallback reload, [
+  Map<String, dynamic>? classroom,
+]) async {
+  final saved = await showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (_) => _ClassEditor(
+      classroom: classroom,
+      years: data.years,
+      rooms: data.rooms,
+    ),
+  );
+  if (saved == true) reload();
+}
+
+Future<void> _deleteClass(
+  BuildContext context,
+  Map<String, dynamic> classroom,
+  VoidCallback reload,
+) async {
+  final code = (classroom['code'] ?? classroom['name']).toString();
+  final accepted = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text('Xóa lớp $code?'),
+      content: const Text(
+        'Chỉ lớp chưa có học sinh, lịch học hoặc dữ liệu giảng dạy mới được xóa.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Hủy'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Xóa'),
+        ),
+      ],
+    ),
+  );
+  if (accepted != true || !context.mounted) return;
+  try {
+    await sl<ApiService>().deleteClass(classroom['id'].toString());
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Đã xóa lớp $code')));
+    reload();
+  } catch (error) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Không thể xóa lớp: $error')));
+    }
+  }
+}
+
+class _ClassEditor extends StatefulWidget {
+  const _ClassEditor({
+    required this.classroom,
+    required this.years,
+    required this.rooms,
+  });
+
+  final Map<String, dynamic>? classroom;
+  final List<Map<String, dynamic>> years;
+  final List<Map<String, dynamic>> rooms;
+
+  @override
+  State<_ClassEditor> createState() => _ClassEditorState();
+}
+
+class _ClassEditorState extends State<_ClassEditor> {
+  final _formKey = GlobalKey<FormState>();
+  late final _code = TextEditingController(
+    text: widget.classroom?['code']?.toString() ?? '',
+  );
+  late final _name = TextEditingController(
+    text: widget.classroom?['name']?.toString() ?? '',
+  );
+  late final _grade = TextEditingController(
+    text: widget.classroom?['gradeLevel']?.toString() ?? '',
+  );
+  late final _capacity = TextEditingController(
+    text: (widget.classroom?['capacity'] ?? 40).toString(),
+  );
+  late String? _yearId =
+      widget.classroom?['academicYearId']?.toString() ??
+      (widget.years.isEmpty ? null : widget.years.first['id'].toString());
+  late String _shift = widget.classroom?['studyShift']?.toString() ?? 'MORNING';
+  late String? _roomId = widget.classroom?['roomId']?.toString();
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _code.dispose();
+    _name.dispose();
+    _grade.dispose();
+    _capacity.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate() || _yearId == null) return;
+    setState(() => _saving = true);
+    final payload = <String, dynamic>{
+      'code': _code.text.trim(),
+      'name': _name.text.trim(),
+      'gradeLevel': _grade.text.trim(),
+      'academicYearId': _yearId,
+      'studyShift': _shift,
+      'capacity': int.parse(_capacity.text),
+      'roomId': _roomId,
+    };
+    try {
+      final current = widget.classroom;
+      if (current == null) {
+        await sl<ApiService>().createClass(payload);
+      } else {
+        await sl<ApiService>().updateClass(current['id'].toString(), payload);
+      }
+      if (mounted) Navigator.pop(context, true);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Không thể lưu lớp: $error')));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.fromLTRB(
+      16,
+      16,
+      16,
+      MediaQuery.viewInsetsOf(context).bottom + 16,
+    ),
+    child: Form(
+      key: _formKey,
+      child: ListView(
+        shrinkWrap: true,
+        children: [
+          Text(
+            widget.classroom == null ? 'Thêm lớp học' : 'Sửa lớp học',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _code,
+            decoration: const InputDecoration(
+              labelText: 'Mã lớp',
+              hintText: 'Ví dụ: 10A11',
+            ),
+            validator: _required,
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _name,
+            decoration: const InputDecoration(labelText: 'Tên lớp'),
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _grade,
+            decoration: const InputDecoration(
+              labelText: 'Khối',
+              hintText: 'Ví dụ: K10',
+            ),
+            validator: _required,
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            initialValue: _yearId,
+            decoration: const InputDecoration(labelText: 'Năm học'),
+            items: widget.years
+                .map(
+                  (year) => DropdownMenuItem(
+                    value: year['id'].toString(),
+                    child: Text((year['name'] ?? year['code']).toString()),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) => setState(() => _yearId = value),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            initialValue: _shift,
+            decoration: const InputDecoration(labelText: 'Ca học'),
+            items: const [
+              DropdownMenuItem(value: 'MORNING', child: Text('Ca sáng')),
+              DropdownMenuItem(value: 'AFTERNOON', child: Text('Ca chiều')),
+            ],
+            onChanged: (value) => setState(() {
+              _shift = value ?? 'MORNING';
+              _roomId = null;
+            }),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String?>(
+            initialValue: _roomId,
+            decoration: const InputDecoration(labelText: 'Phòng học'),
+            items: [
+              const DropdownMenuItem<String?>(
+                value: null,
+                child: Text('Chưa phân phòng'),
+              ),
+              ...widget.rooms
+                  .where(
+                    (room) => _shift == 'MORNING'
+                        ? room['supportsMorning'] != false
+                        : room['supportsAfternoon'] != false,
+                  )
+                  .map(
+                    (room) => DropdownMenuItem<String?>(
+                      value: room['id'].toString(),
+                      child: Text((room['code'] ?? room['name']).toString()),
+                    ),
+                  ),
+            ],
+            onChanged: (value) => setState(() => _roomId = value),
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _capacity,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: 'Sức chứa'),
+            validator: (value) {
+              final number = int.tryParse(value ?? '');
+              return number == null || number < 1 || number > 100
+                  ? 'Nhập sức chứa từ 1 đến 100'
+                  : null;
+            },
+          ),
+          const SizedBox(height: 20),
+          FilledButton.icon(
+            onPressed: _saving ? null : _save,
+            icon: const Icon(Icons.save_outlined),
+            label: Text(_saving ? 'Đang lưu...' : 'Lưu lớp'),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+String? _required(String? value) =>
+    value == null || value.trim().isEmpty ? 'Không được để trống' : null;
 
 class _TimetableVersionsPage extends StatefulWidget {
   const _TimetableVersionsPage();

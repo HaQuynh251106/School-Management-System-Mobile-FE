@@ -302,6 +302,11 @@ class ApiService {
           roomId: data['roomId'] as String?,
         ),
       )).data!.toJson();
+  Future<Map<String, dynamic>> updateClass(
+    String id,
+    Map<String, dynamic> data,
+  ) async => _map(await _dio.put('/classes/$id', data: data));
+  Future<void> deleteClass(String id) async => _dio.delete('/classes/$id');
   Future<List<Map<String, dynamic>>> subjects() async =>
       (await _academicApi.listSubjects()).data!
           .map((item) => item.toJson())
@@ -386,10 +391,16 @@ class ApiService {
   Future<Map<String, dynamic>> autoPlanTimetable(
     String semesterId, {
     bool apply = false,
+    List<String>? allowedDays,
   }) async => _map(
     await _dio.post(
       '/timetableSlots/auto-plan',
-      data: {'semesterId': semesterId, 'apply': apply, 'allowPartial': false},
+      data: {
+        'semesterId': semesterId,
+        'apply': apply,
+        'allowPartial': false,
+        if (allowedDays != null) 'allowedDays': allowedDays,
+      },
     ),
   );
 

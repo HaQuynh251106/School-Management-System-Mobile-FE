@@ -54,13 +54,23 @@ void main() {
     final api = ApiService(dio);
 
     await api.createClass({
-      'code': '11A1',
-      'name': 'Lop 11A1',
+      'code': '11A11',
+      'name': 'Lop 11A11',
       'gradeLevel': 'K11',
       'academicYearId': 'ay-1',
       'studyShift': 'MORNING',
       'capacity': 40,
     });
+    await api.updateClass('c-11a11', {
+      'code': '11A12',
+      'name': 'Lop 11A12',
+      'gradeLevel': 'K11',
+      'academicYearId': 'ay-1',
+      'studyShift': 'AFTERNOON',
+      'capacity': 42,
+      'roomId': null,
+    });
+    await api.deleteClass('c-empty');
     await api.createSubject({
       'code': 'CHEM',
       'name': 'Hoa hoc',
@@ -94,14 +104,18 @@ void main() {
 
     expect(requests.map((request) => request.path), [
       '/classes',
+      '/classes/c-11a11',
+      '/classes/c-empty',
       '/subjects',
       '/rooms',
       '/teaching-assignments',
       '/timetableSlots',
     ]);
-    expect(_body(requests[0])['studyShift'], 'MORNING');
-    expect(_body(requests[3])['weeklyPeriods'], 2);
-    expect(_body(requests[4])['periodNo'], 1);
+    expect(_body(requests[0])['code'], '11A11');
+    expect(_body(requests[1])['code'], '11A12');
+    expect(_body(requests[1])['studyShift'], 'AFTERNOON');
+    expect(_body(requests[5])['weeklyPeriods'], 2);
+    expect(_body(requests[6])['periodNo'], 1);
   });
 
   test('ApiService previews and applies automatic timetable safely', () async {
@@ -110,7 +124,10 @@ void main() {
     dio.httpClientAdapter = _AcademicAdapter(requests);
     final api = ApiService(dio);
 
-    final preview = await api.autoPlanTimetable('sm-1');
+    final preview = await api.autoPlanTimetable(
+      'sm-1',
+      allowedDays: ['MON', 'TUE', 'THU', 'FRI'],
+    );
     final applied = await api.autoPlanTimetable('sm-1', apply: true);
 
     expect(preview['applied'], isFalse);
@@ -123,6 +140,7 @@ void main() {
       'semesterId': 'sm-1',
       'apply': false,
       'allowPartial': false,
+      'allowedDays': ['MON', 'TUE', 'THU', 'FRI'],
     });
     expect(_body(requests.last)['apply'], isTrue);
   });
@@ -442,6 +460,8 @@ class _AcademicAdapter implements HttpClientAdapter {
     requests.add(options);
     final body = switch ((options.method, options.path)) {
       ('POST', '/classes') => _classroom,
+      ('PUT', '/classes/c-11a11') => {..._classroom, ..._body(options)},
+      ('DELETE', '/classes/c-empty') => null,
       ('POST', '/subjects') => _subject,
       ('POST', '/rooms') => _room,
       ('POST', '/teaching-assignments') => _assignment,

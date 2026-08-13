@@ -17,6 +17,7 @@ class _AutoTimetablePageState extends State<AutoTimetablePage> {
   String? _semesterId;
   Map<String, dynamic>? _plan;
   bool _loading = false;
+  final Set<String> _allowedDays = {'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'};
 
   Future<void> _preview() => _run(apply: false);
 
@@ -48,7 +49,11 @@ class _AutoTimetablePageState extends State<AutoTimetablePage> {
     if (semesterId == null) return;
     setState(() => _loading = true);
     try {
-      final result = await _api.autoPlanTimetable(semesterId, apply: apply);
+      final result = await _api.autoPlanTimetable(
+        semesterId,
+        apply: apply,
+        allowedDays: _allowedDays.toList(),
+      );
       if (!mounted) return;
       setState(() => _plan = result);
       if (apply) {
@@ -110,6 +115,57 @@ class _AutoTimetablePageState extends State<AutoTimetablePage> {
                         _semesterId = value;
                         _plan = null;
                       }),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Ngày học trong tuần',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: _dayOptions.entries.map((entry) {
+                        final selected = _allowedDays.contains(entry.key);
+                        return FilterChip(
+                          label: Text(entry.value),
+                          selected: selected,
+                          onSelected: _loading
+                              ? null
+                              : (value) {
+                                  if (!value && _allowedDays.length == 1) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Phải giữ ít nhất một ngày học.',
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  setState(() {
+                                    value
+                                        ? _allowedDays.add(entry.key)
+                                        : _allowedDays.remove(entry.key);
+                                    _plan = null;
+                                  });
+                                },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Bỏ chọn một thứ nếu trường không tổ chức học cố định vào ngày đó.',
+                    ),
+                  ],
+                ),
               ),
             ),
             Padding(
@@ -308,6 +364,15 @@ String _day(Object? value) => switch (value) {
   'FRI' => 'Thứ 6',
   'SAT' => 'Thứ 7',
   _ => value?.toString() ?? '',
+};
+
+const _dayOptions = {
+  'MON': 'Thứ 2',
+  'TUE': 'Thứ 3',
+  'WED': 'Thứ 4',
+  'THU': 'Thứ 5',
+  'FRI': 'Thứ 6',
+  'SAT': 'Thứ 7',
 };
 
 String _errorMessage(Object? error) {
