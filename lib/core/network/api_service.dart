@@ -22,6 +22,13 @@ class ApiService {
   Map<String, dynamic> _map(Response r) =>
       (r.data as Map).cast<String, dynamic>();
 
+  String _localDate(DateTime value) {
+    final year = value.year.toString().padLeft(4, '0');
+    final month = value.month.toString().padLeft(2, '0');
+    final day = value.day.toString().padLeft(2, '0');
+    return '$year-$month-$day';
+  }
+
   identity.CreateUserRequestRoleEnum _identityRole(String value) =>
       identity.CreateUserRequestRoleEnum.values.firstWhere(
         (role) => role.value == value,
@@ -481,13 +488,17 @@ class ApiService {
     String? slotId,
     String? date,
   }) async {
-    final response = await _academicApi.listAttendance(
-      studentId: studentId,
-      classId: classId,
-      slotId: slotId,
-      date: date == null ? null : DateTime.parse(date),
+    return _list(
+      await _dio.get(
+        '/attendance',
+        queryParameters: {
+          if (studentId != null) 'studentId': studentId,
+          if (classId != null) 'classId': classId,
+          if (slotId != null) 'slotId': slotId,
+          if (date != null) 'date': date,
+        },
+      ),
     );
-    return (response.data ?? const []).map((item) => item.toJson()).toList();
   }
 
   Future<List<Map<String, dynamic>>> bulkAttendance({
@@ -520,30 +531,36 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> attendanceDayStatus(DateTime date) async {
-    final response = await _academicApi.getAttendanceDayStatus(date: date);
-    return response.data!.toJson();
+    return _map(
+      await _dio.get(
+        '/attendance/day-status',
+        queryParameters: {'date': _localDate(date)},
+      ),
+    );
   }
 
   Future<Map<String, dynamic>> attendanceSessionStatus({
     required String slotId,
     required DateTime date,
   }) async {
-    final response = await _academicApi.getAttendanceSessionStatus(
-      slotId: slotId,
-      date: date,
+    return _map(
+      await _dio.get(
+        '/attendance/session-status',
+        queryParameters: {'slotId': slotId, 'date': _localDate(date)},
+      ),
     );
-    return response.data!.toJson();
   }
 
   Future<List<Map<String, dynamic>>> approvedLeavesForAttendance({
     required String slotId,
     required DateTime date,
   }) async {
-    final response = await _academicApi.listApprovedLeavesForAttendance(
-      slotId: slotId,
-      date: date,
+    return _list(
+      await _dio.get(
+        '/attendance/approved-leaves',
+        queryParameters: {'slotId': slotId, 'date': _localDate(date)},
+      ),
     );
-    return (response.data ?? const []).map((item) => item.toJson()).toList();
   }
 
   Future<Map<String, dynamic>> unlockLateAttendance({

@@ -390,6 +390,8 @@ class _TodayAttendanceState extends State<_TodayAttendance> {
   Map<String, dynamic>? _slot;
   List<Map<String, dynamic>> _students = [];
   final Map<String, String> _status = {};
+  final Map<String, String> _notes = {};
+  Map<String, dynamic>? _sessionStatus;
   bool _loadingStudents = false;
   bool _submitting = false;
 
@@ -417,13 +419,43 @@ class _TodayAttendanceState extends State<_TodayAttendance> {
       _students = [];
     });
     try {
-      final st = await _api.classStudents(slot['classId'].toString());
+      final date = DateTime.now();
+      final results = await Future.wait<dynamic>([
+        _api.classStudents(slot['classId'].toString()),
+        _api.attendance(
+          slotId: slotId,
+          date: DateFormat('yyyy-MM-dd').format(date),
+        ),
+        _api.approvedLeavesForAttendance(slotId: slotId, date: date),
+        _api.attendanceSessionStatus(slotId: slotId, date: date),
+      ]);
+      final st = (results[0] as List).cast<Map<String, dynamic>>();
+      final saved = (results[1] as List).cast<Map<String, dynamic>>();
+      final leaves = (results[2] as List).cast<Map<String, dynamic>>();
       if (!mounted) return;
       setState(() {
         _students = st;
         _status
           ..clear()
           ..addEntries(st.map((s) => MapEntry(s['id'] as String, 'PRESENT')));
+        _notes.clear();
+        for (final record in saved) {
+          final studentId = record['studentId']?.toString();
+          if (studentId == null) continue;
+          _status[studentId] = record['status']?.toString() ?? 'PRESENT';
+          _notes[studentId] = record['note']?.toString() ?? '';
+        }
+        for (final leave in leaves) {
+          final studentId = leave['studentId']?.toString();
+          if (studentId == null ||
+              saved.any((r) => r['studentId'] == studentId)) {
+            continue;
+          }
+          _status[studentId] = 'ABSENT_EXCUSED';
+          _notes[studentId] =
+              leave['reason']?.toString() ?? 'Đơn nghỉ đã được duyệt';
+        }
+        _sessionStatus = (results[3] as Map).cast<String, dynamic>();
         _loadingStudents = false;
       });
     } catch (e) {
@@ -437,6 +469,20 @@ class _TodayAttendanceState extends State<_TodayAttendance> {
 
   Future<void> _submit() async {
     if (_slotId == null) return;
+    final missingNote = _students.where((student) {
+      final id = student['id'].toString();
+      return (_status[id] ?? 'PRESENT') != 'PRESENT' &&
+          (_notes[id]?.trim().isEmpty ?? true);
+    }).toList();
+    if (missingNote.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cần nhập ghi chú cho học sinh vắng hoặc đi muộn.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
     setState(() => _submitting = true);
     final date = DateFormat('yyyy-MM-dd').format(DateTime.now());
     final marks = _students
@@ -444,11 +490,21 @@ class _TodayAttendanceState extends State<_TodayAttendance> {
           (s) => {
             'studentId': s['id'],
             'status': _status[s['id']] ?? 'PRESENT',
+            'note': (_notes[s['id']]?.trim().isEmpty ?? true)
+                ? null
+                : _notes[s['id']]!.trim(),
           },
         )
         .toList();
     try {
-      await _api.bulkAttendance(slotId: _slotId!, date: date, marks: marks);
+      await _api.bulkAttendance(
+        slotId: _slotId!,
+        date: date,
+        marks: marks,
+        classId: _slot?['classId']?.toString(),
+        subjectName: _slot?['subjectName']?.toString(),
+        periodNo: _slot?['periodNo'] as int?,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -459,6 +515,11 @@ class _TodayAttendanceState extends State<_TodayAttendance> {
           behavior: SnackBarBehavior.floating,
         ),
       );
+      final refreshed = await _api.attendanceSessionStatus(
+        slotId: _slotId!,
+        date: DateTime.now(),
+      );
+      if (mounted) setState(() => _sessionStatus = refreshed);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -466,6 +527,54 @@ class _TodayAttendanceState extends State<_TodayAttendance> {
       );
     } finally {
       if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  Future<void> _unlockLateAttendance() async {
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Mở khóa điểm danh muộn'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 500,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            labelText: 'Lý do quên điểm danh',
+            hintText: 'Nhập lý do cụ thể',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = controller.text.trim();
+              if (value.isNotEmpty) Navigator.pop(context, value);
+            },
+            child: const Text('Mở khóa'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (reason == null || _slotId == null) return;
+    try {
+      final status = await _api.unlockLateAttendance(
+        slotId: _slotId!,
+        date: DateTime.now(),
+        reason: reason,
+      );
+      if (mounted) setState(() => _sessionStatus = status);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Không thể mở khóa: $error')));
     }
   }
 
@@ -481,7 +590,19 @@ class _TodayAttendanceState extends State<_TodayAttendance> {
         if (snap.connectionState != ConnectionState.done) {
           return const Center(child: CircularProgressIndicator());
         }
-        final slots = snap.data ?? [];
+        final dayCode = DateFormat(
+          'EEE',
+          'en_US',
+        ).format(DateTime.now()).toUpperCase();
+        final slots =
+            (snap.data ?? [])
+                .where((slot) => slot['dayOfWeek'] == dayCode)
+                .toList()
+              ..sort(
+                (a, b) => ((a['periodNo'] as num?)?.toInt() ?? 0).compareTo(
+                  (b['periodNo'] as num?)?.toInt() ?? 0,
+                ),
+              );
         return Column(
           children: [
             Container(
@@ -509,6 +630,33 @@ class _TodayAttendanceState extends State<_TodayAttendance> {
                 onChanged: (v) => _selectSlot(v, slots),
               ),
             ),
+            if (_sessionStatus != null)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.teacherAccent.withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline_rounded, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _sessionStatus?['message']?.toString() ?? '',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                    if (_sessionStatus?['requiresUnlockReason'] == true)
+                      TextButton(
+                        onPressed: _unlockLateAttendance,
+                        child: const Text('Mở khóa'),
+                      ),
+                  ],
+                ),
+              ),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -574,6 +722,7 @@ class _TodayAttendanceState extends State<_TodayAttendance> {
                       itemBuilder: (_, i) {
                         final s = _students[i];
                         final id = s['id'] as String;
+                        final status = _status[id] ?? 'PRESENT';
                         return ListTile(
                           leading: CircleAvatar(
                             backgroundColor: AppColors.teacherAccent.withValues(
@@ -596,9 +745,28 @@ class _TodayAttendanceState extends State<_TodayAttendance> {
                               fontSize: 14,
                             ),
                           ),
+                          subtitle: status == 'PRESENT'
+                              ? null
+                              : Padding(
+                                  padding: const EdgeInsets.only(top: 6),
+                                  child: TextFormField(
+                                    key: ValueKey('$id-$status'),
+                                    initialValue: _notes[id] ?? '',
+                                    maxLength: 255,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Ghi chú bắt buộc',
+                                      isDense: true,
+                                      counterText: '',
+                                    ),
+                                    onChanged: (value) => _notes[id] = value,
+                                  ),
+                                ),
                           trailing: _StatusSelector(
-                            value: _status[id] ?? 'PRESENT',
-                            onChanged: (v) => setState(() => _status[id] = v),
+                            value: status,
+                            onChanged: (v) => setState(() {
+                              _status[id] = v;
+                              if (v == 'PRESENT') _notes.remove(id);
+                            }),
                           ),
                         );
                       },
@@ -611,7 +779,10 @@ class _TodayAttendanceState extends State<_TodayAttendance> {
                 child: SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
-                    onPressed: (_slotId == null || _submitting)
+                    onPressed:
+                        (_slotId == null ||
+                            _submitting ||
+                            _sessionStatus?['canMark'] != true)
                         ? null
                         : _submit,
                     style: FilledButton.styleFrom(
@@ -666,138 +837,186 @@ class _StatusSelector extends StatelessWidget {
   }
 }
 
-class _AttendanceHistory extends StatelessWidget {
+class _AttendanceHistory extends StatefulWidget {
   const _AttendanceHistory();
 
-  static const _sessions = [
-    ('10A1', 'Toán', '21/05', 'Tiết 1', 30, 2),
-    ('10A2', 'Toán', '21/05', 'Tiết 2', 32, 0),
-    ('10A1', 'Toán', '20/05', 'Tiết 1', 30, 3),
-    ('8A1', 'Toán', '20/05', 'Tiết 4', 28, 1),
-    ('10A1', 'Toán', '19/05', 'Tiết 1', 30, 1),
-    ('10A2', 'Toán', '19/05', 'Tiết 3', 32, 4),
-    ('10A1', 'Ngữ văn', '19/05', 'Tiết 3', 30, 0),
-  ];
+  @override
+  State<_AttendanceHistory> createState() => _AttendanceHistoryState();
+}
+
+class _AttendanceHistoryState extends State<_AttendanceHistory> {
+  late Future<List<_AttendanceSessionSummary>> _future = _load();
+
+  Future<List<_AttendanceSessionSummary>> _load() async {
+    final api = sl<ApiService>();
+    final slots = await api.myTimetable();
+    final rowsBySlot = await Future.wait(
+      slots.map((slot) async {
+        try {
+          return await api.attendance(slotId: slot['id'].toString());
+        } catch (_) {
+          // Ignore stale assignments that backend rejects for this teacher.
+          return <Map<String, dynamic>>[];
+        }
+      }),
+    );
+    final sessions = <_AttendanceSessionSummary>[];
+    for (var index = 0; index < slots.length; index++) {
+      final slot = slots[index];
+      final grouped = <String, List<Map<String, dynamic>>>{};
+      for (final row in rowsBySlot[index]) {
+        final date = row['date']?.toString();
+        if (date != null) grouped.putIfAbsent(date, () => []).add(row);
+      }
+      for (final entry in grouped.entries) {
+        sessions.add(
+          _AttendanceSessionSummary(
+            slotId: slot['id'].toString(),
+            classId: slot['classId'].toString(),
+            className:
+                slot['classCode']?.toString() ?? slot['classId'].toString(),
+            subject: slot['subjectName']?.toString() ?? '',
+            date: DateTime.parse(entry.key),
+            periodNo: (slot['periodNo'] as num?)?.toInt() ?? 0,
+            records: entry.value,
+          ),
+        );
+      }
+    }
+    sessions.sort((a, b) {
+      final byDate = b.date.compareTo(a.date);
+      return byDate != 0 ? byDate : a.periodNo.compareTo(b.periodNo);
+    });
+    return sessions;
+  }
+
+  void _reload() => setState(() => _future = _load());
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: _sessions.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (_, i) {
-        final (cls, subj, date, period, total, absent) = _sessions[i];
-        return Card(
-          margin: EdgeInsets.zero,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => TeacherAttendanceSessionDetail(
-                  className: cls,
-                  subject: subj,
-                  date: date,
-                  period: period,
+    return FutureBuilder<List<_AttendanceSessionSummary>>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Không thể tải lịch sử: ${snapshot.error}'),
+                const SizedBox(height: 8),
+                OutlinedButton(
+                  onPressed: _reload,
+                  child: const Text('Thử lại'),
                 ),
-              ),
+              ],
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: AppColors.teacherAccent.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            date.split('/').first,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: AppColors.teacherAccent,
-                            ),
-                          ),
-                          Text(
-                            date.split('/').last,
-                            style: const TextStyle(
-                              fontSize: 9,
-                              color: AppColors.teacherAccent,
-                            ),
-                          ),
-                        ],
+          );
+        }
+        final sessions = snapshot.data ?? const [];
+        if (sessions.isEmpty) {
+          return const Center(
+            child: Text(
+              'Chưa có buổi điểm danh đã lưu',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          );
+        }
+        return RefreshIndicator(
+          onRefresh: () async => _reload(),
+          child: ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: sessions.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (_, index) {
+              final session = sessions[index];
+              final absent = session.records
+                  .where((row) => row['status'] != 'PRESENT')
+                  .length;
+              final dateLabel = DateFormat('dd/MM/yyyy').format(session.date);
+              return Card(
+                margin: EdgeInsets.zero,
+                child: ListTile(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => TeacherAttendanceSessionDetail(
+                        slotId: session.slotId,
+                        classId: session.classId,
+                        className: session.className,
+                        subject: session.subject,
+                        date: session.date,
+                        periodNo: session.periodNo,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              '$cls — $subj',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          period,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
+                  leading: Container(
+                    width: 48,
+                    height: 48,
+                    alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: absent == 0
-                          ? AppColors.success.withValues(alpha: 0.12)
-                          : AppColors.warning.withValues(alpha: 0.12),
+                      color: AppColors.teacherAccent.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      absent == 0 ? 'Đủ' : '$absent vắng',
-                      style: TextStyle(
+                      DateFormat('dd/MM').format(session.date),
+                      style: const TextStyle(
+                        color: AppColors.teacherAccent,
                         fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: absent == 0
-                            ? AppColors.success
-                            : AppColors.warning,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppColors.textSecondary,
-                    size: 18,
+                  title: Text(
+                    '${session.className} — ${session.subject}',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                ],
-              ),
-            ),
+                  subtitle: Text('$dateLabel · Tiết ${session.periodNo}'),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        absent == 0 ? 'Đủ' : '$absent cần chú ý',
+                        style: TextStyle(
+                          color: absent == 0
+                              ? AppColors.success
+                              : AppColors.warning,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right_rounded),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
         );
       },
     );
   }
+}
+
+class _AttendanceSessionSummary {
+  const _AttendanceSessionSummary({
+    required this.slotId,
+    required this.classId,
+    required this.className,
+    required this.subject,
+    required this.date,
+    required this.periodNo,
+    required this.records,
+  });
+
+  final String slotId;
+  final String classId;
+  final String className;
+  final String subject;
+  final DateTime date;
+  final int periodNo;
+  final List<Map<String, dynamic>> records;
 }
 
 // ===================== GRADES (sub-tabs Bảng điểm / Phổ điểm / Log) =====================

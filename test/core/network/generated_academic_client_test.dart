@@ -198,6 +198,10 @@ void main() {
         '/attendance/bulk',
         '/attendance/unlock',
       ]);
+      expect(requests[0].queryParameters['date'], '2026-08-12');
+      expect(requests[1].queryParameters['date'], '2026-08-12');
+      expect(requests[2].queryParameters['date'], '2026-08-12');
+      expect(requests[3].queryParameters['date'], '2026-08-12');
       expect(_body(requests[4])['marks'][0]['status'], 'PRESENT');
       expect(_body(requests[5])['reason'], 'Can dieu chinh ban ghi diem danh');
     },
