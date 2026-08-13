@@ -30,30 +30,47 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       appBar: AppBar(
         title: const Text('Quên mật khẩu'),
         backgroundColor: Colors.transparent,
-        foregroundColor: AppColors.textPrimary,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
         elevation: 0,
       ),
       body: BlocListener<AuthBloc, AuthState>(
-        listener: (context, state) {
+        listener: (context, state) async {
           if (state is AuthForgotPasswordSent) {
-            showDialog(
+            final returnToLogin = await showDialog<bool>(
               context: context,
-              builder: (_) => AlertDialog(
-                title: const Text('Đã gửi'),
-                content: const Text(
-                  'Nếu email tồn tại trong hệ thống, link đặt lại mật khẩu đã được gửi.',
-                ),
+              barrierDismissible: false,
+              builder: (dialogContext) => AlertDialog(
+                title: Text(state.emailDeliveryAvailable
+                    ? 'Đã tiếp nhận yêu cầu'
+                    : 'Chưa thể gửi email'),
+                content: Text(state.emailDeliveryAvailable
+                    ? 'Nếu tài khoản hợp lệ, bạn sẽ nhận được email đặt lại mật khẩu. Hãy kiểm tra cả thư rác.'
+                    : 'Máy chủ hiện chưa cấu hình kênh email. Vui lòng liên hệ quản trị viên để được hỗ trợ.'),
                 actions: [
+                  if (state.devResetToken?.isNotEmpty == true)
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop(false);
+                        context.go(
+                            '/reset-password?token=${Uri.encodeQueryComponent(state.devResetToken!)}');
+                      },
+                      child: const Text('Tiếp tục trên máy local'),
+                    ),
                   TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      context.pop();
-                    },
+                    onPressed: () => Navigator.of(dialogContext).pop(true),
                     child: const Text('Về đăng nhập'),
                   ),
                 ],
               ),
             );
+            if (returnToLogin == true && context.mounted) {
+              context.go('/login');
+            }
+          } else if (state is AuthForgotPasswordFailed) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(state.message),
+              behavior: SnackBarBehavior.floating,
+            ));
           }
         },
         child: Padding(
@@ -66,10 +83,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 const Icon(Icons.lock_reset_rounded,
                     size: 56, color: AppColors.primary),
                 const SizedBox(height: 20),
-                const Text(
+                Text(
                   'Nhập email đã đăng ký, chúng tôi sẽ gửi link đặt lại mật khẩu.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textSecondary),
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
                 const SizedBox(height: 32),
                 TextFormField(
@@ -114,6 +132,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       ),
                     );
                   },
+                ),
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  onPressed: () => context.go('/login'),
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  label: const Text('Về đăng nhập'),
                 ),
               ],
             ),

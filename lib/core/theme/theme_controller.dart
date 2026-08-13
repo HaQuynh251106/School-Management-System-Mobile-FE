@@ -7,7 +7,9 @@ class ThemeController extends ChangeNotifier {
 
   static const _storageKey = 'theme_mode';
   final FlutterSecureStorage _storage;
-  ThemeMode _mode = ThemeMode.system;
+  // Mobile ưu tiên giao diện sáng ở lần mở đầu tiên để nội dung rõ ràng ngoài
+  // trời và không phụ thuộc Dark Mode của máy dùng để chạy bản Web preview.
+  ThemeMode _mode = ThemeMode.light;
 
   ThemeMode get mode => _mode;
   bool get isDark => _mode == ThemeMode.dark;
@@ -17,7 +19,8 @@ class ThemeController extends ChangeNotifier {
     _mode = switch (saved) {
       'light' => ThemeMode.light,
       'dark' => ThemeMode.dark,
-      _ => ThemeMode.system,
+      'system' => ThemeMode.system,
+      _ => ThemeMode.light,
     };
     notifyListeners();
   }

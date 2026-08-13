@@ -33,7 +33,14 @@ class AuthRepository {
     }
   }
 
-  Future<void> forgotPassword(String email) => api.forgotPassword(email);
+  Future<Map<String, dynamic>> forgotPassword(String email) =>
+      api.forgotPassword(email);
+
+  Future<void> resetPassword({
+    required String token,
+    required String newPassword,
+  }) =>
+      api.resetPassword(token: token, newPassword: newPassword);
 
   Future<void> logout() async {
     final refreshToken = await storage.getRefreshToken();

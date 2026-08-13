@@ -1,20 +1,28 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/section_header.dart';
 
 class StudentAssignmentDetail extends StatefulWidget {
   const StudentAssignmentDetail({
     super.key,
+    required this.assignment,
+    required this.submission,
     required this.title,
     required this.subject,
     required this.teacher,
     required this.deadline,
-    required this.status, // PENDING / SUBMITTED / LATE / GRADED
+    required this.status,
     this.score,
     this.feedback,
   });
 
+  final Map<String, dynamic> assignment;
+  final Map<String, dynamic>? submission;
   final String title;
   final String subject;
   final String teacher;
@@ -29,19 +37,33 @@ class StudentAssignmentDetail extends StatefulWidget {
 }
 
 class _StudentAssignmentDetailState extends State<StudentAssignmentDetail> {
-  late String _status;
-  String? _uploadedFile;
+  late Map<String, dynamic>? _submission = widget.submission;
+  late final TextEditingController _contentController = TextEditingController(
+    text: '${widget.submission?['content'] ?? ''}',
+  );
+  PlatformFile? _pickedFile;
+  bool _busy = false;
+
+  String get _status => '${_submission?['status'] ?? widget.status}';
+  bool get _canSubmit =>
+      _status == 'PENDING' || _status == 'RESUBMISSION_ALLOWED';
+  double? get _score =>
+      (_submission?['score'] as num?)?.toDouble() ?? widget.score;
+  String? get _feedback =>
+      _submission?['feedback']?.toString() ?? widget.feedback;
 
   @override
-  void initState() {
-    super.initState();
-    _status = widget.status;
+  void dispose() {
+    _contentController.dispose();
+    super.dispose();
   }
 
   Color get _statusColor => switch (_status) {
         'GRADED' => AppColors.success,
         'SUBMITTED' => AppColors.primary,
         'LATE' => AppColors.warning,
+        'RESUBMISSION_ALLOWED' => AppColors.warning,
+        'CLOSED' => Theme.of(context).colorScheme.onSurfaceVariant,
         _ => AppColors.error,
       };
 
@@ -49,11 +71,20 @@ class _StudentAssignmentDetailState extends State<StudentAssignmentDetail> {
         'GRADED' => 'Đã chấm',
         'SUBMITTED' => 'Đã nộp',
         'LATE' => 'Nộp trễ',
+        'RESUBMISSION_ALLOWED' => 'Được nộp lại',
+        'CLOSED' => 'Đã đóng',
         _ => 'Chưa nộp',
       };
 
   @override
   Widget build(BuildContext context) {
+    final description = '${widget.assignment['description'] ?? ''}'.trim();
+    final assignmentAttachment =
+        '${widget.assignment['attachmentName'] ?? ''}'.trim();
+    final submissionAttachment =
+        '${_submission?['attachmentName'] ?? ''}'.trim();
+    final submittedAt =
+        DateTime.tryParse('${_submission?['submittedAt'] ?? ''}');
     return Scaffold(
       appBar: AppBar(
         title: const Text('Chi tiết bài tập'),
@@ -65,79 +96,99 @@ class _StudentAssignmentDetailState extends State<StudentAssignmentDetail> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                _buildHeader(),
-                const SizedBox(height: 20),
-                const SectionHeader(title: 'Đề bài'),
+                _header(),
+                const SizedBox(height: 18),
+                const SectionHeader(title: 'Yêu cầu'),
                 const SizedBox(height: 8),
-                const Card(
+                Card(
                   child: Padding(
-                    padding: EdgeInsets.all(14),
+                    padding: const EdgeInsets.all(14),
                     child: Text(
-                      'Giải các bài tập trong Chương 3 — Hàm số bậc hai. '
-                      'Phần 1: vẽ đồ thị (5 bài). Phần 2: tìm cực trị (3 bài). '
-                      'Nộp file PDF hoặc ảnh chụp bài làm tay rõ nét. '
-                      'Trình bày sạch đẹp, ghi rõ họ tên + lớp ở đầu trang.',
-                      style: TextStyle(fontSize: 14, height: 1.5),
+                      description.isEmpty
+                          ? 'Giáo viên chưa nhập mô tả.'
+                          : description,
+                      style: const TextStyle(fontSize: 14, height: 1.5),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                const SectionHeader(title: 'Tài liệu kèm theo'),
-                const SizedBox(height: 8),
-                const Card(
-                  child: Column(
-                    children: [
-                      _AttachmentTile(
-                        icon: Icons.picture_as_pdf_rounded,
-                        name: 'DeBai_HamSoBacHai.pdf',
-                        size: '845 KB',
-                      ),
-                      Divider(height: 0),
-                      _AttachmentTile(
-                        icon: Icons.description_outlined,
-                        name: 'BangDap_Tham_Khao.docx',
-                        size: '120 KB',
-                      ),
-                    ],
+                if (assignmentAttachment.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  const SectionHeader(title: 'Tệp đề bài'),
+                  const SizedBox(height: 8),
+                  Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.attach_file_rounded,
+                          color: AppColors.studentAccent),
+                      title: Text(assignmentAttachment),
+                      subtitle: const Text('Tệp do giáo viên đính kèm'),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
+                ],
+                const SizedBox(height: 18),
                 const SectionHeader(title: 'Bài làm của bạn'),
                 const SizedBox(height: 8),
-                if (_uploadedFile == null && _status == 'PENDING')
-                  _UploadBox(onUpload: _uploadFile)
-                else
-                  _SubmissionView(
-                    fileName: _uploadedFile ?? 'BaiLam_PhamHoaiAn.pdf',
-                    status: _status,
+                if (_canSubmit) ...[
+                  TextField(
+                    controller: _contentController,
+                    minLines: 4,
+                    maxLines: 10,
+                    decoration: const InputDecoration(
+                      labelText: 'Nội dung bài làm',
+                      hintText: 'Nhập nội dung hoặc ghi chú cho tệp bài làm',
+                    ),
                   ),
-                if (_status == 'GRADED' && widget.score != null) ...[
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : _pickFile,
+                    icon: const Icon(Icons.upload_file_rounded),
+                    label: Text(_pickedFile?.name ?? 'Chọn tệp bài làm'),
+                  ),
+                ] else
+                  Card(
+                    child: ListTile(
+                      leading:
+                          Icon(Icons.check_circle_rounded, color: _statusColor),
+                      title: Text(submissionAttachment.isEmpty
+                          ? (_submission?['content']
+                                      ?.toString()
+                                      .trim()
+                                      .isNotEmpty ==
+                                  true
+                              ? 'Bài làm dạng nội dung'
+                              : 'Đã ghi nhận bài nộp')
+                          : submissionAttachment),
+                      subtitle: Text(submittedAt == null
+                          ? _statusLabel
+                          : '$_statusLabel lúc ${DateFormat('dd/MM HH:mm').format(submittedAt.toLocal())}'),
+                    ),
+                  ),
+                if (_status == 'GRADED' && _score != null) ...[
                   const SizedBox(height: 16),
-                  _buildGradeCard(),
+                  _gradeCard(_score!, _feedback),
                 ],
               ],
             ),
           ),
-          if (_status == 'PENDING' && _uploadedFile != null)
+          if (_canSubmit)
             SafeArea(
               top: false,
-              child: Container(
+              child: Padding(
                 padding: const EdgeInsets.all(12),
-                decoration: const BoxDecoration(
-                  color: AppColors.surface,
-                  border: Border(
-                      top: BorderSide(color: AppColors.divider, width: 0.5)),
-                ),
                 child: SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
-                    onPressed: _submit,
+                    onPressed: _busy ? null : _submit,
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.studentAccent,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
-                    icon: const Icon(Icons.send_rounded),
-                    label: const Text('Nộp bài'),
+                    icon: _busy
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.send_rounded),
+                    label: Text(_busy ? 'Đang nộp…' : 'Nộp bài'),
                   ),
                 ),
               ),
@@ -147,54 +198,27 @@ class _StudentAssignmentDetailState extends State<StudentAssignmentDetail> {
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.studentAccent,
-            AppColors.studentAccent.withValues(alpha: 0.7),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+  Widget _header() => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.studentAccent,
+          borderRadius: BorderRadius.circular(14),
         ),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: _statusColor,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  _statusLabel,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold),
-                ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: _statusColor,
+                borderRadius: BorderRadius.circular(6),
               ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(widget.subject,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600)),
-              ),
-            ],
-          ),
+              child: Text(_statusLabel,
+                  style: const TextStyle(color: Colors.white, fontSize: 11)),
+            ),
+            const Spacer(),
+            Text(widget.subject,
+                style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          ]),
           const SizedBox(height: 12),
           Text(widget.title,
               style: const TextStyle(
@@ -202,194 +226,92 @@ class _StudentAssignmentDetailState extends State<StudentAssignmentDetail> {
                   fontSize: 18,
                   fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
-          Row(
-            children: [
-              const Icon(Icons.person_rounded, color: Colors.white70, size: 14),
-              const SizedBox(width: 4),
-              Text(widget.teacher,
-                  style: const TextStyle(color: Colors.white70, fontSize: 12)),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              const Icon(Icons.access_time_filled_rounded,
-                  color: Colors.white70, size: 14),
-              const SizedBox(width: 4),
-              Text('Hạn: ${widget.deadline}',
-                  style: const TextStyle(color: Colors.white70, fontSize: 12)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+          Text('${widget.teacher} • Hạn ${widget.deadline}',
+              style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        ]),
+      );
 
-  Widget _buildGradeCard() {
-    final score = widget.score!;
-    final color = score >= 8
-        ? AppColors.success
-        : score >= 6.5
-            ? AppColors.warning
-            : AppColors.error;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
+  Widget _gradeCard(double score, String? feedback) => Card(
+        color: AppColors.success.withValues(alpha: 0.08),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
               const Text('Điểm bài tập',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  style: TextStyle(fontWeight: FontWeight.w600)),
               const Spacer(),
-              Text(
-                '${score.toStringAsFixed(1)} / 10',
-                style: TextStyle(
-                    fontSize: 24, fontWeight: FontWeight.bold, color: color),
-              ),
+              Text('${score.toStringAsFixed(1)} / 10',
+                  style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.success)),
+            ]),
+            if (feedback?.trim().isNotEmpty == true) ...[
+              const SizedBox(height: 10),
+              Text(feedback!, style: const TextStyle(height: 1.4)),
             ],
-          ),
-          if (widget.feedback != null) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.format_quote_rounded, color: color, size: 16),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(widget.feedback!,
-                        style: const TextStyle(fontSize: 13, height: 1.4)),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
+          ]),
+        ),
+      );
+
+  Future<void> _pickFile() async {
+    final result = await FilePicker.platform.pickFiles(withData: true);
+    if (result == null || !mounted) return;
+    final file = result.files.single;
+    if (file.size > 10 * 1024 * 1024) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tệp không được vượt quá 10 MB.')),
+      );
+      return;
+    }
+    if (file.bytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể đọc tệp đã chọn.')),
+      );
+      return;
+    }
+    setState(() => _pickedFile = file);
   }
 
-  void _uploadFile() {
-    setState(() => _uploadedFile = 'BaiLam_PhamHoaiAn.pdf');
-  }
-
-  void _submit() {
-    setState(() => _status = 'SUBMITTED');
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Đã nộp bài thành công'),
+  Future<void> _submit() async {
+    final content = _contentController.text.trim();
+    if (content.isEmpty && _pickedFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nhập nội dung hoặc chọn tệp bài làm.')),
+      );
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      String? fileId;
+      if (_pickedFile != null) {
+        final stored = await sl<ApiService>()
+            .uploadFile(_pickedFile!.bytes!, _pickedFile!.name);
+        fileId = '${stored['id'] ?? ''}';
+      }
+      final saved = await sl<ApiService>().submitAssignment(
+        '${widget.assignment['id']}',
+        content: content.isEmpty ? null : content,
+        attachmentFileId: fileId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _submission = saved;
+        _pickedFile = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Đã nộp bài thành công.'),
         backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-}
-
-class _UploadBox extends StatelessWidget {
-  const _UploadBox({required this.onUpload});
-  final VoidCallback onUpload;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onUpload,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: AppColors.studentAccent.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: AppColors.studentAccent.withValues(alpha: 0.3),
-            style: BorderStyle.solid,
-          ),
-        ),
-        child: const Column(
-          children: [
-            Icon(Icons.cloud_upload_rounded,
-                color: AppColors.studentAccent, size: 36),
-            SizedBox(height: 8),
-            Text(
-              'Tap để chọn file',
-              style: TextStyle(
-                  fontWeight: FontWeight.w600, color: AppColors.studentAccent),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'PDF, DOCX, JPG, PNG — tối đa 10 MB',
-              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SubmissionView extends StatelessWidget {
-  const _SubmissionView({required this.fileName, required this.status});
-  final String fileName;
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        leading: const Icon(Icons.picture_as_pdf_rounded,
-            color: AppColors.studentAccent, size: 28),
-        title: Text(fileName,
-            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
-        subtitle: Text(
-          status == 'PENDING'
-              ? 'Đã chọn, sẵn sàng nộp'
-              : 'Đã nộp lúc 14:30 22/05',
-          style: const TextStyle(fontSize: 11),
-        ),
-        trailing: status == 'PENDING'
-            ? IconButton(
-                icon: const Icon(Icons.close_rounded, size: 18),
-                onPressed: () {},
-              )
-            : const Icon(Icons.check_circle_rounded,
-                color: AppColors.success, size: 20),
-      ),
-    );
-  }
-}
-
-class _AttachmentTile extends StatelessWidget {
-  const _AttachmentTile({
-    required this.icon,
-    required this.name,
-    required this.size,
-  });
-
-  final IconData icon;
-  final String name;
-  final String size;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.studentAccent),
-      title: Text(name,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-      subtitle: Text(size,
-          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-      trailing: const Icon(Icons.download_rounded, size: 20),
-      onTap: () {},
-    );
+      ));
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Không thể nộp bài. Vui lòng kiểm tra và thử lại.'),
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 }

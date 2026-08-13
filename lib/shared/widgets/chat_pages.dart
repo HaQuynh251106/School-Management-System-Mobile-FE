@@ -22,7 +22,7 @@ class ChatThread {
     this.isBroadcast = false,
   });
 
-  /// Id người đối thoại từ backend (null cho mock data tĩnh).
+  /// Id người đối thoại từ Backend.
   final String? userId;
   final String name;
   final String role;
@@ -70,8 +70,7 @@ class ChatListPage extends StatefulWidget {
 
   final Color accent;
 
-  /// Giữ lại cho tương thích với caller cũ (vd: `threads: _parentThreads`).
-  /// Widget BỎ QUA giá trị này và luôn lấy dữ liệu LIVE từ API.
+  /// Giữ lại để tương thích với caller cũ; dữ liệu hiển thị luôn tải từ API.
   final List<ChatThread>? threads;
   final bool allowBroadcast;
 
@@ -171,9 +170,11 @@ class _ChatListPageState extends State<ChatListPage> {
                 ? const Center(child: CircularProgressIndicator())
                 : snap.hasError
                     ? Center(
-                        child: Text('Lỗi: ${snap.error}',
-                            style: const TextStyle(
-                                color: AppColors.textSecondary)))
+                        child: Text('Không thể tải danh sách trò chuyện.',
+                            style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant)))
                     : canBroadcast
                         ? TabBarView(
                             children: [
@@ -239,10 +240,11 @@ class _ChatListPageState extends State<ChatListPage> {
                     style:
                         TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   'Điểm số và điểm danh được thông báo tự động khi lưu. Biểu mẫu này chỉ dùng để trao đổi tình hình lớp học.',
-                  style:
-                      TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 12),
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
@@ -363,8 +365,9 @@ class _ChatListPageState extends State<ChatListPage> {
                               ));
                             } catch (e) {
                               if (!ctx.mounted) return;
-                              messenger.showSnackBar(
-                                  SnackBar(content: Text('Không thể gửi: $e')));
+                              messenger.showSnackBar(const SnackBar(
+                                  content: Text(
+                                      'Không thể gửi thông báo. Vui lòng thử lại.')));
                             }
                           },
                     style:
@@ -399,9 +402,10 @@ class _ThreadList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (threads.isEmpty) {
-      return const Center(
+      return Center(
           child: Text('Không có cuộc trò chuyện',
-              style: TextStyle(color: AppColors.textSecondary)));
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant)));
     }
     return ListView.separated(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -428,8 +432,9 @@ class _ThreadList extends StatelessWidget {
                         fontSize: 14)),
               ),
               Text(t.lastTime,
-                  style: const TextStyle(
-                      fontSize: 11, color: AppColors.textSecondary)),
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
             ],
           ),
           subtitle: Row(
@@ -451,8 +456,8 @@ class _ThreadList extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12,
                         color: t.unread > 0
-                            ? AppColors.textPrimary
-                            : AppColors.textSecondary,
+                            ? Theme.of(context).colorScheme.onSurface
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
                         fontWeight:
                             t.unread > 0 ? FontWeight.w500 : FontWeight.normal,
                       ),
@@ -492,17 +497,6 @@ class _ThreadList extends StatelessWidget {
                   ),
                 ),
               );
-            } else {
-              await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => ChatRoomPage(
-                    title: t.name,
-                    subtitle: t.role,
-                    accent: accent,
-                    isBroadcast: t.isBroadcast,
-                  ),
-                ),
-              );
             }
             onConversationClosed?.call();
           },
@@ -522,7 +516,7 @@ String _chatRoleLabel(String role, String viewerRole) => switch (role) {
     };
 
 class ChatMessage {
-  const ChatMessage({
+  ChatMessage({
     required this.text,
     required this.fromMe,
     required this.time,
@@ -532,147 +526,6 @@ class ChatMessage {
   final bool fromMe;
   final String time;
   final String? senderName;
-}
-
-class ChatRoomPage extends StatefulWidget {
-  const ChatRoomPage({
-    super.key,
-    required this.title,
-    required this.subtitle,
-    required this.accent,
-    this.isBroadcast = false,
-  });
-
-  final String title;
-  final String subtitle;
-  final Color accent;
-  final bool isBroadcast;
-
-  @override
-  State<ChatRoomPage> createState() => _ChatRoomPageState();
-}
-
-class _ChatRoomPageState extends State<ChatRoomPage> {
-  final _ctrl = TextEditingController();
-  final List<ChatMessage> _messages = [
-    const ChatMessage(
-      text: 'Chào cô ạ, hôm nay con em vắng vì bị sốt nhẹ.',
-      fromMe: true,
-      time: '08:30',
-    ),
-    const ChatMessage(
-      text: 'Vâng anh chị, em nắm rồi. Cô đã đánh dấu vắng có phép. '
-          'Bài tập về nhà cô sẽ gửi qua app.',
-      fromMe: false,
-      time: '08:32',
-      senderName: 'Trần Thị Hoa',
-    ),
-    const ChatMessage(
-      text: 'Dạ vâng, em cảm ơn cô.',
-      fromMe: true,
-      time: '08:33',
-    ),
-    const ChatMessage(
-      text: 'Tối nay cô có gửi bài về nhà chương 3 cho con, '
-          'phụ huynh nhắc cháu làm trước khi đi học buổi sau nhé.',
-      fromMe: false,
-      time: '15:42',
-      senderName: 'Trần Thị Hoa',
-    ),
-  ];
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  void _send() {
-    final text = _ctrl.text.trim();
-    if (text.isEmpty) return;
-    setState(() {
-      _messages.add(ChatMessage(
-        text: text,
-        fromMe: true,
-        time: 'Vừa xong',
-      ));
-      _ctrl.clear();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.title, style: const TextStyle(fontSize: 15)),
-            Text(widget.subtitle,
-                style: const TextStyle(fontSize: 11, color: Colors.white70)),
-          ],
-        ),
-        backgroundColor: widget.accent,
-        actions: [
-          IconButton(icon: const Icon(Icons.phone_outlined), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-              itemCount: _messages.length,
-              itemBuilder: (_, i) {
-                final m = _messages[i];
-                return _Bubble(
-                    message: m,
-                    accent: widget.accent,
-                    showSender: widget.isBroadcast);
-              },
-            ),
-          ),
-          SafeArea(
-            top: false,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                border: Border(
-                    top: BorderSide(color: AppColors.divider, width: 0.5)),
-              ),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.attach_file_rounded,
-                        color: AppColors.textSecondary),
-                    onPressed: () {},
-                  ),
-                  Expanded(
-                    child: TextField(
-                      controller: _ctrl,
-                      textCapitalization: TextCapitalization.sentences,
-                      decoration: const InputDecoration(
-                        hintText: 'Nhập tin nhắn...',
-                        border: InputBorder.none,
-                        isDense: true,
-                      ),
-                      onSubmitted: (_) => _send(),
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.send_rounded, color: widget.accent),
-                    onPressed: _send,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _Bubble extends StatelessWidget {
@@ -698,15 +551,19 @@ class _Bubble extends StatelessWidget {
                 maxWidth: MediaQuery.of(context).size.width * 0.72),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: message.fromMe ? accent : AppColors.surface,
+              color: message.fromMe
+                  ? accent
+                  : Theme.of(context).colorScheme.surfaceContainerHigh,
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(14),
                 topRight: const Radius.circular(14),
                 bottomLeft: Radius.circular(message.fromMe ? 14 : 4),
                 bottomRight: Radius.circular(message.fromMe ? 4 : 14),
               ),
-              border:
-                  message.fromMe ? null : Border.all(color: AppColors.divider),
+              border: message.fromMe
+                  ? null
+                  : Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant),
             ),
             child: Column(
               crossAxisAlignment: message.fromMe
@@ -728,8 +585,9 @@ class _Bubble extends StatelessWidget {
                   message.text,
                   style: TextStyle(
                     fontSize: 14,
-                    color:
-                        message.fromMe ? Colors.white : AppColors.textPrimary,
+                    color: message.fromMe
+                        ? Colors.white
+                        : Theme.of(context).colorScheme.onSurface,
                     height: 1.35,
                   ),
                 ),
@@ -740,7 +598,7 @@ class _Bubble extends StatelessWidget {
                     fontSize: 10,
                     color: message.fromMe
                         ? Colors.white70
-                        : AppColors.textSecondary,
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -752,7 +610,7 @@ class _Bubble extends StatelessWidget {
   }
 }
 
-/// Trang hội thoại LIVE: nạp tin nhắn từ `chatMessages(withUserId)`,
+/// Trang hội thoại: nạp tin nhắn phân trang từ `chatMessages(withUserId)`,
 /// gửi qua `sendChat(withUserId, body)` rồi tải lại danh sách.
 class _ChatThreadPage extends StatefulWidget {
   const _ChatThreadPage({
@@ -822,8 +680,8 @@ class _ChatThreadPageState extends State<_ChatThreadPage> {
     } catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(
-        SnackBar(
-          content: Text('Gửi thất bại: $e'),
+        const SnackBar(
+          content: Text('Không thể gửi tin nhắn. Vui lòng thử lại.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -885,17 +743,23 @@ class _ChatThreadPageState extends State<_ChatThreadPage> {
                 }
                 if (snap.hasError) {
                   return Center(
-                    child: Text('Lỗi: ${snap.error}',
-                        style: const TextStyle(color: AppColors.textSecondary)),
+                    child: Text('Không thể tải tin nhắn.',
+                        style: TextStyle(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant)),
                   );
                 }
                 final messages = (snap.data ?? [])
                     .map((m) => _messageFromJson(m, myId))
                     .toList();
                 if (messages.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Text('Chưa có tin nhắn',
-                        style: TextStyle(color: AppColors.textSecondary)),
+                        style: TextStyle(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant)),
                   );
                 }
                 _scrollToBottom();
@@ -917,10 +781,14 @@ class _ChatThreadPageState extends State<_ChatThreadPage> {
             top: false,
             child: Container(
               padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
                 border: Border(
-                    top: BorderSide(color: AppColors.divider, width: 0.5)),
+                  top: BorderSide(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                    width: 0.5,
+                  ),
+                ),
               ),
               child: Row(
                 children: [

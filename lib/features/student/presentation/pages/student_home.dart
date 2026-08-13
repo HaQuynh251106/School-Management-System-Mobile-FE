@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/network/api_service.dart';
+import '../../../../core/network/realtime_service.dart';
 import '../../../../shared/widgets/attendance_badge.dart';
 import '../../../../shared/widgets/chat_pages.dart';
 import '../../../../shared/widgets/notification_center.dart';
@@ -15,6 +18,8 @@ import '../../../../shared/widgets/theme_mode_tile.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_event.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
+import '../../../grades/data/grade_record.dart';
+import '../../../attendance/data/attendance_metrics.dart';
 import 'assignment_detail.dart';
 import 'attendance_record_detail.dart';
 import 'subject_grade_detail.dart';
@@ -36,12 +41,16 @@ class _StudentHomeState extends State<StudentHome> {
       index: _tab,
       onSelected: (i) => setState(() => _tab = i),
       accent: AppColors.studentAccent,
-      pages: const [
-        _TimetableTab(),
-        _AssignmentsTab(),
-        _GradesTab(),
-        _AttendanceTab(),
-        _ProfileTab(),
+      pages: [
+        _TimetableTab(
+          onOpenAssignments: () => setState(() => _tab = 1),
+          onOpenGrades: () => setState(() => _tab = 2),
+          onOpenAttendance: () => setState(() => _tab = 3),
+        ),
+        const _AssignmentsTab(),
+        const _GradesTab(),
+        const _AttendanceTab(),
+        const _ProfileTab(),
       ],
       destinations: const [
         RoleDestination(
@@ -77,45 +86,31 @@ class _StudentHomeState extends State<StudentHome> {
 // ===================== TIMETABLE =====================
 
 class _TSlot {
-  const _TSlot(this.subject, this.period, this.time, this.room);
+  const _TSlot(
+      this.subject, this.period, this.time, this.room, this.teacherName);
   final String subject;
   final String period;
   final String time;
   final String room;
+  final String teacherName;
 }
 
-const _weekSlots = <int, List<_TSlot>>{
-  0: [
-    _TSlot('Toán', 'Tiết 1', '07:00–07:45', 'P201'),
-    _TSlot('Vật lý', 'Tiết 2', '07:50–08:35', 'P201'),
-    _TSlot('Ngữ văn', 'Tiết 3', '08:45–09:30', 'P201'),
-  ],
-  1: [
-    _TSlot('Tiếng Anh', 'Tiết 1', '07:00–07:45', 'P201'),
-    _TSlot('Sinh học', 'Tiết 2', '07:50–08:35', 'P201'),
-  ],
-  2: [
-    _TSlot('Toán', 'Tiết 1', '07:00–07:45', 'P201'),
-  ],
-  3: [
-    _TSlot('Vật lý', 'Tiết 2', '07:50–08:35', 'Lab 1'),
-    _TSlot('Tiếng Anh', 'Tiết 3', '08:45–09:30', 'P201'),
-  ],
-  4: [
-    _TSlot('Ngữ văn', 'Tiết 1', '07:00–07:45', 'P201'),
-    _TSlot('Toán', 'Tiết 4', '09:35–10:20', 'P201'),
-  ],
-};
-
 class _TimetableTab extends StatefulWidget {
-  const _TimetableTab();
+  const _TimetableTab({
+    required this.onOpenAssignments,
+    required this.onOpenGrades,
+    required this.onOpenAttendance,
+  });
+  final VoidCallback onOpenAssignments;
+  final VoidCallback onOpenGrades;
+  final VoidCallback onOpenAttendance;
 
   @override
   State<_TimetableTab> createState() => _TimetableTabState();
 }
 
 class _TimetableTabState extends State<_TimetableTab>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late TabController _ctrl;
   static const _days = ['T2', 'T3', 'T4', 'T5', 'T6'];
   static const _dayCodes = ['MON', 'TUE', 'WED', 'THU', 'FRI'];
@@ -126,18 +121,54 @@ class _TimetableTabState extends State<_TimetableTab>
     'Thứ Năm',
     'Thứ Sáu'
   ];
-  late final Future<List<Map<String, dynamic>>> _future =
-      sl<ApiService>().myTimetable();
+  late Future<List<List<Map<String, dynamic>>>> _future;
+  StreamSubscription<RealtimeEvent>? _events;
+  Timer? _reloadDebounce;
+
+  Future<List<List<Map<String, dynamic>>>> _load() => Future.wait([
+        sl<ApiService>().myTimetable(),
+        sl<ApiService>().myAssignments(),
+        sl<ApiService>().grades(),
+        sl<ApiService>().attendance(),
+      ]);
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final idx = (DateTime.now().weekday - 1).clamp(0, 4);
     _ctrl = TabController(length: _days.length, vsync: this, initialIndex: idx);
+    _future = _load();
+    final realtime = sl<RealtimeService>()..connect();
+    _events = realtime.events
+        .where((event) => const {
+              'TIMETABLE_PUBLISHED',
+              'GRADE_CREATED',
+              'GRADE_UPDATED',
+              'ATTENDANCE_UPDATED',
+            }.contains(event.type))
+        .listen((_) => _scheduleReload());
+  }
+
+  void _scheduleReload() {
+    _reloadDebounce?.cancel();
+    _reloadDebounce = Timer(const Duration(milliseconds: 250), _reload);
+  }
+
+  void _reload() {
+    if (mounted) setState(() => _future = _load());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _reload();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _reloadDebounce?.cancel();
+    _events?.cancel();
     _ctrl.dispose();
     super.dispose();
   }
@@ -157,13 +188,39 @@ class _TimetableTabState extends State<_TimetableTab>
           tabs: _days.map((d) => Tab(text: d)).toList(),
         ),
       ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
+      body: FutureBuilder<List<List<Map<String, dynamic>>>>(
         future: _future,
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
             return const Center(child: CircularProgressIndicator());
           }
-          final all = snap.data ?? [];
+          if (snap.hasError) {
+            return const Center(
+                child: Text('Không thể tải thông tin tổng quan.'));
+          }
+          final batches = snap.data ?? const [];
+          final all =
+              batches.isEmpty ? const <Map<String, dynamic>>[] : batches.first;
+          final assignments =
+              batches.length > 1 ? batches[1] : const <Map<String, dynamic>>[];
+          final grades =
+              batches.length > 2 ? batches[2] : const <Map<String, dynamic>>[];
+          final attendance =
+              batches.length > 3 ? batches[3] : const <Map<String, dynamic>>[];
+          final pendingAssignments = assignments
+              .where((item) =>
+                  '${item['status']}' == 'PUBLISHED' ||
+                  '${item['status']}' == 'PENDING')
+              .length;
+          final gradedSubjects = grades
+              .where((item) => item['score'] is num)
+              .map((item) => '${item['subjectId'] ?? item['subjectName']}')
+              .where((value) => value.isNotEmpty)
+              .toSet()
+              .length;
+          final attendanceIssues = attendance
+              .where((item) => isAbsentAttendanceStatus(item['status']))
+              .length;
           return TabBarView(
             controller: _ctrl,
             children: List.generate(5, (i) {
@@ -174,31 +231,85 @@ class _TimetableTabState extends State<_TimetableTab>
                         'Tiết ${s['periodNo']}',
                         '${s['startTime'] ?? ''}–${s['endTime'] ?? ''}',
                         (s['roomCode'] ?? '').toString(),
+                        (s['teacherName'] ?? '').toString(),
                       ))
                   .toList()
                 ..sort((a, b) => a.period.compareTo(b.period));
+              Widget overview() => Column(children: [
+                    RolePageIntro(
+                      title: 'Hôm nay học gì?',
+                      subtitle:
+                          '${_dayLabels[i]} có ${slots.length} tiết học. Chọn mục bên dưới để xem chi tiết.',
+                      accent: AppColors.studentAccent,
+                      icon: Icons.wb_sunny_outlined,
+                    ),
+                    GridView.count(
+                      crossAxisCount: 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
+                      childAspectRatio: 2.15,
+                      children: [
+                        _StudentShortcut(
+                          value: '${slots.length}',
+                          label: 'Tiết trong ngày',
+                          icon: Icons.calendar_today_rounded,
+                          onTap: slots.isEmpty
+                              ? () {}
+                              : () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          StudentTimetableSlotDetail(
+                                        subject: slots.first.subject,
+                                        period: slots.first.period,
+                                        time: slots.first.time,
+                                        room: slots.first.room,
+                                        dayLabel: _dayLabels[i],
+                                        teacherName: slots.first.teacherName,
+                                      ),
+                                    ),
+                                  ),
+                        ),
+                        _StudentShortcut(
+                          value: '$pendingAssignments',
+                          label: 'Bài tập chưa nộp',
+                          icon: Icons.assignment_late_rounded,
+                          onTap: widget.onOpenAssignments,
+                        ),
+                        _StudentShortcut(
+                          value: '$gradedSubjects',
+                          label: 'Môn đã có điểm',
+                          icon: Icons.stars_rounded,
+                          onTap: widget.onOpenGrades,
+                        ),
+                        _StudentShortcut(
+                          value: '$attendanceIssues',
+                          label: 'Buổi vắng/trễ',
+                          icon: Icons.event_busy_rounded,
+                          onTap: widget.onOpenAttendance,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ]);
               if (slots.isEmpty) {
-                return const Center(
-                  child: Text('Không có tiết học',
-                      style: TextStyle(color: AppColors.textSecondary)),
-                );
+                return ListView(padding: const EdgeInsets.all(16), children: [
+                  overview(),
+                  const Card(
+                    child: ListTile(
+                      leading: Icon(Icons.free_breakfast_rounded),
+                      title: Text('Không có tiết học trong ngày'),
+                    ),
+                  ),
+                ]);
               }
               return ListView.builder(
                 padding: const EdgeInsets.all(16),
                 itemCount: slots.length + 1,
                 itemBuilder: (_, j) {
                   if (j == 0) {
-                    return RolePageIntro(
-                      title: 'Hôm nay học gì?',
-                      subtitle:
-                          '${_dayLabels[i]} có ${slots.length} tiết học. Chạm vào từng tiết để xem chi tiết.',
-                      accent: AppColors.studentAccent,
-                      icon: Icons.wb_sunny_outlined,
-                      badges: [
-                        '${slots.length} tiết',
-                        if (slots.isNotEmpty) slots.first.time,
-                      ],
-                    );
+                    return overview();
                   }
                   final s = slots[j - 1];
                   return Card(
@@ -212,6 +323,7 @@ class _TimetableTabState extends State<_TimetableTab>
                             time: s.time,
                             room: s.room,
                             dayLabel: _dayLabels[i],
+                            teacherName: s.teacherName,
                           ),
                         ),
                       ),
@@ -236,10 +348,14 @@ class _TimetableTabState extends State<_TimetableTab>
                       title: Text(s.subject,
                           style: const TextStyle(fontWeight: FontWeight.w600)),
                       subtitle: Text('${s.period} • ${s.time} • ${s.room}',
-                          style: const TextStyle(
-                              fontSize: 12, color: AppColors.textSecondary)),
-                      trailing: const Icon(Icons.chevron_right_rounded,
-                          color: AppColors.textSecondary),
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant)),
+                      trailing: Icon(Icons.chevron_right_rounded,
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant),
                     ),
                   );
                 },
@@ -252,12 +368,65 @@ class _TimetableTabState extends State<_TimetableTab>
   }
 }
 
+class _StudentShortcut extends StatelessWidget {
+  const _StudentShortcut({
+    required this.value,
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+  final String value;
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Card(
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(children: [
+              Icon(icon, color: AppColors.studentAccent, size: 21),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(value,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w800, fontSize: 16)),
+                      Text(label,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 11)),
+                    ]),
+              ),
+              const Icon(Icons.arrow_forward_rounded,
+                  color: AppColors.studentAccent, size: 16),
+            ]),
+          ),
+        ),
+      );
+}
+
 // ===================== GRADES (sub-tabs HK1 / HK2 / Cả năm) =====================
 
 class _SubjectGrade {
-  const _SubjectGrade(this.subject, this.scores);
+  const _SubjectGrade({
+    required this.subjectId,
+    required this.subject,
+    required this.semesterId,
+    required this.records,
+    required this.average,
+  });
+  final String subjectId;
   final String subject;
-  final List<double?> scores; // [Miệng, 15p, GK, CK]
+  final String semesterId;
+  final Map<String, GradeRecord> records;
+  final double? average;
 }
 
 class _GradesTab extends StatefulWidget {
@@ -267,34 +436,81 @@ class _GradesTab extends StatefulWidget {
   State<_GradesTab> createState() => _GradesTabState();
 }
 
-class _GradesTabState extends State<_GradesTab> {
-  late final Future<List<List<Map<String, dynamic>>>> _future = Future.wait([
-    sl<ApiService>().grades(),
-    sl<ApiService>().semesters(),
-  ]);
+class _GradesTabState extends State<_GradesTab> with WidgetsBindingObserver {
+  late Future<List<List<Map<String, dynamic>>>> _future;
+  StreamSubscription<RealtimeEvent>? _gradeEvents;
+  Timer? _reloadDebounce;
 
-  // Order of categories in the score chips: [Miệng, 15p, GK, CK]
-  static const _categoryOrder = ['ORAL', '15M', 'MID', 'FINAL'];
+  Future<List<List<Map<String, dynamic>>>> _load() => Future.wait([
+        sl<ApiService>().grades(),
+        sl<ApiService>().semesters(),
+        sl<ApiService>().examCategories(),
+        sl<ApiService>().gradeSummaries(),
+      ]);
 
-  /// Build the per-semester subject list from raw grade maps belonging to one
-  /// semester. Groups by subjectName, then fills the 4-slot score list in the
-  /// order [ORAL, 15M, MID, FINAL] (null when a category is absent).
-  List<_SubjectGrade> _subjectsFor(List<Map<String, dynamic>> grades) {
-    final bySubject = <String, List<double?>>{};
-    final order = <String>[]; // preserve first-seen subject order
-    for (final g in grades) {
-      final subject = (g['subjectName'] ?? '').toString();
-      if (subject.isEmpty) continue;
-      final scores = bySubject.putIfAbsent(subject, () {
-        order.add(subject);
-        return List<double?>.filled(_categoryOrder.length, null);
-      });
-      final idx = _categoryOrder.indexOf((g['category'] ?? '').toString());
-      if (idx < 0) continue;
-      final raw = g['score'];
-      scores[idx] = raw == null ? null : (raw as num).toDouble();
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _future = _load();
+    final realtime = sl<RealtimeService>()..connect();
+    _gradeEvents = realtime.events
+        .where((event) =>
+            event.type == 'GRADE_CREATED' || event.type == 'GRADE_UPDATED')
+        .listen((_) => _scheduleReload());
+  }
+
+  void _scheduleReload() {
+    _reloadDebounce?.cancel();
+    _reloadDebounce = Timer(const Duration(milliseconds: 250), _reload);
+  }
+
+  void _reload() {
+    if (!mounted) return;
+    setState(() => _future = _load());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _reload();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _reloadDebounce?.cancel();
+    _gradeEvents?.cancel();
+    super.dispose();
+  }
+
+  List<_SubjectGrade> _subjectsFor(
+    List<Map<String, dynamic>> grades,
+    List<GradeSubjectSummary> summaries,
+  ) {
+    final bySubject = <String, List<GradeRecord>>{};
+    final order = <String>[];
+    for (final raw in grades) {
+      final grade = GradeRecord.fromJson(raw);
+      final groupKey = '${grade.subjectId}|${grade.semesterId}';
+      bySubject.putIfAbsent(groupKey, () {
+        order.add(groupKey);
+        return <GradeRecord>[];
+      }).add(grade);
     }
-    return order.map((s) => _SubjectGrade(s, bySubject[s]!)).toList();
+    final summaryByKey = {
+      for (final summary in summaries) summary.key: summary
+    };
+    return order.map((key) {
+      final records = bySubject[key]!;
+      final first = records.first;
+      return _SubjectGrade(
+        subjectId: first.subjectId,
+        subject: first.subjectName,
+        semesterId: first.semesterId,
+        records: {for (final record in records) record.key: record},
+        average: summaryByKey[key]?.average,
+      );
+    }).toList();
   }
 
   /// Find the semesterId(s) matching code 'HK1'/'HK2' (fallback to sequence
@@ -315,6 +531,16 @@ class _GradesTabState extends State<_GradesTab> {
     return grades
         .where((g) => ids.contains((g['semesterId'] ?? '').toString()))
         .toList();
+  }
+
+  String _semesterLabel(List<Map<String, dynamic>> semesters, String code,
+      int sequence, String fallback) {
+    final matches = semesters.where((semester) =>
+        '${semester['code'] ?? ''}' == code ||
+        (semester['sequence'] as num?)?.toInt() == sequence);
+    if (matches.isEmpty) return fallback;
+    final semester = matches.first;
+    return '${semester['name'] ?? semester['code'] ?? fallback}';
   }
 
   @override
@@ -345,26 +571,40 @@ class _GradesTabState extends State<_GradesTab> {
             }
             if (snap.hasError) {
               return Center(
-                  child: Text('Lỗi: ${snap.error}',
-                      style: const TextStyle(color: AppColors.textSecondary)));
+                  child: Text('Không thể tải kết quả học tập.',
+                      style: TextStyle(
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant)));
             }
             final data = snap.data ?? const [];
             final grades =
                 data.isNotEmpty ? data[0] : const <Map<String, dynamic>>[];
             final semesters =
                 data.length > 1 ? data[1] : const <Map<String, dynamic>>[];
+            final columns = buildGradeColumns(
+                (data.length > 2 ? data[2] : const <Map<String, dynamic>>[])
+                    .map(GradeCategoryDefinition.fromJson)
+                    .toList());
+            final summaries =
+                (data.length > 3 ? data[3] : const <Map<String, dynamic>>[])
+                    .map(GradeSubjectSummary.fromJson)
+                    .toList();
 
-            final hk1 =
-                _subjectsFor(_gradesForSemester(grades, semesters, 'HK1', 1));
-            final hk2 =
-                _subjectsFor(_gradesForSemester(grades, semesters, 'HK2', 2));
+            final hk1 = _subjectsFor(
+                _gradesForSemester(grades, semesters, 'HK1', 1), summaries);
+            final hk2 = _subjectsFor(
+                _gradesForSemester(grades, semesters, 'HK2', 2), summaries);
 
             return TabBarView(
               children: [
                 _SemesterGrades(
-                    semester: 'Học kỳ 1 — 2025/2026', subjects: hk1),
+                    semester: _semesterLabel(semesters, 'HK1', 1, 'Học kỳ 1'),
+                    subjects: hk1,
+                    columns: columns),
                 _SemesterGrades(
-                    semester: 'Học kỳ 2 — 2025/2026', subjects: hk2),
+                    semester: _semesterLabel(semesters, 'HK2', 2, 'Học kỳ 2'),
+                    subjects: hk2,
+                    columns: columns),
                 _YearlyGradesView(hk1: hk1, hk2: hk2),
               ],
             );
@@ -376,29 +616,19 @@ class _GradesTabState extends State<_GradesTab> {
 }
 
 class _SemesterGrades extends StatelessWidget {
-  const _SemesterGrades({required this.semester, required this.subjects});
+  const _SemesterGrades({
+    required this.semester,
+    required this.subjects,
+    required this.columns,
+  });
   final String semester;
   final List<_SubjectGrade> subjects;
-
-  double? _avgFor(_SubjectGrade sg) {
-    final scores = sg.scores.whereType<double>().toList();
-    if (scores.isEmpty) return null;
-    // weights: M=1, 15p=1, GK=2, CK=3
-    const weights = [1, 1, 2, 3];
-    var sumW = 0;
-    var sum = 0.0;
-    for (var i = 0; i < sg.scores.length; i++) {
-      if (sg.scores[i] != null) {
-        sum += sg.scores[i]! * weights[i];
-        sumW += weights[i];
-      }
-    }
-    return sum / sumW;
-  }
+  final List<GradeColumn> columns;
 
   @override
   Widget build(BuildContext context) {
-    final allAvgs = subjects.map(_avgFor).whereType<double>().toList();
+    final allAvgs =
+        subjects.map((subject) => subject.average).whereType<double>().toList();
     final overall = allAvgs.isEmpty
         ? null
         : allAvgs.reduce((a, b) => a + b) / allAvgs.length;
@@ -410,11 +640,12 @@ class _SemesterGrades extends StatelessWidget {
         const SectionHeader(title: 'Theo môn học'),
         const SizedBox(height: 10),
         if (subjects.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
             child: Center(
               child: Text('Chưa có điểm',
-                  style: TextStyle(color: AppColors.textSecondary)),
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
             ),
           )
         else
@@ -474,7 +705,7 @@ class _SemesterGrades extends StatelessWidget {
 
   Widget _buildSubjectCard(
       BuildContext context, _SubjectGrade sg, String semester) {
-    final avg = _avgFor(sg);
+    final avg = sg.average;
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: InkWell(
@@ -483,7 +714,10 @@ class _SemesterGrades extends StatelessWidget {
           MaterialPageRoute(
             builder: (_) => SubjectGradeDetail(
               subject: sg.subject,
+              subjectId: sg.subjectId,
+              semesterId: sg.semesterId,
               semester: semester,
+              average: sg.average,
             ),
           ),
         ),
@@ -514,21 +748,25 @@ class _SemesterGrades extends StatelessWidget {
                       ),
                     ),
                   const SizedBox(width: 4),
-                  const Icon(Icons.chevron_right_rounded,
-                      color: AppColors.textSecondary, size: 18),
+                  Icon(Icons.chevron_right_rounded,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      size: 18),
                 ],
               ),
               const SizedBox(height: 8),
-              Row(
-                children: [
-                  _ScoreChip('Miệng', sg.scores[0]),
-                  const SizedBox(width: 6),
-                  _ScoreChip('15p', sg.scores[1]),
-                  const SizedBox(width: 6),
-                  _ScoreChip('GK', sg.scores[2]),
-                  const SizedBox(width: 6),
-                  _ScoreChip('CK', sg.scores[3]),
-                ],
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: columns
+                      .map((column) => Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: _ScoreChip(
+                              column.label,
+                              sg.records[column.key]?.score,
+                            ),
+                          ))
+                      .toList(),
+                ),
               ),
             ],
           ),
@@ -551,27 +789,30 @@ class _ScoreChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
+    return SizedBox(
+      width: 72,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         decoration: BoxDecoration(
-          color: AppColors.background,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(6),
-          border:
-              const Border.fromBorderSide(BorderSide(color: AppColors.divider)),
+          border: Border.fromBorderSide(
+            BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+          ),
         ),
         child: Column(
           children: [
             Text(label,
-                style: const TextStyle(
-                    fontSize: 10, color: AppColors.textSecondary)),
+                style: TextStyle(
+                    fontSize: 10,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
             const SizedBox(height: 2),
             Text(
               score != null ? score!.toStringAsFixed(1) : '—',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ],
@@ -586,24 +827,11 @@ class _YearlyGradesView extends StatelessWidget {
   final List<_SubjectGrade> hk1;
   final List<_SubjectGrade> hk2;
 
-  double _avg(List<double?> scores) {
-    const weights = [1, 1, 2, 3];
-    var sumW = 0;
-    var sum = 0.0;
-    for (var i = 0; i < scores.length; i++) {
-      if (scores[i] != null) {
-        sum += scores[i]! * weights[i];
-        sumW += weights[i];
-      }
-    }
-    return sumW == 0 ? 0 : sum / sumW;
-  }
-
   @override
   Widget build(BuildContext context) {
     // Union of subjects across both semesters, preserving HK1 order first.
-    final hk1Avg = {for (final sg in hk1) sg.subject: _avg(sg.scores)};
-    final hk2Avg = {for (final sg in hk2) sg.subject: _avg(sg.scores)};
+    final hk1Avg = {for (final sg in hk1) sg.subject: sg.average};
+    final hk2Avg = {for (final sg in hk2) sg.subject: sg.average};
     final subjects = <String>[
       ...hk1.map((sg) => sg.subject),
       ...hk2.map((sg) => sg.subject).where((s) => !hk1Avg.containsKey(s)),
@@ -618,15 +846,18 @@ class _YearlyGradesView extends StatelessWidget {
             color: AppColors.studentAccent.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Row(
+          child: Row(
             children: [
-              Icon(Icons.info_outline_rounded,
+              const Icon(Icons.info_outline_rounded,
                   color: AppColors.studentAccent, size: 20),
-              SizedBox(width: 10),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   'Trung bình cả năm = (TB HK1 + 2 × TB HK2) / 3',
-                  style: TextStyle(fontSize: 12, color: AppColors.textPrimary),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                 ),
               ),
             ],
@@ -636,26 +867,29 @@ class _YearlyGradesView extends StatelessWidget {
         const SectionHeader(title: 'So sánh HK1 vs HK2'),
         const SizedBox(height: 10),
         if (subjects.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
             child: Center(
               child: Text('Chưa có điểm',
-                  style: TextStyle(color: AppColors.textSecondary)),
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
             ),
           )
         else
           for (final subject in subjects)
             _buildYearlyRow(
+              context,
               subject,
-              hk1Avg[subject] ?? 0,
-              hk2Avg[subject] ?? 0,
+              hk1Avg[subject],
+              hk2Avg[subject],
             ),
       ],
     );
   }
 
-  Widget _buildYearlyRow(String subject, double hk1, double hk2) {
-    final year = hk2 == 0 ? hk1 : (hk1 + 2 * hk2) / 3;
+  Widget _buildYearlyRow(
+      BuildContext context, String subject, double? hk1, double? hk2) {
+    final year = hk1 != null && hk2 != null ? (hk1 + 2 * hk2) / 3 : null;
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
@@ -676,7 +910,7 @@ class _YearlyGradesView extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    'Năm: ${year.toStringAsFixed(2)}',
+                    'Năm: ${year?.toStringAsFixed(2) ?? '—'}',
                     style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
@@ -692,17 +926,21 @@ class _YearlyGradesView extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('HK1',
+                      Text('HK1',
                           style: TextStyle(
-                              fontSize: 10, color: AppColors.textSecondary)),
+                              fontSize: 10,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant)),
                       LinearProgressIndicator(
-                        value: hk1 / 10,
+                        value: (hk1 ?? 0) / 10,
                         color: AppColors.studentAccent,
-                        backgroundColor: AppColors.divider,
+                        backgroundColor:
+                            Theme.of(context).colorScheme.outlineVariant,
                         minHeight: 5,
                       ),
                       const SizedBox(height: 2),
-                      Text(hk1.toStringAsFixed(1),
+                      Text(hk1?.toStringAsFixed(1) ?? '—',
                           style: const TextStyle(
                               fontSize: 12, fontWeight: FontWeight.w600)),
                     ],
@@ -713,17 +951,21 @@ class _YearlyGradesView extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('HK2',
+                      Text('HK2',
                           style: TextStyle(
-                              fontSize: 10, color: AppColors.textSecondary)),
+                              fontSize: 10,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant)),
                       LinearProgressIndicator(
-                        value: hk2 / 10,
+                        value: (hk2 ?? 0) / 10,
                         color: AppColors.warning,
-                        backgroundColor: AppColors.divider,
+                        backgroundColor:
+                            Theme.of(context).colorScheme.outlineVariant,
                         minHeight: 5,
                       ),
                       const SizedBox(height: 2),
-                      Text(hk2 == 0 ? '—' : hk2.toStringAsFixed(1),
+                      Text(hk2?.toStringAsFixed(1) ?? '—',
                           style: const TextStyle(
                               fontSize: 12, fontWeight: FontWeight.w600)),
                     ],
@@ -741,50 +983,14 @@ class _YearlyGradesView extends StatelessWidget {
 // ===================== ATTENDANCE (sub-tabs Tuần / Tháng / HK) =====================
 
 class _ARecord {
-  const _ARecord(this.subject, this.date, this.status, this.note);
+  const _ARecord(
+      this.subject, this.date, this.status, this.note, this.periodNo);
   final String subject;
   final String date;
   final String status;
   final String? note;
+  final int? periodNo;
 }
-
-const _attWeek = <_ARecord>[
-  _ARecord('Tiếng Anh', '19/05', 'ABSENT_UNEXCUSED', 'Không liên lạc được PH'),
-  _ARecord('Sinh học', '19/05', 'LATE', 'Muộn 10 phút'),
-  _ARecord('Toán', '20/05', 'ABSENT_EXCUSED', 'Có đơn xin nghỉ ốm'),
-  _ARecord('Vật lý', '21/05', 'PRESENT', null),
-  _ARecord('Toán', '21/05', 'PRESENT', null),
-];
-
-const _attMonth = <_ARecord>[
-  _ARecord('Tiếng Anh', '02/05', 'PRESENT', null),
-  _ARecord('Toán', '03/05', 'PRESENT', null),
-  _ARecord('Vật lý', '06/05', 'LATE', 'Muộn 5 phút'),
-  _ARecord('Ngữ văn', '08/05', 'ABSENT_EXCUSED', 'Đám tang ông'),
-  _ARecord('Sinh học', '12/05', 'PRESENT', null),
-  _ARecord('Tiếng Anh', '19/05', 'ABSENT_UNEXCUSED', 'Không liên lạc được PH'),
-  _ARecord('Sinh học', '19/05', 'LATE', 'Muộn 10 phút'),
-  _ARecord('Toán', '20/05', 'ABSENT_EXCUSED', 'Có đơn xin nghỉ ốm'),
-];
-
-const _attSemester = <_ARecord>[
-  _ARecord('Toán', '15/09', 'PRESENT', null),
-  _ARecord('Vật lý', '22/09', 'LATE', 'Muộn 3 phút'),
-  _ARecord(
-      'Tiếng Anh', '10/10', 'ABSENT_EXCUSED', 'Tham gia thi học sinh giỏi'),
-  _ARecord('Sinh học', '25/10', 'ABSENT_UNEXCUSED', 'Trốn tiết'),
-  _ARecord('Ngữ văn', '08/11', 'PRESENT', null),
-  _ARecord('Toán', '12/11', 'PRESENT', null),
-  _ARecord('Vật lý', '20/11', 'PRESENT', null),
-  _ARecord('Tiếng Anh', '02/05', 'PRESENT', null),
-  _ARecord('Toán', '03/05', 'PRESENT', null),
-  _ARecord('Vật lý', '06/05', 'LATE', 'Muộn 5 phút'),
-  _ARecord('Ngữ văn', '08/05', 'ABSENT_EXCUSED', 'Đám tang ông'),
-  _ARecord('Sinh học', '12/05', 'PRESENT', null),
-  _ARecord('Tiếng Anh', '19/05', 'ABSENT_UNEXCUSED', 'Không liên lạc được PH'),
-  _ARecord('Sinh học', '19/05', 'LATE', 'Muộn 10 phút'),
-  _ARecord('Toán', '20/05', 'ABSENT_EXCUSED', 'Có đơn xin nghỉ ốm'),
-];
 
 class _AttendanceTab extends StatefulWidget {
   const _AttendanceTab();
@@ -792,9 +998,44 @@ class _AttendanceTab extends StatefulWidget {
   State<_AttendanceTab> createState() => _AttendanceTabState();
 }
 
-class _AttendanceTabState extends State<_AttendanceTab> {
-  late final Future<List<Map<String, dynamic>>> _future =
-      sl<ApiService>().attendance();
+class _AttendanceTabState extends State<_AttendanceTab>
+    with WidgetsBindingObserver {
+  late Future<List<Map<String, dynamic>>> _future;
+  StreamSubscription<RealtimeEvent>? _attendanceEvents;
+  Timer? _reloadDebounce;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _future = sl<ApiService>().attendance();
+    final realtime = sl<RealtimeService>()..connect();
+    _attendanceEvents = realtime.events
+        .where((event) => event.type == 'ATTENDANCE_UPDATED')
+        .listen((_) => _scheduleReload());
+  }
+
+  void _scheduleReload() {
+    _reloadDebounce?.cancel();
+    _reloadDebounce = Timer(const Duration(milliseconds: 250), _reload);
+  }
+
+  void _reload() {
+    if (mounted) setState(() => _future = sl<ApiService>().attendance());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _reload();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _reloadDebounce?.cancel();
+    _attendanceEvents?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -812,8 +1053,10 @@ class _AttendanceTabState extends State<_AttendanceTab> {
           }
           if (snap.hasError) {
             return Center(
-                child: Text('Lỗi: ${snap.error}',
-                    style: const TextStyle(color: AppColors.textSecondary)));
+                child: Text('Không thể tải dữ liệu chuyên cần.',
+                    style: TextStyle(
+                        color:
+                            Theme.of(context).colorScheme.onSurfaceVariant)));
           }
           final records = (snap.data ?? [])
               .map((r) => _ARecord(
@@ -821,12 +1064,15 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                     (r['date'] ?? '').toString(),
                     (r['status'] ?? '').toString(),
                     r['note'] as String?,
+                    (r['periodNo'] as num?)?.toInt(),
                   ))
               .toList();
           if (records.isEmpty) {
-            return const Center(
+            return Center(
                 child: Text('Chưa có dữ liệu điểm danh',
-                    style: TextStyle(color: AppColors.textSecondary)));
+                    style: TextStyle(
+                        color:
+                            Theme.of(context).colorScheme.onSurfaceVariant)));
           }
           return _AttendanceRange(records: records, rangeLabel: 'học kỳ');
         },
@@ -857,7 +1103,7 @@ class _AttendanceRange extends StatelessWidget {
       children: [
         _RateBanner(rate: rate, rangeLabel: rangeLabel),
         const SizedBox(height: 14),
-        _buildStats(stats),
+        _buildStats(context, stats),
         const SizedBox(height: 16),
         const SectionHeader(title: 'Lịch sử chi tiết'),
         const SizedBox(height: 10),
@@ -871,11 +1117,13 @@ class _AttendanceRange extends StatelessWidget {
                       date: r.date,
                       status: r.status,
                       note: r.note,
+                      periodNo: r.periodNo,
                     ),
                   ),
                 ),
-                leading: const Icon(Icons.schedule_rounded,
-                    color: AppColors.textSecondary, size: 20),
+                leading: Icon(Icons.schedule_rounded,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    size: 20),
                 title: Text(r.subject,
                     style: const TextStyle(fontWeight: FontWeight.w500)),
                 subtitle: Text(
@@ -889,8 +1137,9 @@ class _AttendanceRange extends StatelessWidget {
                   children: [
                     AttendanceBadge(r.status),
                     const SizedBox(width: 4),
-                    const Icon(Icons.chevron_right_rounded,
-                        color: AppColors.textSecondary, size: 18),
+                    Icon(Icons.chevron_right_rounded,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        size: 18),
                   ],
                 ),
               ),
@@ -899,7 +1148,7 @@ class _AttendanceRange extends StatelessWidget {
     );
   }
 
-  Widget _buildStats(Map<String, int> stats) {
+  Widget _buildStats(BuildContext context, Map<String, int> stats) {
     final colors = [
       AppColors.present,
       AppColors.absentExcused,
@@ -925,8 +1174,10 @@ class _AttendanceRange extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(entry.key,
-                      style: const TextStyle(
-                          fontSize: 10, color: AppColors.textSecondary),
+                      style: TextStyle(
+                          fontSize: 10,
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant),
                       textAlign: TextAlign.center),
                 ],
               ),
@@ -1049,8 +1300,9 @@ class _ProfileTab extends StatelessWidget {
                           fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 4),
                   Text(user.studentCode ?? '',
-                      style: const TextStyle(
-                          color: AppColors.textSecondary, fontSize: 13)),
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 13)),
                   const SizedBox(height: 4),
                   Container(
                     padding:
@@ -1112,7 +1364,7 @@ class _ProfileTab extends StatelessWidget {
                   leading: const Icon(Icons.chat_bubble_outline_rounded,
                       color: AppColors.studentAccent),
                   title: const Text('Tin nhắn'),
-                  subtitle: const Text('Chat với GV bộ môn',
+                  subtitle: const Text('Nhắn tin với giáo viên bộ môn',
                       style: TextStyle(fontSize: 11)),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => Navigator.of(context).push(
@@ -1144,7 +1396,9 @@ class _ProfileTab extends StatelessWidget {
 
 class _Assignment {
   const _Assignment({
-    this.id,
+    required this.id,
+    required this.raw,
+    required this.submission,
     required this.title,
     required this.subject,
     required this.teacher,
@@ -1153,7 +1407,9 @@ class _Assignment {
     this.score,
     this.feedback,
   });
-  final String? id;
+  final String id;
+  final Map<String, dynamic> raw;
+  final Map<String, dynamic>? submission;
   final String title;
   final String subject;
   final String teacher;
@@ -1184,13 +1440,23 @@ String _mapAssignmentStatus(Object? raw) {
   return s == 'PUBLISHED' ? 'PENDING' : s;
 }
 
-_Assignment _assignmentFromJson(Map<String, dynamic> m) => _Assignment(
-      id: (m['id'] ?? '').toString(),
+_Assignment _assignmentFromJson(
+  Map<String, dynamic> m,
+  Map<String, dynamic>? submission,
+) =>
+    _Assignment(
+      id: '${m['id'] ?? ''}',
+      raw: m,
+      submission: submission,
       title: (m['title'] ?? '').toString(),
       subject: (m['subjectName'] ?? '').toString(),
       teacher: (m['teacherName'] ?? '').toString(),
       deadline: _formatDeadline(m['deadline']),
-      status: _mapAssignmentStatus(m['status']),
+      status: submission == null
+          ? _mapAssignmentStatus(m['status'])
+          : '${submission['status'] ?? 'SUBMITTED'}',
+      score: (submission?['score'] as num?)?.toDouble(),
+      feedback: submission?['feedback']?.toString(),
     );
 
 class _AssignmentsTab extends StatefulWidget {
@@ -1200,19 +1466,47 @@ class _AssignmentsTab extends StatefulWidget {
   State<_AssignmentsTab> createState() => _AssignmentsTabState();
 }
 
-class _AssignmentsTabState extends State<_AssignmentsTab> {
-  late Future<List<Map<String, dynamic>>> _future =
-      sl<ApiService>().myAssignments();
+class _AssignmentsTabState extends State<_AssignmentsTab>
+    with WidgetsBindingObserver {
+  late Future<List<List<Map<String, dynamic>>>> _future = _load();
+  StreamSubscription<RealtimeEvent>? _assignmentEvents;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    final realtime = sl<RealtimeService>()..connect();
+    _assignmentEvents = realtime.events
+        .where((event) => event.type == 'ASSIGNMENT_UPDATED')
+        .listen((_) => _refresh());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refresh();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _assignmentEvents?.cancel();
+    super.dispose();
+  }
+
+  Future<List<List<Map<String, dynamic>>>> _load() => Future.wait([
+        sl<ApiService>().myAssignments(),
+        sl<ApiService>().mySubmissions(),
+      ]);
 
   void _refresh() {
     setState(() {
-      _future = sl<ApiService>().myAssignments();
+      _future = _load();
     });
   }
 
   Future<void> _submit(_Assignment a) async {
     final id = a.id;
-    if (id == null || id.isEmpty) return;
+    if (id.isEmpty) return;
     final controller = TextEditingController();
     final content = await showDialog<String>(
       context: context,
@@ -1247,7 +1541,7 @@ class _AssignmentsTabState extends State<_AssignmentsTab> {
     if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await sl<ApiService>().submitAssignment(id, content);
+      await sl<ApiService>().submitAssignment(id, content: content);
       if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(
@@ -1259,8 +1553,8 @@ class _AssignmentsTabState extends State<_AssignmentsTab> {
     } catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(
-        SnackBar(
-          content: Text('Nộp bài thất bại: $e'),
+        const SnackBar(
+          content: Text('Không thể nộp bài. Vui lòng thử lại.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -1269,11 +1563,24 @@ class _AssignmentsTabState extends State<_AssignmentsTab> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<Map<String, dynamic>>>(
+    return FutureBuilder<List<List<Map<String, dynamic>>>>(
       future: _future,
       builder: (context, snap) {
         final loading = snap.connectionState != ConnectionState.done;
-        final assignments = (snap.data ?? []).map(_assignmentFromJson).toList();
+        final data = snap.data ?? const [];
+        final submissions =
+            data.length > 1 ? data[1] : const <Map<String, dynamic>>[];
+        final submissionByAssignment = {
+          for (final submission in submissions)
+            '${submission['assignmentId'] ?? ''}': submission,
+        };
+        final assignments =
+            (data.isNotEmpty ? data[0] : const <Map<String, dynamic>>[])
+                .map((item) => _assignmentFromJson(
+                      item,
+                      submissionByAssignment['${item['id'] ?? ''}'],
+                    ))
+                .toList();
         final pending =
             assignments.where((a) => a.status == 'PENDING').toList();
         final submitted = assignments
@@ -1286,7 +1593,12 @@ class _AssignmentsTabState extends State<_AssignmentsTab> {
             appBar: AppBar(
               title: const Text('Bài tập'),
               backgroundColor: AppColors.studentAccent,
-              actions: const [_NotiAction()],
+              actions: [
+                IconButton(
+                    onPressed: _refresh,
+                    icon: const Icon(Icons.refresh_rounded)),
+                const _NotiAction(),
+              ],
               bottom: TabBar(
                 isScrollable: true,
                 labelColor: Colors.white,
@@ -1304,16 +1616,29 @@ class _AssignmentsTabState extends State<_AssignmentsTab> {
                 ? const Center(child: CircularProgressIndicator())
                 : snap.hasError
                     ? Center(
-                        child: Text('Lỗi: ${snap.error}',
-                            style: const TextStyle(
-                                color: AppColors.textSecondary)))
+                        child: Text('Không thể tải bài tập.',
+                            style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant)))
                     : TabBarView(
                         children: [
                           _AssignmentList(
-                              items: assignments, onSubmit: _submit),
-                          _AssignmentList(items: pending, onSubmit: _submit),
-                          _AssignmentList(items: submitted, onSubmit: _submit),
-                          _AssignmentList(items: graded, onSubmit: _submit),
+                              items: assignments,
+                              onSubmit: _submit,
+                              onChanged: _refresh),
+                          _AssignmentList(
+                              items: pending,
+                              onSubmit: _submit,
+                              onChanged: _refresh),
+                          _AssignmentList(
+                              items: submitted,
+                              onSubmit: _submit,
+                              onChanged: _refresh),
+                          _AssignmentList(
+                              items: graded,
+                              onSubmit: _submit,
+                              onChanged: _refresh),
                         ],
                       ),
           ),
@@ -1324,9 +1649,14 @@ class _AssignmentsTabState extends State<_AssignmentsTab> {
 }
 
 class _AssignmentList extends StatelessWidget {
-  const _AssignmentList({required this.items, this.onSubmit});
+  const _AssignmentList({
+    required this.items,
+    this.onSubmit,
+    this.onChanged,
+  });
   final List<_Assignment> items;
   final void Function(_Assignment)? onSubmit;
+  final VoidCallback? onChanged;
 
   Color _statusColor(String status) => switch (status) {
         'GRADED' => AppColors.success,
@@ -1345,9 +1675,10 @@ class _AssignmentList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
-      return const Center(
+      return Center(
           child: Text('Không có bài tập',
-              style: TextStyle(color: AppColors.textSecondary)));
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant)));
     }
     return ListView.separated(
       padding: const EdgeInsets.all(16),
@@ -1360,19 +1691,24 @@ class _AssignmentList extends StatelessWidget {
           margin: EdgeInsets.zero,
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => StudentAssignmentDetail(
-                  title: a.title,
-                  subject: a.subject,
-                  teacher: a.teacher,
-                  deadline: a.deadline,
-                  status: a.status,
-                  score: a.score,
-                  feedback: a.feedback,
+            onTap: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => StudentAssignmentDetail(
+                    assignment: a.raw,
+                    submission: a.submission,
+                    title: a.title,
+                    subject: a.subject,
+                    teacher: a.teacher,
+                    deadline: a.deadline,
+                    status: a.status,
+                    score: a.score,
+                    feedback: a.feedback,
+                  ),
                 ),
-              ),
-            ),
+              );
+              onChanged?.call();
+            },
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -1426,24 +1762,34 @@ class _AssignmentList extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.person_outline_rounded,
-                          size: 12, color: AppColors.textSecondary),
+                      Icon(Icons.person_outline_rounded,
+                          size: 12,
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant),
                       const SizedBox(width: 4),
                       Text(a.teacher,
-                          style: const TextStyle(
-                              fontSize: 11, color: AppColors.textSecondary)),
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant)),
                       const Spacer(),
-                      const Icon(Icons.access_time_rounded,
-                          size: 12, color: AppColors.textSecondary),
+                      Icon(Icons.access_time_rounded,
+                          size: 12,
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant),
                       const SizedBox(width: 4),
                       Text(a.deadline,
-                          style: const TextStyle(
-                              fontSize: 11, color: AppColors.textSecondary)),
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant)),
                     ],
                   ),
                   if (onSubmit != null &&
                       a.status == 'PENDING' &&
-                      a.id != null) ...[
+                      a.id.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Align(
                       alignment: Alignment.centerRight,

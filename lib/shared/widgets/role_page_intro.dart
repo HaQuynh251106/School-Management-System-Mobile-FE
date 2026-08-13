@@ -8,14 +8,12 @@ class RolePageIntro extends StatelessWidget {
     required this.subtitle,
     required this.accent,
     required this.icon,
-    this.badges = const [],
   });
 
   final String title;
   final String subtitle;
   final Color accent;
   final IconData icon;
-  final List<String> badges;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -74,31 +72,11 @@ class RolePageIntro extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                   letterSpacing: -.35,
                 )),
-            const SizedBox(height: 5),
-            Text(subtitle,
-                style: const TextStyle(
-                    color: Colors.white70, fontSize: 13, height: 1.4)),
-            if (badges.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: badges
-                    .map((badge) => Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: .13),
-                            borderRadius: BorderRadius.circular(99),
-                          ),
-                          child: Text(badge,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700)),
-                        ))
-                    .toList(),
-              ),
+            if (subtitle.trim().isNotEmpty) ...[
+              const SizedBox(height: 5),
+              Text(subtitle,
+                  style: const TextStyle(
+                      color: Colors.white70, fontSize: 13, height: 1.4)),
             ],
           ],
         ),

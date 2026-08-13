@@ -56,7 +56,7 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
         _workloads = values[5];
       });
     } catch (error) {
-      _showError('Không thể tải danh sách phân công: $error');
+      _showError('Không thể tải danh sách phân công. Vui lòng thử lại.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -93,7 +93,7 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
         children: [
           _summary(planned, scheduled, completed),
           _filters(),
-          if (!_loading) _teacherOverview(),
+          if (!_loading) _teacherOverview(context),
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
@@ -131,18 +131,20 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
         ),
       );
 
-  Widget _teacherOverview() => Container(
+  Widget _teacherOverview(BuildContext context) => Container(
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-        color: AppColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('Giáo viên và lớp đang phụ trách',
                 style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 3),
-            const Text('Chạm vào giáo viên để phân công thêm lớp.',
-                style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+            Text('Chạm vào giáo viên để phân công thêm lớp.',
+                style: TextStyle(
+                    fontSize: 11,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
             const SizedBox(height: 9),
             SizedBox(
               height: 112,
@@ -167,7 +169,11 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
                             width: 235,
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              border: Border.all(color: AppColors.divider),
+                              border: Border.all(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .outlineVariant,
+                              ),
                               borderRadius: BorderRadius.circular(14),
                               color: AppColors.adminAccent
                                   .withValues(alpha: 0.045),
@@ -186,9 +192,11 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
                                       'Chưa cập nhật chuyên môn',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontSize: 11,
-                                      color: AppColors.textSecondary),
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant),
                                 ),
                                 const Spacer(),
                                 Text(
@@ -205,9 +213,11 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
                                 const SizedBox(height: 3),
                                 Text(
                                   '${_int(item['scheduledPeriods'])}/${_int(item['weeklyPeriods'])} tiết/tuần',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontSize: 11,
-                                      color: AppColors.textSecondary),
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant),
                                 ),
                               ],
                             ),
@@ -229,8 +239,9 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label,
-                    style: const TextStyle(
-                        fontSize: 10, color: AppColors.textSecondary)),
+                    style: TextStyle(
+                        fontSize: 10,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant)),
                 Text(value,
                     style: const TextStyle(
                         fontSize: 15, fontWeight: FontWeight.bold)),
@@ -337,8 +348,9 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
             const SizedBox(height: 9),
             Row(
               children: [
-                const Icon(Icons.person_outline_rounded,
-                    size: 17, color: AppColors.textSecondary),
+                Icon(Icons.person_outline_rounded,
+                    size: 17,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
                 const SizedBox(width: 6),
                 Expanded(child: Text(item['teacherName']?.toString() ?? '')),
                 Container(
@@ -369,19 +381,21 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
               value: progress,
               minHeight: 6,
               borderRadius: BorderRadius.circular(8),
-              backgroundColor: AppColors.divider,
+              backgroundColor: Theme.of(context).colorScheme.outlineVariant,
               color: complete ? AppColors.success : AppColors.adminAccent,
             ),
             const SizedBox(height: 5),
             Text('$scheduled/$planned tiết mỗi tuần',
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.textSecondary)),
+                style: TextStyle(
+                    fontSize: 11,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
             const SizedBox(height: 3),
             Text(
               'Giáo viên đang phụ trách ${_int(item['teacherClassCount'])} lớp · '
               '${_int(item['teacherScheduledPeriods'])}/${_int(item['teacherWeeklyPeriods'])} tiết/tuần',
-              style:
-                  const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+              style: TextStyle(
+                  fontSize: 11,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           ],
         ),
@@ -486,12 +500,14 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
                         .toList(),
                     onChanged: (value) => update(() => teacherId = value),
                   ),
-                  const Padding(
-                    padding: EdgeInsets.only(top: 7),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 7),
                     child: Text(
                       'Giáo viên phù hợp chuyên môn được ưu tiên; phân công quyết định lớp và môn thực tế phụ trách.',
                       style: TextStyle(
-                          fontSize: 11, color: AppColors.textSecondary),
+                          fontSize: 11,
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant),
                     ),
                   ),
                   if (selectedWorkload != null)
@@ -589,7 +605,7 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
       await _api.deleteTeachingAssignment(item['id'].toString());
       await _load();
     } catch (error) {
-      _showError('Không thể xóa phân công: $error');
+      _showError('Không thể xóa phân công. Vui lòng thử lại.');
     }
   }
 
@@ -624,22 +640,24 @@ class _EmptyAssignments extends StatelessWidget {
   const _EmptyAssignments();
 
   @override
-  Widget build(BuildContext context) => const Center(
+  Widget build(BuildContext context) => Center(
         child: Padding(
-          padding: EdgeInsets.all(28),
+          padding: const EdgeInsets.all(28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.person_add_alt_1_rounded,
-                  size: 42, color: AppColors.textSecondary),
-              SizedBox(height: 12),
-              Text('Chưa có phân công giáo viên bộ môn',
+                  size: 42,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+              const SizedBox(height: 12),
+              const Text('Chưa có phân công giáo viên bộ môn',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontWeight: FontWeight.bold)),
-              SizedBox(height: 5),
+              const SizedBox(height: 5),
               Text('Thêm phân công trước khi xếp thời khóa biểu.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textSecondary)),
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
             ],
           ),
         ),

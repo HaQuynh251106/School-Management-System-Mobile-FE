@@ -34,5 +34,19 @@ final class AuthLoginFailure extends AuthState {
 }
 
 final class AuthForgotPasswordSent extends AuthState {
-  const AuthForgotPasswordSent();
+  const AuthForgotPasswordSent({
+    required this.emailDeliveryAvailable,
+    this.devResetToken,
+  });
+  final bool emailDeliveryAvailable;
+  final String? devResetToken;
+  @override
+  List<Object?> get props => [emailDeliveryAvailable, devResetToken];
+}
+
+final class AuthForgotPasswordFailed extends AuthState {
+  const AuthForgotPasswordFailed(this.message);
+  final String message;
+  @override
+  List<Object?> get props => [message];
 }

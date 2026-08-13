@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/di/service_locator.dart';
 import '../../core/network/api_service.dart';
+import '../../core/network/realtime_service.dart';
 import '../../core/theme/app_colors.dart';
 
 class MobileWorkspacePage extends StatefulWidget {
@@ -21,8 +24,45 @@ class MobileWorkspacePage extends StatefulWidget {
   State<MobileWorkspacePage> createState() => _MobileWorkspacePageState();
 }
 
-class _MobileWorkspacePageState extends State<MobileWorkspacePage> {
+class _MobileWorkspacePageState extends State<MobileWorkspacePage>
+    with WidgetsBindingObserver {
   late Future<_WorkspaceData> _future = _load();
+  StreamSubscription<RealtimeEvent>? _workspaceEvents;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    final realtime = sl<RealtimeService>()..connect();
+    _workspaceEvents = realtime.events
+        .where((event) =>
+            event.type == 'EXAM_UPDATED' || event.type == 'LEAVE_UPDATED')
+        .listen((_) => _reload());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _reload();
+  }
+
+  @override
+  void didUpdateWidget(covariant MobileWorkspacePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.childId != widget.childId || oldWidget.role != widget.role) {
+      _reload();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _workspaceEvents?.cancel();
+    super.dispose();
+  }
+
+  void _reload() {
+    if (mounted) setState(() => _future = _load());
+  }
 
   Future<_WorkspaceData> _load() async {
     final api = sl<ApiService>();
@@ -32,13 +72,33 @@ class _MobileWorkspacePageState extends State<MobileWorkspacePage> {
         : await api.leaveRequests();
     final exams = switch (widget.role) {
       'ADMIN' => await api.examPeriods(),
-      'TEACHER' => await api.examGradingTasks(),
+      'TEACHER' => await api.examAgenda(),
       _ => await api.examAgenda(childId: widget.childId),
     };
+    final gradingTasks = widget.role == 'TEACHER'
+        ? await api.examGradingTasks()
+        : const <Map<String, dynamic>>[];
+    final results = switch (widget.role) {
+      'STUDENT' => await api.examResults(),
+      'PARENT' when widget.childId != null =>
+        await api.childExamResults(widget.childId!),
+      _ => const <Map<String, dynamic>>[],
+    };
+    final reviews = widget.role == 'TEACHER'
+        ? await api.examReviews(status: 'PENDING')
+        : const <Map<String, dynamic>>[];
     final report = widget.role == 'ADMIN'
         ? <String, dynamic>{}
         : await api.personalReport(childId: widget.childId);
-    return _WorkspaceData(dashboard, leaves, exams, report);
+    return _WorkspaceData(
+      dashboard,
+      leaves,
+      exams,
+      gradingTasks,
+      results,
+      reviews,
+      report,
+    );
   }
 
   Future<void> _refresh() async {
@@ -59,7 +119,7 @@ class _MobileWorkspacePageState extends State<MobileWorkspacePage> {
               return const Center(child: CircularProgressIndicator());
             }
             if (snapshot.hasError) {
-              return _ErrorView(error: snapshot.error, onRetry: _refresh);
+              return _ErrorView(onRetry: _refresh);
             }
             final data = snapshot.data!;
             return ListView(
@@ -75,17 +135,60 @@ class _MobileWorkspacePageState extends State<MobileWorkspacePage> {
                   title: widget.role == 'ADMIN'
                       ? 'Kỳ thi đang quản lý'
                       : widget.role == 'TEACHER'
-                          ? 'Nhiệm vụ khảo thí'
+                          ? 'Lịch coi thi'
                           : 'Lịch kiểm tra sắp tới',
                   count: data.exams.length,
                 ),
                 const SizedBox(height: 10),
                 _DataCards(
                   items: data.exams,
-                  emptyText: 'Chưa có lịch hoặc nhiệm vụ khảo thí',
+                  emptyText: widget.role == 'TEACHER'
+                      ? 'Chưa có lịch coi thi được phân công'
+                      : 'Chưa có lịch hoặc nhiệm vụ khảo thí',
                   accent: widget.accent,
                   type: _CardType.exam,
                 ),
+                if (widget.role == 'TEACHER') ...[
+                  const SizedBox(height: 24),
+                  _SectionTitle(
+                    icon: Icons.edit_note_rounded,
+                    title: 'Nhiệm vụ nhập điểm thi',
+                    count: data.gradingTasks.length,
+                  ),
+                  const SizedBox(height: 10),
+                  _TeacherExamTasks(
+                    items: data.gradingTasks,
+                    accent: widget.accent,
+                    onOpen: _editExamScores,
+                  ),
+                  const SizedBox(height: 24),
+                  _SectionTitle(
+                    icon: Icons.fact_check_outlined,
+                    title: 'Phúc khảo chờ xử lý',
+                    count: data.reviews.length,
+                  ),
+                  const SizedBox(height: 10),
+                  _ExamReviewCards(
+                    items: data.reviews,
+                    accent: widget.accent,
+                    onOpen: _resolveReview,
+                  ),
+                ],
+                if (widget.role == 'STUDENT' || widget.role == 'PARENT') ...[
+                  const SizedBox(height: 24),
+                  _SectionTitle(
+                    icon: Icons.school_outlined,
+                    title: 'Kết quả thi đã công bố',
+                    count: data.results.length,
+                  ),
+                  const SizedBox(height: 10),
+                  _ExamResultCards(
+                    items: data.results,
+                    accent: widget.accent,
+                    canRequestReview: widget.role == 'STUDENT',
+                    onReview: _requestReview,
+                  ),
+                ],
                 if (widget.role != 'ADMIN') ...[
                   const SizedBox(height: 24),
                   _SectionTitle(
@@ -215,7 +318,7 @@ class _MobileWorkspacePageState extends State<MobileWorkspacePage> {
       );
       await _refresh();
     } catch (error) {
-      if (mounted) _showError('Không thể tạo đơn: $error');
+      if (mounted) _showError('Không thể gửi đơn. Vui lòng thử lại.');
     } finally {
       reason.dispose();
     }
@@ -226,8 +329,282 @@ class _MobileWorkspacePageState extends State<MobileWorkspacePage> {
       await sl<ApiService>().decideLeaveRequest(id, action);
       await _refresh();
     } catch (error) {
-      if (mounted) _showError('Không thể cập nhật đơn: $error');
+      if (mounted) _showError('Không thể cập nhật đơn. Vui lòng thử lại.');
     }
+  }
+
+  Future<void> _editExamScores(Map<String, dynamic> task) async {
+    final candidates = (task['candidates'] as List? ?? const [])
+        .map((value) => Map<String, dynamic>.from(value as Map))
+        .toList();
+    if (candidates.isEmpty) {
+      return _showError('Lớp này chưa có thí sinh để nhập điểm.');
+    }
+    if (task['scoreEntryAvailable'] != true ||
+        task['scoreEntryLocked'] == true) {
+      return _showError(task['scoreEntryLocked'] == true
+          ? 'Kỳ thi đã khóa nhập điểm.'
+          : 'Chưa đến thời gian được nhập điểm.');
+    }
+    final scoreControllers = [
+      for (final candidate in candidates)
+        TextEditingController(text: '${candidate['score'] ?? ''}'),
+    ];
+    final noteControllers = [
+      for (final candidate in candidates)
+        TextEditingController(text: '${candidate['note'] ?? ''}'),
+    ];
+    final formKey = GlobalKey<FormState>();
+    final accepted = await showModalBottomSheet<bool>(
+          context: context,
+          isScrollControlled: true,
+          useSafeArea: true,
+          builder: (sheetContext) => Padding(
+            padding: EdgeInsets.fromLTRB(
+              16,
+              12,
+              16,
+              16 + MediaQuery.viewInsetsOf(sheetContext).bottom,
+            ),
+            child: Form(
+              key: formKey,
+              child: Column(
+                children: [
+                  Row(children: [
+                    Expanded(
+                      child: Text(
+                        '${task['subjectName']} · ${task['classCode']}',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(sheetContext),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ]),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: candidates.length,
+                      separatorBuilder: (_, __) => const Divider(height: 24),
+                      itemBuilder: (context, index) {
+                        final candidate = candidates[index];
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('${candidate['studentName']}',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w700)),
+                            Text('${candidate['studentCode'] ?? ''}'),
+                            const SizedBox(height: 8),
+                            Row(children: [
+                              SizedBox(
+                                width: 92,
+                                child: TextFormField(
+                                  controller: scoreControllers[index],
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                          decimal: true),
+                                  decoration:
+                                      const InputDecoration(labelText: 'Điểm'),
+                                  validator: (value) {
+                                    final score = double.tryParse(value ?? '');
+                                    if (score == null ||
+                                        score < 0 ||
+                                        score > 10) {
+                                      return '0–10';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: noteControllers[index],
+                                  decoration: const InputDecoration(
+                                      labelText: 'Ghi chú'),
+                                ),
+                              ),
+                            ]),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        if (formKey.currentState!.validate()) {
+                          Navigator.pop(sheetContext, true);
+                        }
+                      },
+                      icon: const Icon(Icons.save_outlined),
+                      label: const Text('Lưu điểm'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ) ??
+        false;
+    if (accepted) {
+      try {
+        await sl<ApiService>().saveExamResults(
+          '${task['examPeriodId']}',
+          scheduleId: '${task['scheduleId']}',
+          entries: [
+            for (var index = 0; index < candidates.length; index++)
+              {
+                'studentId': '${candidates[index]['studentId']}',
+                'score': double.parse(scoreControllers[index].text),
+                'note': noteControllers[index].text.trim(),
+                if (candidates[index]['resultId'] != null)
+                  'expectedVersion': candidates[index]['version'],
+              },
+          ],
+        );
+        await _refresh();
+      } catch (_) {
+        _showError(
+            'Không thể lưu điểm. Dữ liệu có thể đã thay đổi; hãy tải lại và kiểm tra.');
+      }
+    }
+    for (final controller in [...scoreControllers, ...noteControllers]) {
+      controller.dispose();
+    }
+  }
+
+  Future<void> _requestReview(Map<String, dynamic> result) async {
+    final reason = TextEditingController();
+    final accepted = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text('Phúc khảo · ${result['subjectName']}'),
+            content: TextField(
+              controller: reason,
+              minLines: 3,
+              maxLines: 6,
+              decoration: const InputDecoration(
+                labelText: 'Lý do phúc khảo',
+                hintText: 'Nhập ít nhất 10 ký tự',
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Hủy'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(
+                    dialogContext, reason.text.trim().length >= 10),
+                child: const Text('Gửi yêu cầu'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (accepted) {
+      try {
+        await sl<ApiService>().requestExamReview(
+          '${result['examPeriodId']}',
+          resultId: '${result['resultId']}',
+          reason: reason.text.trim(),
+        );
+        await _refresh();
+      } catch (_) {
+        _showError('Không thể gửi phúc khảo. Vui lòng kiểm tra trạng thái.');
+      }
+    }
+    reason.dispose();
+  }
+
+  Future<void> _resolveReview(Map<String, dynamic> review) async {
+    final resolution = TextEditingController();
+    final score =
+        TextEditingController(text: '${review['originalScore'] ?? ''}');
+    var approved = false;
+    final accepted = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => StatefulBuilder(
+            builder: (context, update) => AlertDialog(
+              title: Text('Phúc khảo · ${review['subjectName']}'),
+              content: SingleChildScrollView(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child:
+                        Text('${review['studentName']}\n${review['reason']}'),
+                  ),
+                  const SizedBox(height: 12),
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(value: false, label: Text('Giữ nguyên')),
+                      ButtonSegment(value: true, label: Text('Điều chỉnh')),
+                    ],
+                    selected: {approved},
+                    onSelectionChanged: (value) =>
+                        update(() => approved = value.first),
+                  ),
+                  if (approved) ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: score,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(labelText: 'Điểm mới'),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: resolution,
+                    minLines: 3,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      labelText: 'Kết luận',
+                      hintText: 'Nhập ít nhất 5 ký tự',
+                    ),
+                  ),
+                ]),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Hủy'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final parsed = double.tryParse(score.text);
+                    final validScore = !approved ||
+                        (parsed != null && parsed >= 0 && parsed <= 10);
+                    Navigator.pop(dialogContext,
+                        resolution.text.trim().length >= 5 && validScore);
+                  },
+                  child: const Text('Xác nhận'),
+                ),
+              ],
+            ),
+          ),
+        ) ??
+        false;
+    if (accepted) {
+      try {
+        await sl<ApiService>().resolveExamReview(
+          '${review['id']}',
+          status: approved ? 'APPROVED' : 'REJECTED',
+          resolution: resolution.text.trim(),
+          resolvedScore: approved ? double.parse(score.text) : null,
+        );
+        await _refresh();
+      } catch (_) {
+        _showError('Không thể xử lý phúc khảo. Vui lòng tải lại.');
+      }
+    }
+    resolution.dispose();
+    score.dispose();
   }
 
   void _showError(String message) {
@@ -237,10 +614,21 @@ class _MobileWorkspacePageState extends State<MobileWorkspacePage> {
 }
 
 class _WorkspaceData {
-  const _WorkspaceData(this.dashboard, this.leaves, this.exams, this.report);
+  const _WorkspaceData(
+    this.dashboard,
+    this.leaves,
+    this.exams,
+    this.gradingTasks,
+    this.results,
+    this.reviews,
+    this.report,
+  );
   final Map<String, dynamic> dashboard;
   final List<Map<String, dynamic>> leaves;
   final List<Map<String, dynamic>> exams;
+  final List<Map<String, dynamic>> gradingTasks;
+  final List<Map<String, dynamic>> results;
+  final List<Map<String, dynamic>> reviews;
   final Map<String, dynamic> report;
 }
 
@@ -440,6 +828,184 @@ class _DataCards extends StatelessWidget {
   }
 }
 
+class _TeacherExamTasks extends StatelessWidget {
+  const _TeacherExamTasks({
+    required this.items,
+    required this.accent,
+    required this.onOpen,
+  });
+  final List<Map<String, dynamic>> items;
+  final Color accent;
+  final void Function(Map<String, dynamic> item) onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return const _EmptyCard(text: 'Chưa có nhiệm vụ chấm thi');
+    }
+    return Column(
+      children: items.map((item) {
+        final candidates = item['candidates'] as List? ?? const [];
+        final entered = candidates
+            .where(
+                (candidate) => candidate is Map && candidate['score'] != null)
+            .length;
+        final available = item['scoreEntryAvailable'] == true;
+        final locked = item['scoreEntryLocked'] == true;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 9),
+          child: Card(
+            child: ListTile(
+              onTap: () => onOpen(item),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              leading: CircleAvatar(
+                backgroundColor: accent.withValues(alpha: .12),
+                child: Icon(Icons.edit_note_rounded, color: accent),
+              ),
+              title: Text('${item['subjectName']} · ${item['classCode']}',
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text(
+                '${item['examDate']} ${item['startTime']}\nĐã nhập $entered/${candidates.length}',
+              ),
+              isThreeLine: true,
+              trailing: Icon(
+                locked
+                    ? Icons.lock_outline_rounded
+                    : available
+                        ? Icons.chevron_right_rounded
+                        : Icons.schedule_rounded,
+                color: locked || !available
+                    ? Theme.of(context).colorScheme.onSurfaceVariant
+                    : accent,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _ExamResultCards extends StatelessWidget {
+  const _ExamResultCards({
+    required this.items,
+    required this.accent,
+    required this.canRequestReview,
+    required this.onReview,
+  });
+  final List<Map<String, dynamic>> items;
+  final Color accent;
+  final bool canRequestReview;
+  final void Function(Map<String, dynamic> item) onReview;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return const _EmptyCard(text: 'Chưa có kết quả thi được công bố');
+    }
+    return Column(
+      children: items.map((item) {
+        final reviewStatus = '${item['reviewStatus'] ?? ''}';
+        final canReview = canRequestReview && reviewStatus.isEmpty;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 9),
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Expanded(
+                      child: Text('${item['subjectName']}',
+                          style: const TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                    Text('${item['score'] ?? '—'}',
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(color: accent)),
+                  ]),
+                  Text('${item['examPeriodName']}'),
+                  if ('${item['note'] ?? ''}'.isNotEmpty)
+                    Text('Nhận xét: ${item['note']}'),
+                  if (reviewStatus.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    _StatusChip(reviewStatus, accent),
+                    if ('${item['reviewResolution'] ?? ''}'.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text('Kết luận: ${item['reviewResolution']}'),
+                      ),
+                  ],
+                  if (canReview) ...[
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: () => onReview(item),
+                        icon: const Icon(Icons.rate_review_outlined),
+                        label: const Text('Yêu cầu phúc khảo'),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _ExamReviewCards extends StatelessWidget {
+  const _ExamReviewCards({
+    required this.items,
+    required this.accent,
+    required this.onOpen,
+  });
+  final List<Map<String, dynamic>> items;
+  final Color accent;
+  final void Function(Map<String, dynamic> item) onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return const _EmptyCard(text: 'Không có phúc khảo chờ xử lý');
+    }
+    return Column(
+      children: items
+          .map((item) => Padding(
+                padding: const EdgeInsets.only(bottom: 9),
+                child: Card(
+                  child: ListTile(
+                    onTap: () => onOpen(item),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    leading: CircleAvatar(
+                      backgroundColor: accent.withValues(alpha: .12),
+                      child: Icon(Icons.fact_check_outlined, color: accent),
+                    ),
+                    title: Text(
+                        '${item['studentName']} · ${item['subjectName']}',
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                    subtitle: Text(
+                      'Điểm cũ: ${item['originalScore'] ?? '—'}\n${item['reason'] ?? ''}',
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    isThreeLine: true,
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                  ),
+                ),
+              ))
+          .toList(),
+    );
+  }
+}
+
 class _LeaveCards extends StatelessWidget {
   const _LeaveCards({
     required this.items,
@@ -470,8 +1036,7 @@ class _LeaveCards extends StatelessWidget {
                 child: const Text('Xác nhận')),
           ]);
         }
-        if (role == 'TEACHER' &&
-            (status == 'PARENT_CONFIRMED' || status == 'PENDING_TEACHER')) {
+        if (role == 'TEACHER' && status == 'PENDING_HOMEROOM') {
           actions.addAll([
             TextButton(
                 onPressed: () => onDecision(id, 'reject'),
@@ -481,8 +1046,7 @@ class _LeaveCards extends StatelessWidget {
                 child: const Text('Duyệt')),
           ]);
         }
-        if (role == 'STUDENT' &&
-            (status.startsWith('PENDING') || status == 'PARENT_CONFIRMED')) {
+        if (role == 'STUDENT' && status.startsWith('PENDING')) {
           actions.add(OutlinedButton(
               onPressed: () => onDecision(id, 'cancel'),
               child: const Text('Hủy đơn')));
@@ -630,8 +1194,7 @@ class _EmptyCard extends StatelessWidget {
 }
 
 class _ErrorView extends StatelessWidget {
-  const _ErrorView({required this.error, required this.onRetry});
-  final Object? error;
+  const _ErrorView({required this.onRetry});
   final Future<void> Function() onRetry;
 
   @override
@@ -643,10 +1206,6 @@ class _ErrorView extends StatelessWidget {
           Text('Không thể tải trung tâm công việc',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
-          Text('$error',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall),
           const SizedBox(height: 20),
           FilledButton.icon(
             onPressed: onRetry,
@@ -657,9 +1216,21 @@ class _ErrorView extends StatelessWidget {
       );
 }
 
-String _humanize(String value) => value
-    .replaceAll('_', ' ')
-    .split(' ')
-    .where((part) => part.isNotEmpty)
-    .map((part) => '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}')
-    .join(' ');
+String _humanize(String value) => switch (value.toUpperCase()) {
+      'PENDING' => 'Chờ xử lý',
+      'PENDING_PARENT' => 'Chờ phụ huynh xác nhận',
+      'PENDING_HOMEROOM' => 'Chờ giáo viên chủ nhiệm',
+      'APPROVED' => 'Đã duyệt',
+      'REJECTED' => 'Đã từ chối',
+      'CANCELLED' => 'Đã hủy',
+      'DRAFT' => 'Đang chuẩn bị',
+      'PUBLISHED' => 'Đã công bố',
+      'COMPLETED' => 'Đã hoàn tất',
+      'TOTAL' || 'TOTAL_COUNT' => 'Tổng số',
+      'AVERAGE' || 'AVERAGE_SCORE' => 'Điểm trung bình',
+      'ATTENDANCE_RATE' => 'Tỷ lệ chuyên cần',
+      'ABSENT_COUNT' => 'Số buổi vắng',
+      'LATE_COUNT' => 'Số lần đi muộn',
+      'ASSIGNMENT_COUNT' => 'Số bài tập',
+      _ => 'Thông tin',
+    };

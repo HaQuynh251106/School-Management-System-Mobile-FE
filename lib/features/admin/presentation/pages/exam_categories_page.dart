@@ -3,24 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../shared/widgets/section_header.dart';
-
-class _ExamCategory {
-  const _ExamCategory({
-    required this.code,
-    required this.name,
-    required this.weight,
-  });
-  final String code;
-  final String name;
-  final double weight;
-
-  factory _ExamCategory.fromJson(Map<String, dynamic> m) => _ExamCategory(
-        code: (m['code'] ?? '').toString(),
-        name: (m['name'] ?? '').toString(),
-        weight: (m['weight'] is num) ? (m['weight'] as num).toDouble() : 0,
-      );
-}
 
 class ExamCategoriesPage extends StatefulWidget {
   const ExamCategoriesPage({super.key});
@@ -30,218 +12,203 @@ class ExamCategoriesPage extends StatefulWidget {
 }
 
 class _ExamCategoriesPageState extends State<ExamCategoriesPage> {
-  late final Future<List<Map<String, dynamic>>> _future =
-      sl<ApiService>().examCategories();
+  late Future<List<Map<String, dynamic>>> future = _load();
 
-  static const _coefficients = [
-    ('Toán', 2.0),
-    ('Vật lý', 1.5),
-    ('Hóa học', 1.5),
-    ('Sinh học', 1.0),
-    ('Ngữ văn', 2.0),
-    ('Tiếng Anh', 1.5),
-    ('Lịch sử', 1.0),
-    ('Địa lý', 1.0),
-    ('GDCD', 1.0),
-    ('Thể dục', 1.0),
-  ];
+  Future<List<Map<String, dynamic>>> _load() =>
+      sl<ApiService>().examCategories();
+  void _reload() => setState(() => future = _load());
+
+  Future<void> _edit([Map<String, dynamic>? item]) async {
+    final code = TextEditingController(text: '${item?['code'] ?? ''}');
+    final name = TextEditingController(text: '${item?['name'] ?? ''}');
+    final weight = TextEditingController(text: '${item?['weight'] ?? 1}');
+    final count = TextEditingController(text: '${item?['requiredCount'] ?? 1}');
+    final key = GlobalKey<FormState>();
+    final accepted = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text(item == null ? 'Thêm loại điểm' : 'Sửa loại điểm'),
+            content: Form(
+              key: key,
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                TextFormField(
+                  controller: code,
+                  decoration: const InputDecoration(labelText: 'Mã loại điểm'),
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Không được để trống'
+                      : null,
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: name,
+                  decoration: const InputDecoration(labelText: 'Tên hiển thị'),
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Không được để trống'
+                      : null,
+                ),
+                const SizedBox(height: 10),
+                Row(children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: weight,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(labelText: 'Hệ số'),
+                      validator: (value) {
+                        final number = double.tryParse(value ?? '');
+                        return number == null || number <= 0 || number > 10
+                            ? '0–10'
+                            : null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextFormField(
+                      controller: count,
+                      keyboardType: TextInputType.number,
+                      decoration:
+                          const InputDecoration(labelText: 'Số đầu điểm'),
+                      validator: (value) {
+                        final number = int.tryParse(value ?? '');
+                        return number == null || number < 1 || number > 10
+                            ? '1–10'
+                            : null;
+                      },
+                    ),
+                  ),
+                ]),
+              ]),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Hủy')),
+              FilledButton(
+                  onPressed: () {
+                    if (key.currentState!.validate()) {
+                      Navigator.pop(dialogContext, true);
+                    }
+                  },
+                  child: const Text('Lưu')),
+            ],
+          ),
+        ) ??
+        false;
+    if (accepted) {
+      try {
+        final data = {
+          'code': code.text.trim(),
+          'name': name.text.trim(),
+          'weight': double.parse(weight.text),
+          'requiredCount': int.parse(count.text),
+        };
+        if (item == null) {
+          await sl<ApiService>().createExamCategory(data);
+        } else {
+          await sl<ApiService>().updateExamCategory('${item['id']}', data);
+        }
+        _reload();
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Không thể lưu loại điểm. Hãy kiểm tra mã bị trùng.'),
+            backgroundColor: AppColors.error,
+          ));
+        }
+      }
+    }
+    code.dispose();
+    name.dispose();
+    weight.dispose();
+    count.dispose();
+  }
+
+  Future<void> _delete(Map<String, dynamic> item) async {
+    final accepted = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Xóa loại điểm?'),
+            content: Text('${item['name']} sẽ bị xóa nếu chưa được sử dụng.'),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Hủy')),
+              FilledButton(
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  child: const Text('Xóa')),
+            ],
+          ),
+        ) ??
+        false;
+    if (!accepted) return;
+    try {
+      await sl<ApiService>().deleteExamCategory('${item['id']}');
+      _reload();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Không thể xóa loại điểm đang được sử dụng.'),
+          backgroundColor: AppColors.error,
+        ));
+      }
+    }
+  }
 
   @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
+  Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
-          title: const Text('Cấu hình Khảo thí'),
+          title: const Text('Cấu hình loại điểm'),
           backgroundColor: AppColors.adminAccent,
-          bottom: const TabBar(
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white60,
-            indicatorColor: Colors.white,
-            tabs: [
-              Tab(text: 'Loại điểm'),
-              Tab(text: 'Hệ số môn'),
-            ],
-          ),
-        ),
-        body: TabBarView(
-          children: [
-            _buildCategories(context),
-            _buildCoefficients(context),
+          actions: [
+            IconButton(
+                onPressed: () => _edit(), icon: const Icon(Icons.add_rounded)),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildCategories(BuildContext context) {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _future,
-      builder: (context, snap) {
-        if (snap.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snap.hasError) {
-          return Center(
-              child: Text('Lỗi: ${snap.error}',
-                  style: const TextStyle(color: AppColors.textSecondary)));
-        }
-        final categories =
-            (snap.data ?? []).map(_ExamCategory.fromJson).toList();
-        return ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.adminAccent.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.info_outline_rounded,
-                      color: AppColors.adminAccent, size: 18),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Trọng số nhân với điểm số khi tính TB môn.',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            const SectionHeader(
-              title: 'Năm học 2025-2026',
-              action: 'Thêm loại điểm',
-            ),
-            const SizedBox(height: 10),
-            if (categories.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(
-                  child: Text('Chưa có loại điểm',
-                      style: TextStyle(color: AppColors.textSecondary)),
+        body: FutureBuilder<List<Map<String, dynamic>>>(
+          future: future,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return Center(
+                child: FilledButton.icon(
+                  onPressed: _reload,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Tải lại'),
                 ),
-              )
-            else
-              Card(
-                child: Column(
-                  children: [
-                    for (var i = 0; i < categories.length; i++) ...[
-                      ListTile(
-                        leading: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color:
-                                AppColors.adminAccent.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Center(
-                            child: Text(categories[i].code,
-                                style: const TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.adminAccent)),
-                          ),
-                        ),
-                        title: Text(categories[i].name,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w500, fontSize: 14)),
-                        subtitle: Text(
-                            'Hệ số: ${categories[i].weight.toStringAsFixed(1)}',
-                            style: const TextStyle(
-                                fontSize: 11, color: AppColors.textSecondary)),
-                        trailing: const Icon(Icons.edit_outlined,
-                            size: 18, color: AppColors.textSecondary),
-                        onTap: () {},
-                      ),
-                      if (i < categories.length - 1) const Divider(height: 0),
-                    ],
-                  ],
-                ),
-              ),
-            const SizedBox(height: 16),
-            const SectionHeader(title: 'Công thức tính TB môn'),
-            const SizedBox(height: 8),
-            const Card(
-              child: Padding(
-                padding: EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'TB môn = (ΣM + Σ15p + 2×GK + 3×CK) / (số bài + 2 + 3)',
-                      style:
-                          TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                    ),
-                    SizedBox(height: 6),
-                    Text(
-                      'TB năm = (TB HK1 + 2 × TB HK2) / 3',
-                      style: TextStyle(fontSize: 13, height: 1.4),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildCoefficients(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        const SectionHeader(title: 'Hệ số môn — Năm 2025-2026'),
-        const SizedBox(height: 10),
-        Card(
-          child: Column(
-            children: [
-              for (var i = 0; i < _coefficients.length; i++) ...[
-                ListTile(
-                  leading: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: _coefficients[i].$2 >= 1.5
-                          ? AppColors.adminAccent.withValues(alpha: 0.12)
-                          : AppColors.textSecondary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Center(
-                      child: Text(
-                        _coefficients[i].$2.toStringAsFixed(1),
-                        style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: _coefficients[i].$2 >= 1.5
-                                ? AppColors.adminAccent
-                                : AppColors.textSecondary),
+              );
+            }
+            final items = snapshot.data ?? const [];
+            if (items.isEmpty) {
+              return const Center(child: Text('Chưa có loại điểm'));
+            }
+            return RefreshIndicator(
+              onRefresh: () async => _reload(),
+              child: ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: items.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final item = items[index];
+                  return Card(
+                    child: ListTile(
+                      onTap: () => _edit(item),
+                      leading: CircleAvatar(child: Text('${item['code']}')),
+                      title: Text('${item['name']}'),
+                      subtitle: Text(
+                          'Hệ số ${item['weight']} · ${item['requiredCount'] ?? 1} đầu điểm'),
+                      trailing: IconButton(
+                        onPressed: () => _delete(item),
+                        icon: const Icon(Icons.delete_outline_rounded),
                       ),
                     ),
-                  ),
-                  title: Text(_coefficients[i].$1,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w500, fontSize: 14)),
-                  subtitle: Text(
-                    _coefficients[i].$2 >= 1.5 ? 'Môn chính' : 'Môn phụ',
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.textSecondary),
-                  ),
-                  trailing: const Icon(Icons.edit_outlined,
-                      size: 18, color: AppColors.textSecondary),
-                  onTap: () {},
-                ),
-                if (i < _coefficients.length - 1) const Divider(height: 0),
-              ],
-            ],
-          ),
+                  );
+                },
+              ),
+            );
+          },
         ),
-      ],
-    );
-  }
+      );
 }

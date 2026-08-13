@@ -4,32 +4,18 @@ import '../../../../core/di/service_locator.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/section_header.dart';
+import '../../../grades/data/grade_record.dart';
 
 class _ExamScore {
-  const _ExamScore(
-      this.category, this.label, this.score, this.weight, this.date);
+  const _ExamScore(this.category, this.label, this.assessmentIndex, this.score,
+      this.weight, this.date);
   final String category;
   final String label;
+  final int assessmentIndex;
   final double score;
   final double weight;
   final String date;
 }
-
-// Hệ số chấm điểm theo loại điểm.
-const _categoryWeight = <String, double>{
-  'ORAL': 1.0,
-  '15M': 1.0,
-  'MID': 2.0,
-  'FINAL': 3.0,
-};
-
-// Nhãn mặc định khi API không trả categoryName.
-const _categoryLabel = <String, String>{
-  'ORAL': 'Điểm miệng',
-  '15M': 'Điểm 15 phút',
-  'MID': 'Giữa kỳ',
-  'FINAL': 'Cuối kỳ',
-};
 
 /// Định dạng recordedAt (ISO-8601) -> 'dd/MM/yyyy'. Trả chuỗi gốc nếu không
 /// parse được, '' nếu null/blank.
@@ -43,14 +29,19 @@ String _formatRecordedAt(Object? raw) {
   return '${two(local.day)}/${two(local.month)}/${local.year}';
 }
 
-_ExamScore _examScoreFromJson(Map<String, dynamic> m) {
+_ExamScore _examScoreFromJson(
+  Map<String, dynamic> m,
+  Map<String, GradeCategoryDefinition> definitions,
+) {
   final category = (m['category'] ?? '').toString();
   final rawScore = m['score'];
+  final definition = definitions[category];
   return _ExamScore(
     category,
-    (m['categoryName'] ?? _categoryLabel[category] ?? category).toString(),
+    (m['categoryName'] ?? definition?.name ?? category).toString(),
+    (m['assessmentIndex'] as num?)?.toInt() ?? 1,
     rawScore == null ? 0 : (rawScore as num).toDouble(),
-    _categoryWeight[category] ?? 1.0,
+    definition?.weight ?? 1.0,
     _formatRecordedAt(m['recordedAt']),
   );
 }
@@ -59,19 +50,30 @@ class SubjectGradeDetail extends StatefulWidget {
   const SubjectGradeDetail({
     super.key,
     required this.subject,
+    required this.subjectId,
+    required this.semesterId,
     required this.semester,
+    required this.average,
   });
 
   final String subject;
+  final String subjectId;
+  final String semesterId;
   final String semester;
+  final double? average;
 
   @override
   State<SubjectGradeDetail> createState() => _SubjectGradeDetailState();
 }
 
 class _SubjectGradeDetailState extends State<SubjectGradeDetail> {
-  late final Future<List<Map<String, dynamic>>> _future =
-      sl<ApiService>().grades();
+  late final Future<List<List<Map<String, dynamic>>>> _future = Future.wait([
+    sl<ApiService>().grades(
+      subjectId: widget.subjectId,
+      semesterId: widget.semesterId,
+    ),
+    sl<ApiService>().examCategories(),
+  ]);
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +82,7 @@ class _SubjectGradeDetailState extends State<SubjectGradeDetail> {
         title: Text('Điểm — ${widget.subject}'),
         backgroundColor: AppColors.studentAccent,
       ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
+      body: FutureBuilder<List<List<Map<String, dynamic>>>>(
         future: _future,
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
@@ -88,18 +90,30 @@ class _SubjectGradeDetailState extends State<SubjectGradeDetail> {
           }
           if (snap.hasError) {
             return Center(
-                child: Text('Lỗi: ${snap.error}',
-                    style: const TextStyle(color: AppColors.textSecondary)));
+                child: Text('Không thể tải chi tiết điểm.',
+                    style: TextStyle(
+                        color:
+                            Theme.of(context).colorScheme.onSurfaceVariant)));
           }
-          final scores = (snap.data ?? [])
-              .where(
-                  (g) => (g['subjectName'] ?? '').toString() == widget.subject)
-              .map(_examScoreFromJson)
-              .toList();
+          final data = snap.data ?? const [];
+          final definitions = {
+            for (final definition
+                in (data.length > 1 ? data[1] : const <Map<String, dynamic>>[])
+                    .map(GradeCategoryDefinition.fromJson))
+              definition.code: definition,
+          };
+          final scores =
+              (data.isNotEmpty ? data[0] : const <Map<String, dynamic>>[])
+                  .where((grade) =>
+                      '${grade['subjectId'] ?? ''}' == widget.subjectId &&
+                      '${grade['semesterId'] ?? ''}' == widget.semesterId)
+                  .map((grade) => _examScoreFromJson(grade, definitions))
+                  .toList();
           return _SubjectGradeView(
             subject: widget.subject,
             semester: widget.semester,
             scores: scores,
+            average: widget.average,
           );
         },
       ),
@@ -112,18 +126,13 @@ class _SubjectGradeView extends StatelessWidget {
     required this.subject,
     required this.semester,
     required this.scores,
+    required this.average,
   });
 
   final String subject;
   final String semester;
   final List<_ExamScore> scores;
-
-  double get _weightedAvg {
-    if (scores.isEmpty) return 0;
-    final totalWeight = scores.fold<double>(0, (s, e) => s + e.weight);
-    final weighted = scores.fold<double>(0, (s, e) => s + e.score * e.weight);
-    return totalWeight == 0 ? 0 : weighted / totalWeight;
-  }
+  final double? average;
 
   Color _scoreColor(double score) {
     if (score >= 8) return AppColors.success;
@@ -135,12 +144,13 @@ class _SubjectGradeView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (scores.isEmpty) {
-      return const Center(
+      return Center(
         child: Text('Chưa có điểm',
-            style: TextStyle(color: AppColors.textSecondary)),
+            style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant)),
       );
     }
-    final avg = _weightedAvg;
+    final avg = average;
     final byCategory = <String, List<_ExamScore>>{};
     for (final s in scores) {
       byCategory.putIfAbsent(s.category, () => []).add(s);
@@ -159,16 +169,21 @@ class _SubjectGradeView extends StatelessWidget {
             child: SizedBox(
               height: 160,
               child: CustomPaint(
-                painter: _LineChartPainter(scores),
+                painter: _LineChartPainter(
+                  scores,
+                  gridColor: Theme.of(context).colorScheme.outlineVariant,
+                  axisColor: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
                 child: Container(),
               ),
             ),
           ),
         ),
         const SizedBox(height: 20),
-        ...byCategory.entries.map((e) => _buildCategorySection(e.key, e.value)),
+        ...byCategory.entries
+            .map((e) => _buildCategorySection(context, e.key, e.value)),
         const SizedBox(height: 20),
-        const SectionHeader(title: 'Trung bình (có trọng số)'),
+        const SectionHeader(title: 'Kết quả môn học'),
         const SizedBox(height: 8),
         Card(
           child: Padding(
@@ -176,9 +191,11 @@ class _SubjectGradeView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _FormulaRow('Miệng & 15p', 'hệ số 1'),
-                const _FormulaRow('Giữa kỳ', 'hệ số 2'),
-                const _FormulaRow('Cuối kỳ', 'hệ số 3'),
+                for (final entry in byCategory.entries)
+                  _FormulaRow(
+                    entry.value.first.label,
+                    'hệ số ${entry.value.first.weight.toStringAsFixed(0)}',
+                  ),
                 const Divider(),
                 Row(
                   children: [
@@ -186,11 +203,13 @@ class _SubjectGradeView extends StatelessWidget {
                         style: TextStyle(fontWeight: FontWeight.w600)),
                     const Spacer(),
                     Text(
-                      avg.toStringAsFixed(2),
+                      avg?.toStringAsFixed(1) ?? 'Chưa đủ đầu điểm',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 18,
-                        color: _scoreColor(avg),
+                        color: avg == null
+                            ? Theme.of(context).colorScheme.onSurfaceVariant
+                            : _scoreColor(avg),
                       ),
                     ),
                   ],
@@ -203,7 +222,7 @@ class _SubjectGradeView extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(double avg) {
+  Widget _buildHeader(double? avg) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -228,7 +247,7 @@ class _SubjectGradeView extends StatelessWidget {
             ),
             child: Center(
               child: Text(
-                avg.toStringAsFixed(1),
+                avg?.toStringAsFixed(1) ?? '—',
                 style: const TextStyle(
                     color: Colors.white,
                     fontSize: 22,
@@ -262,13 +281,15 @@ class _SubjectGradeView extends StatelessWidget {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    avg >= 8
-                        ? 'Giỏi'
-                        : avg >= 6.5
-                            ? 'Khá'
-                            : avg >= 5
-                                ? 'Trung bình'
-                                : 'Yếu',
+                    avg == null
+                        ? 'Chưa đủ đầu điểm'
+                        : avg >= 8
+                            ? 'Giỏi'
+                            : avg >= 6.5
+                                ? 'Khá'
+                                : avg >= 5
+                                    ? 'Trung bình'
+                                    : 'Yếu',
                     style: const TextStyle(
                         color: Colors.white,
                         fontSize: 11,
@@ -283,7 +304,8 @@ class _SubjectGradeView extends StatelessWidget {
     );
   }
 
-  Widget _buildCategorySection(String category, List<_ExamScore> scores) {
+  Widget _buildCategorySection(
+      BuildContext context, String category, List<_ExamScore> scores) {
     final categoryName = const {
           'ORAL': 'Điểm miệng',
           '15M': 'Điểm 15 phút',
@@ -322,13 +344,16 @@ class _SubjectGradeView extends StatelessWidget {
                         ),
                       ),
                     ),
-                    title: Text(scores[i].label,
+                    title: Text(
+                        '${scores[i].label} ${scores[i].assessmentIndex}',
                         style: const TextStyle(
                             fontWeight: FontWeight.w500, fontSize: 14)),
                     subtitle: Text(
                       '${scores[i].date} • hệ số ${scores[i].weight.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.textSecondary),
+                      style: TextStyle(
+                          fontSize: 11,
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant),
                     ),
                   ),
                   if (i < scores.length - 1) const Divider(height: 0),
@@ -354,13 +379,14 @@ class _FormulaRow extends StatelessWidget {
       child: Row(
         children: [
           Text(label,
-              style: const TextStyle(
-                  fontSize: 12, color: AppColors.textSecondary)),
+              style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
           const Spacer(),
           Text(value,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12,
-                  color: AppColors.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic)),
         ],
       ),
@@ -369,8 +395,14 @@ class _FormulaRow extends StatelessWidget {
 }
 
 class _LineChartPainter extends CustomPainter {
-  _LineChartPainter(this.scores);
+  _LineChartPainter(
+    this.scores, {
+    required this.gridColor,
+    required this.axisColor,
+  });
   final List<_ExamScore> scores;
+  final Color gridColor;
+  final Color axisColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -378,11 +410,11 @@ class _LineChartPainter extends CustomPainter {
     final h = size.height;
 
     final gridPaint = Paint()
-      ..color = AppColors.divider
+      ..color = gridColor
       ..strokeWidth = 0.5;
 
-    const axisStyle = TextStyle(
-      color: AppColors.textSecondary,
+    final axisStyle = TextStyle(
+      color: axisColor,
       fontSize: 10,
     );
 

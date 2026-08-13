@@ -13,7 +13,7 @@ class AttendanceBadge extends StatelessWidget {
       'ABSENT_EXCUSED' => ('Vắng phép', AppColors.absentExcused),
       'ABSENT_UNEXCUSED' => ('Vắng không phép', AppColors.absentUnexcused),
       'LATE' => ('Muộn', AppColors.late),
-      _ => (status, AppColors.textSecondary),
+      _ => (status, Theme.of(context).colorScheme.onSurfaceVariant),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

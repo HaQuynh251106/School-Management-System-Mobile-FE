@@ -10,11 +10,13 @@ class QuickCreateButton extends StatelessWidget {
     required this.role,
     required this.accent,
     this.onCreated,
+    this.userOnly = false,
   });
 
   final String role;
   final Color accent;
   final VoidCallback? onCreated;
+  final bool userOnly;
 
   @override
   Widget build(BuildContext context) => FloatingActionButton.extended(
@@ -22,11 +24,26 @@ class QuickCreateButton extends StatelessWidget {
         backgroundColor: accent,
         foregroundColor: Colors.white,
         onPressed: () => _openMenu(context),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Thêm mới'),
+        icon:
+            Icon(userOnly ? Icons.person_add_alt_1_rounded : Icons.add_rounded),
+        label: Text(userOnly ? 'Thêm tài khoản' : 'Thêm mới'),
       );
 
   Future<void> _openMenu(BuildContext context) async {
+    if (userOnly) {
+      await _openCreateSheet(
+        context,
+        const _CreateOption(
+          'USER',
+          'Người dùng',
+          'Học sinh, giáo viên, phụ huynh',
+          Icons.person_add_alt_1_rounded,
+          'Con người',
+        ),
+      );
+      return;
+    }
+
     final options = role == 'ADMIN'
         ? const [
             _CreateOption(
@@ -123,6 +140,13 @@ class QuickCreateButton extends StatelessWidget {
       ),
     );
     if (selected == null || !context.mounted) return;
+    await _openCreateSheet(context, selected);
+  }
+
+  Future<void> _openCreateSheet(
+    BuildContext context,
+    _CreateOption selected,
+  ) async {
     final created = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -203,7 +227,7 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
             ? await api.teachingClasses()
             : await api.classes();
       }
-      if (widget.option.type == 'ASSIGNMENT') {
+      if (widget.option.type == 'USER' || widget.option.type == 'ASSIGNMENT') {
         _subjects = await api.subjects();
       }
       if (widget.option.type == 'CLASS' || widget.option.type == 'FEE') {
@@ -301,28 +325,48 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
           },
           onChanged: (value) => setState(() => _role = value),
         ),
+        _gap,
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(Icons.badge_outlined, color: widget.accent),
+          title: const Text('Mã người dùng được cấp tự động'),
+          subtitle: const Text(
+            'Hệ thống tạo mã duy nhất theo vai trò sau khi lưu tài khoản.',
+          ),
+        ),
         if (_role == 'STUDENT') ...[
-          _gap,
           _objectSelect(
               label: 'Lớp học',
               value: _classId,
               rows: _classes,
               onChanged: (value) => setState(() => _classId = value)),
-          _gap,
-          _input('studentCode', 'Mã học sinh', Icons.numbers_rounded),
         ],
         if (_role == 'TEACHER') ...[
-          _gap,
-          _input('teacherCode', 'Mã giáo viên', Icons.numbers_rounded),
-          _gap,
-          _input('mainSubject', 'Môn chuyên ngành', Icons.menu_book_rounded),
+          _objectSelect(
+            label: 'Môn chuyên ngành',
+            value: _subjectId,
+            rows: _subjects,
+            onChanged: (value) => setState(() => _subjectId = value),
+          ),
         ],
         _gap,
-        _input('email', 'Email (không bắt buộc)', Icons.email_outlined,
-            required: false),
+        _input(
+          'email',
+          'Email',
+          Icons.email_outlined,
+          keyboardType: TextInputType.emailAddress,
+          pattern: RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$'),
+          invalidMessage: 'Email không hợp lệ',
+        ),
         _gap,
-        _input('phone', 'Số điện thoại (không bắt buộc)', Icons.phone_outlined,
-            required: false),
+        _input(
+          'phone',
+          'Số điện thoại',
+          Icons.phone_outlined,
+          keyboardType: TextInputType.phone,
+          pattern: RegExp(r'^[0-9+ .()\-]{7,30}$'),
+          invalidMessage: 'Số điện thoại không hợp lệ',
+        ),
       ];
 
   List<Widget> _classFields() => [
@@ -514,6 +558,8 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
     int minLength = 0,
     int maxLines = 1,
     TextInputType? keyboardType,
+    RegExp? pattern,
+    String? invalidMessage,
   }) =>
       TextFormField(
         controller: field(key),
@@ -527,6 +573,12 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
           }
           if (minLength > 0 && (value?.length ?? 0) < minLength) {
             return 'Cần ít nhất $minLength ký tự';
+          }
+          if (value != null &&
+              value.trim().isNotEmpty &&
+              pattern != null &&
+              !pattern.hasMatch(value.trim())) {
+            return invalidMessage ?? '$label không hợp lệ';
           }
           return null;
         },
@@ -565,8 +617,7 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
                   child: Text(_labelOf(row), overflow: TextOverflow.ellipsis),
                 ))
             .toList(),
-        validator: (value) =>
-            rows.isNotEmpty && value == null ? 'Vui lòng chọn $label' : null,
+        validator: (value) => value == null ? 'Vui lòng chọn $label' : null,
         onChanged: onChanged,
       );
 
@@ -602,14 +653,12 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
             'password': text('password'),
             'fullName': text('name'),
             'role': _role,
-            'email': nullable('email'),
-            'phone': nullable('phone'),
+            'email': text('email'),
+            'phone': text('phone'),
             'classId': _role == 'STUDENT' ? _classId : null,
             'className':
                 _role == 'STUDENT' ? _labelForId(_classes, _classId) : null,
-            'studentCode': _role == 'STUDENT' ? nullable('studentCode') : null,
-            'teacherCode': _role == 'TEACHER' ? nullable('teacherCode') : null,
-            'mainSubject': _role == 'TEACHER' ? nullable('mainSubject') : null,
+            'mainSubjectId': _role == 'TEACHER' ? _subjectId : null,
           });
         case 'CLASS':
           await api.createClass({
@@ -672,7 +721,7 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không thể lưu: $error')),
+        const SnackBar(content: Text('Không thể lưu. Vui lòng thử lại.')),
       );
     } finally {
       if (mounted) setState(() => _saving = false);

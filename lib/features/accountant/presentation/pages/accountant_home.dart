@@ -11,27 +11,45 @@ import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_event.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 
-class AccountantHome extends StatefulWidget {
-  const AccountantHome({super.key});
+class AdminFinanceOperationsHome extends StatefulWidget {
+  const AdminFinanceOperationsHome({super.key});
 
   @override
-  State<AccountantHome> createState() => _AccountantHomeState();
+  State<AdminFinanceOperationsHome> createState() =>
+      _AdminFinanceOperationsHomeState();
 }
 
-class _AccountantHomeState extends State<AccountantHome> {
+class _AdminFinanceOperationsHomeState
+    extends State<AdminFinanceOperationsHome> {
   int _tab = 0;
+  String _debtStatus = 'ALL';
+  int _debtRevision = 0;
+
+  void _openDebt(String status) => setState(() {
+        _debtStatus = status;
+        _debtRevision++;
+        _tab = 2;
+      });
 
   @override
   Widget build(BuildContext context) => AdaptiveRoleScaffold(
         index: _tab,
         onSelected: (value) => setState(() => _tab = value),
         accent: AppColors.accountantAccent,
-        pages: const [
-          _FinanceOverviewPage(),
-          _FeePeriodsPage(),
-          _DebtPage(),
-          _ReconciliationPage(),
-          _AccountantProfilePage(),
+        pages: [
+          _FinanceOverviewPage(
+            onOpenAllDebt: () => _openDebt('ALL'),
+            onOpenPaid: () => _openDebt('PAID'),
+            onOpenOverdue: () => _openDebt('OVERDUE'),
+            onOpenReconciliation: () => setState(() => _tab = 3),
+          ),
+          const _FeePeriodsPage(),
+          _DebtPage(
+            key: ValueKey(_debtRevision),
+            initialStatus: _debtStatus,
+          ),
+          const _ReconciliationPage(),
+          const _AdminFinanceProfilePage(),
         ],
         destinations: const [
           RoleDestination(
@@ -78,8 +96,29 @@ String _money(num amount) =>
     NumberFormat.currency(locale: 'vi_VN', symbol: '₫', decimalDigits: 0)
         .format(amount);
 
+bool _isOverdueInvoice(Map<String, dynamic> invoice) {
+  if ('${invoice['status']}' == 'PAID') return false;
+  final dueDate = DateTime.tryParse('${invoice['dueDate'] ?? ''}');
+  if (dueDate == null) return '${invoice['status']}' == 'OVERDUE';
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  return dueDate.isBefore(today) || '${invoice['status']}' == 'OVERDUE';
+}
+
+String _effectiveInvoiceStatus(Map<String, dynamic> invoice) =>
+    _isOverdueInvoice(invoice) ? 'OVERDUE' : '${invoice['status'] ?? ''}';
+
 class _FinanceOverviewPage extends StatelessWidget {
-  const _FinanceOverviewPage();
+  const _FinanceOverviewPage({
+    required this.onOpenAllDebt,
+    required this.onOpenPaid,
+    required this.onOpenOverdue,
+    required this.onOpenReconciliation,
+  });
+  final VoidCallback onOpenAllDebt;
+  final VoidCallback onOpenPaid;
+  final VoidCallback onOpenOverdue;
+  final VoidCallback onOpenReconciliation;
 
   @override
   Widget build(BuildContext context) => _FinanceFuture<_FinanceData>(
@@ -90,18 +129,16 @@ class _FinanceOverviewPage extends StatelessWidget {
               .fold<num>(0, (sum, item) => sum + _number(item['totalAmount']));
           final paid = data.invoices
               .fold<num>(0, (sum, item) => sum + _number(item['paidAmount']));
-          final overdue =
-              data.invoices.where((item) => item['status'] == 'OVERDUE').length;
+          final overdue = data.invoices.where(_isOverdueInvoice).length;
           return RefreshIndicator(
             onRefresh: reload,
             child: ListView(padding: const EdgeInsets.all(16), children: [
               const RolePageIntro(
-                title: 'Trung tâm Kế toán',
+                title: 'Trung tâm tài chính',
                 subtitle:
-                    'Quản lý đợt thu, công nợ và đối soát VietQR theo dữ liệu thời gian thực.',
+                    'Theo dõi đợt thu, công nợ và các khoản chuyển khoản cần xác nhận.',
                 accent: AppColors.accountantAccent,
                 icon: Icons.account_balance_wallet_rounded,
-                badges: ['VietQR', 'Phân quyền độc lập'],
               ),
               GridView.count(
                 crossAxisCount: MediaQuery.sizeOf(context).width >= 620 ? 4 : 2,
@@ -112,14 +149,16 @@ class _FinanceOverviewPage extends StatelessWidget {
                 childAspectRatio: 1.3,
                 children: [
                   _FinanceMetric('Tổng phải thu', _money(total),
-                      Icons.request_quote_rounded),
-                  _FinanceMetric('Đã thu', _money(paid), Icons.savings_rounded),
+                      Icons.request_quote_rounded, onOpenAllDebt),
+                  _FinanceMetric('Đã thu', _money(paid), Icons.savings_rounded,
+                      onOpenPaid),
                   _FinanceMetric('Quá hạn', '$overdue hóa đơn',
-                      Icons.warning_amber_rounded),
+                      Icons.warning_amber_rounded, onOpenOverdue),
                   _FinanceMetric(
                       'Chờ đối soát',
                       '${data.pending.length} giao dịch',
-                      Icons.qr_code_2_rounded),
+                      Icons.qr_code_2_rounded,
+                      onOpenReconciliation),
                 ],
               ),
               const SizedBox(height: 20),
@@ -131,19 +170,23 @@ class _FinanceOverviewPage extends StatelessWidget {
               const SizedBox(height: 8),
               Card(
                   child: ListTile(
+                      onTap: onOpenReconciliation,
                       leading: const CircleAvatar(
                           child: Icon(Icons.pending_actions_rounded)),
                       title: Text(
                           '${data.pending.length} giao dịch VietQR đang chờ'),
                       subtitle: const Text(
-                          'Kiểm tra nội dung chuyển khoản trước khi xác nhận.'))),
+                          'Kiểm tra nội dung chuyển khoản trước khi xác nhận.'),
+                      trailing: const Icon(Icons.chevron_right_rounded))),
               Card(
                   child: ListTile(
+                      onTap: onOpenOverdue,
                       leading: const CircleAvatar(
                           child: Icon(Icons.notifications_active_outlined)),
                       title: Text('$overdue hóa đơn quá hạn'),
                       subtitle: const Text(
-                          'Lọc theo trạng thái trong mục Công nợ để xử lý.'))),
+                          'Lọc theo trạng thái trong mục Công nợ để xử lý.'),
+                      trailing: const Icon(Icons.chevron_right_rounded))),
             ]),
           );
         },
@@ -217,13 +260,14 @@ class _FeePeriodsPage extends StatelessWidget {
 }
 
 class _DebtPage extends StatefulWidget {
-  const _DebtPage();
+  const _DebtPage({super.key, this.initialStatus = 'ALL'});
+  final String initialStatus;
   @override
   State<_DebtPage> createState() => _DebtPageState();
 }
 
 class _DebtPageState extends State<_DebtPage> {
-  String _status = 'ALL';
+  late String _status = widget.initialStatus;
   String _query = '';
   late Future<List<Map<String, dynamic>>> _future = _load();
 
@@ -254,7 +298,7 @@ class _DebtPageState extends State<_DebtPage> {
                   DropdownMenuItem(
                       value: 'ALL', child: Text('Tất cả trạng thái')),
                   DropdownMenuItem(
-                      value: 'ISSUED', child: Text('Chưa thanh toán')),
+                      value: 'PENDING', child: Text('Chưa thanh toán')),
                   DropdownMenuItem(value: 'OVERDUE', child: Text('Quá hạn')),
                   DropdownMenuItem(value: 'PAID', child: Text('Đã thanh toán')),
                 ],
@@ -299,7 +343,7 @@ class _DebtPageState extends State<_DebtPage> {
                               subtitle: Text(
                                   '${invoice['code'] ?? ''} • Còn ${_money(total - paid)}'),
                               trailing: _FinanceStatus(
-                                  (invoice['status'] ?? '').toString()),
+                                  _effectiveInvoiceStatus(invoice)),
                             ));
                           },
                         ));
@@ -432,18 +476,18 @@ class _ReconciliationPageState extends State<_ReconciliationPage> {
       );
 }
 
-class _AccountantProfilePage extends StatelessWidget {
-  const _AccountantProfilePage();
+class _AdminFinanceProfilePage extends StatelessWidget {
+  const _AdminFinanceProfilePage();
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AuthBloc>().state;
     final user = state is AuthAuthenticated ? state.user : null;
     return Scaffold(
-        appBar: AppBar(title: const Text('Tài khoản Kế toán')),
+        appBar: AppBar(title: const Text('Tài khoản quản trị')),
         body: ListView(padding: const EdgeInsets.all(16), children: [
           const RolePageIntro(
               title: 'Hồ sơ công việc',
-              subtitle: 'Tài khoản chuyên trách tài chính và đối soát.',
+              subtitle: '',
               accent: AppColors.accountantAccent,
               icon: Icons.badge_rounded),
           Card(
@@ -494,7 +538,7 @@ class _FinanceFutureState<T> extends State<_FinanceFuture<T>> {
                   child: Padding(
                       padding: const EdgeInsets.all(24),
                       child: Column(mainAxisSize: MainAxisSize.min, children: [
-                        Text('Không thể tải dữ liệu: ${snapshot.error}',
+                        const Text('Không thể tải dữ liệu. Vui lòng thử lại.',
                             textAlign: TextAlign.center),
                         const SizedBox(height: 12),
                         FilledButton.tonal(
@@ -506,27 +550,37 @@ class _FinanceFutureState<T> extends State<_FinanceFuture<T>> {
 }
 
 class _FinanceMetric extends StatelessWidget {
-  const _FinanceMetric(this.label, this.value, this.icon);
+  const _FinanceMetric(this.label, this.value, this.icon, this.onTap);
   final String label;
   final String value;
   final IconData icon;
+  final VoidCallback onTap;
   @override
   Widget build(BuildContext context) => Card(
-      child: Padding(
-          padding: const EdgeInsets.all(14),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(icon, color: AppColors.accountantAccent),
-            const Spacer(),
-            Text(value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w800)),
-            Text(label, maxLines: 1)
-          ])));
+      child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      Icon(icon, color: AppColors.accountantAccent),
+                      const Spacer(),
+                      const Icon(Icons.arrow_forward_rounded,
+                          color: AppColors.accountantAccent, size: 18),
+                    ]),
+                    const Spacer(),
+                    Text(value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w800)),
+                    Text(label, maxLines: 1)
+                  ]))));
 }
 
 class _FinanceStatus extends StatelessWidget {
@@ -538,6 +592,7 @@ class _FinanceStatus extends StatelessWidget {
       'PAID' => 'Đã thu',
       'OVERDUE' => 'Quá hạn',
       'ISSUED' => 'Chưa thu',
+      'PENDING' => 'Chưa thu',
       'OPEN' => 'Đang mở',
       'DRAFT' => 'Bản nháp',
       'COMPLETED' => 'Hoàn tất',

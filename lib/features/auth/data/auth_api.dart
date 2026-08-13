@@ -24,8 +24,21 @@ class AuthApi {
     return resp.data as Map<String, dynamic>;
   }
 
-  Future<void> forgotPassword(String email) async {
-    await _dio.post('/auth/forgot-password', data: {'email': email});
+  Future<Map<String, dynamic>> forgotPassword(String email) async {
+    final response = await _dio.post('/auth/forgot-password', data: {
+      'email': email.trim(),
+    });
+    return (response.data as Map).cast<String, dynamic>();
+  }
+
+  Future<void> resetPassword({
+    required String token,
+    required String newPassword,
+  }) async {
+    await _dio.post('/auth/reset-password', data: {
+      'token': token,
+      'newPassword': newPassword,
+    });
   }
 
   Future<UserModel> getMe() async {

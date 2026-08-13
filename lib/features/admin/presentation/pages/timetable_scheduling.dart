@@ -22,20 +22,13 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
     ('FRI', 'T6'),
     ('SAT', 'T7'),
   ];
-  static const _periods = [1, 2, 3, 4, 5];
-  static const _times = {
-    1: ('07:00', '07:45'),
-    2: ('07:50', '08:35'),
-    3: ('08:50', '09:35'),
-    4: ('09:40', '10:25'),
-    5: ('10:30', '11:15'),
-  };
-
   final _api = sl<ApiService>();
   List<Map<String, dynamic>> _classes = [];
   List<Map<String, dynamic>> _semesters = [];
   List<Map<String, dynamic>> _rooms = [];
   List<Map<String, dynamic>> _slots = [];
+  List<int> _periods = [];
+  Map<int, (String, String)> _times = {};
   List<Map<String, dynamic>> _assignments = [];
   String? _classId;
   String? _semesterId;
@@ -66,7 +59,7 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
       }
       await _loadSlots(showLoader: false);
     } catch (error) {
-      _showError('Không thể tải dữ liệu thời khóa biểu: $error');
+      _showError('Không thể tải dữ liệu thời khóa biểu. Vui lòng thử lại.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -84,18 +77,35 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
           classId: _classId!,
           semesterId: _semesterId!,
         ),
+        _api.timetableSlots(semesterId: _semesterId!),
         _api.teachingAssignments(
           classId: _classId!,
           semesterId: _semesterId!,
         ),
       ]);
       _slots = values[0];
-      _assignments = values[1];
+      _derivePeriodConfiguration(values[1]);
+      _assignments = values[2];
     } catch (error) {
-      _showError('Không thể tải thời khóa biểu: $error');
+      _showError('Không thể tải thời khóa biểu. Vui lòng thử lại.');
     } finally {
       if (showLoader && mounted) setState(() => _loading = false);
     }
+  }
+
+  void _derivePeriodConfiguration(List<Map<String, dynamic>> semesterSlots) {
+    final times = <int, (String, String)>{};
+    for (final slot in semesterSlots) {
+      final period = (slot['periodNo'] as num?)?.toInt();
+      final start = '${slot['startTime'] ?? ''}'.trim();
+      final end = '${slot['endTime'] ?? ''}'.trim();
+      if (period == null || period < 1 || start.isEmpty || end.isEmpty) {
+        continue;
+      }
+      times.putIfAbsent(period, () => (start, end));
+    }
+    _times = times;
+    _periods = times.keys.toList()..sort();
   }
 
   Map<String, dynamic>? _slot(String day, int period) {
@@ -131,15 +141,16 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
       ),
       body: Column(
         children: [
-          _filters(),
+          _filters(context),
           Container(
             width: double.infinity,
             color: AppColors.adminAccent.withValues(alpha: 0.06),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Text(
               'Đã xếp ${_assignments.fold<int>(0, (sum, item) => sum + ((item['scheduledPeriods'] as num?)?.toInt() ?? 0))}/${_assignments.fold<int>(0, (sum, item) => sum + ((item['weeklyPeriods'] as num?)?.toInt() ?? 0))} tiết theo phân công · ${_assignments.where((item) => item['fullyScheduled'] == true).length}/${_assignments.length} môn đã đủ lịch',
-              style:
-                  const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           ),
           Expanded(
@@ -148,42 +159,57 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
                 : _classes.isEmpty || _semesters.isEmpty
                     ? const Center(
                         child: Text('Cần tạo lớp và học kỳ trước khi xếp lịch'))
-                    : SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            children: [
-                              Row(children: [
-                                const SizedBox(width: 42),
-                                ..._days
-                                    .map((day) => _HeaderCell(text: day.$2)),
-                              ]),
-                              for (final period in _periods)
-                                Row(children: [
-                                  _PeriodCell(period: period),
-                                  ..._days.map((day) {
-                                    final slot = _slot(day.$1, period);
-                                    return _GridCell(
-                                      slot: slot,
-                                      onTap: () =>
-                                          _editSlot(day.$1, period, slot),
-                                    );
-                                  }),
-                                ]),
-                            ],
+                    : _periods.isEmpty
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Text(
+                                'Học kỳ chưa có khung tiết học. Hãy dùng “Tự xếp TKB” để tạo bản nháp trước; màn này chỉ dùng để điều chỉnh các tiết đã có.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          )
+                        : SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                children: [
+                                  Row(children: [
+                                    const SizedBox(width: 42),
+                                    ..._days.map(
+                                        (day) => _HeaderCell(text: day.$2)),
+                                  ]),
+                                  for (final period in _periods)
+                                    Row(children: [
+                                      _PeriodCell(period: period),
+                                      ..._days.map((day) {
+                                        final slot = _slot(day.$1, period);
+                                        return _GridCell(
+                                          slot: slot,
+                                          onTap: () =>
+                                              _editSlot(day.$1, period, slot),
+                                        );
+                                      }),
+                                    ]),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
           ),
         ],
       ),
     );
   }
 
-  Widget _filters() {
+  Widget _filters(BuildContext context) {
     return Container(
-      color: AppColors.surface,
+      color: Theme.of(context).colorScheme.surface,
       padding: const EdgeInsets.all(12),
       child: Row(children: [
         Expanded(
@@ -234,7 +260,7 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
         periodNo: current == null ? period : null,
       );
     } catch (error) {
-      _showError('Không thể kiểm tra lịch giáo viên: $error');
+      _showError('Không thể kiểm tra lịch giáo viên. Vui lòng thử lại.');
       return;
     }
     if (!mounted) return;
@@ -270,11 +296,12 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
                     style: const TextStyle(
                         fontSize: 17, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 7),
-                const Text(
+                Text(
                   'Chỉ hiển thị giáo viên bộ môn đã được phân công cho lớp.',
                   textAlign: TextAlign.center,
-                  style:
-                      TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
@@ -378,7 +405,10 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
       } else if (action == 'save') {
         final selected = available
             .firstWhere((item) => item['id']?.toString() == assignmentId);
-        final time = _times[period]!;
+        final time = _times[period];
+        if (time == null) {
+          throw StateError('Học kỳ chưa cấu hình giờ cho tiết $period');
+        }
         final data = <String, dynamic>{
           'classId': _classId,
           'subjectId': selected['subjectId'],
@@ -399,7 +429,7 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
       await _loadSlots();
     } catch (error) {
       await _loadSlots();
-      _showError('Không thể lưu tiết học: $error');
+      _showError('Không thể lưu tiết học. Vui lòng thử lại.');
     }
   }
 
@@ -440,7 +470,8 @@ class _PeriodCell extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: AppColors.adminAccent.withValues(alpha: 0.06),
-          border: Border.all(color: AppColors.divider),
+          border:
+              Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         ),
         child: Text('T$period',
             style: const TextStyle(
@@ -462,13 +493,15 @@ class _GridCell extends StatelessWidget {
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
             color: slot == null
-                ? AppColors.background
+                ? Theme.of(context).colorScheme.surfaceContainerLowest
                 : AppColors.adminAccent.withValues(alpha: 0.08),
-            border: Border.all(color: AppColors.divider),
+            border:
+                Border.all(color: Theme.of(context).colorScheme.outlineVariant),
           ),
           child: slot == null
-              ? const Icon(Icons.add_rounded,
-                  color: AppColors.textSecondary, size: 20)
+              ? Icon(Icons.add_rounded,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  size: 20)
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -483,11 +516,17 @@ class _GridCell extends StatelessWidget {
                     Text(slot!['teacherName']?.toString() ?? '',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 9, color: AppColors.textSecondary)),
+                        style: TextStyle(
+                            fontSize: 9,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant)),
                     Text(slot!['roomCode']?.toString() ?? 'Không phòng',
-                        style: const TextStyle(
-                            fontSize: 9, color: AppColors.textSecondary)),
+                        style: TextStyle(
+                            fontSize: 9,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant)),
                   ],
                 ),
         ),

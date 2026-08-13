@@ -12,12 +12,14 @@ void main() {
         passwordChangeRequired: false,
       );
 
-  test('điều hướng đủ sáu vai trò về đúng không gian mobile', () {
+  test('điều hướng đúng bốn vai trò của ứng dụng mobile', () {
     expect(AppRouter.homeForRole(user('ADMIN')), '/admin');
-    expect(AppRouter.homeForRole(user('ACADEMIC_STAFF')), '/academic-staff');
-    expect(AppRouter.homeForRole(user('ACCOUNTANT')), '/accountant');
     expect(AppRouter.homeForRole(user('TEACHER')), '/teacher');
     expect(AppRouter.homeForRole(user('STUDENT')), '/student');
     expect(AppRouter.homeForRole(user('PARENT')), '/parent');
+    expect(
+      AppRouter.homeForRole(user('ACADEMIC_STAFF')),
+      '/unsupported-role',
+    );
   });
 }

@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 
 class _Template {
   const _Template({
+    required this.id,
     required this.code,
     required this.name,
     required this.channel,
@@ -13,6 +14,7 @@ class _Template {
     required this.body,
     this.active = true,
   });
+  final String? id;
   final String code;
   final String name;
   final String channel;
@@ -21,6 +23,7 @@ class _Template {
   final bool active;
 
   factory _Template.fromJson(Map<String, dynamic> m) => _Template(
+        id: m['id']?.toString(),
         code: (m['code'] ?? '').toString(),
         name: (m['name'] ?? '').toString(),
         channel: (m['channel'] ?? '').toString(),
@@ -39,10 +42,13 @@ class NotificationTemplatesPage extends StatefulWidget {
 }
 
 class _NotificationTemplatesPageState extends State<NotificationTemplatesPage> {
-  late final Future<List<Map<String, dynamic>>> _future =
+  late Future<List<Map<String, dynamic>>> _future =
       sl<ApiService>().notificationTemplates();
 
-  static (Color, IconData) _channelStyle(String channel) {
+  void _reload() =>
+      setState(() => _future = sl<ApiService>().notificationTemplates());
+
+  static (Color, IconData) _channelStyle(BuildContext context, String channel) {
     switch (channel) {
       case 'PUSH':
         return (AppColors.studentAccent, Icons.notifications_active_rounded);
@@ -51,7 +57,10 @@ class _NotificationTemplatesPageState extends State<NotificationTemplatesPage> {
       case 'IN_APP':
         return (AppColors.teacherAccent, Icons.app_settings_alt_outlined);
       default:
-        return (AppColors.textSecondary, Icons.message_outlined);
+        return (
+          Theme.of(context).colorScheme.onSurfaceVariant,
+          Icons.message_outlined
+        );
     }
   }
 
@@ -59,13 +68,23 @@ class _NotificationTemplatesPageState extends State<NotificationTemplatesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Template thông báo'),
+        title: const Text('Mẫu thông báo'),
         backgroundColor: AppColors.adminAccent,
         actions: [
           IconButton(
               icon: const Icon(Icons.add_rounded),
-              tooltip: 'Tạo template',
-              onPressed: () {}),
+              tooltip: 'Tạo mẫu thông báo',
+              onPressed: () => _showEdit(
+                    context,
+                    const _Template(
+                      id: null,
+                      code: '',
+                      name: '',
+                      channel: 'IN_APP',
+                      subject: '',
+                      body: '',
+                    ),
+                  )),
         ],
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
@@ -76,14 +95,18 @@ class _NotificationTemplatesPageState extends State<NotificationTemplatesPage> {
           }
           if (snap.hasError) {
             return Center(
-                child: Text('Lỗi: ${snap.error}',
-                    style: const TextStyle(color: AppColors.textSecondary)));
+                child: Text('Không thể tải mẫu thông báo.',
+                    style: TextStyle(
+                        color:
+                            Theme.of(context).colorScheme.onSurfaceVariant)));
           }
           final templates = (snap.data ?? []).map(_Template.fromJson).toList();
           if (templates.isEmpty) {
-            return const Center(
-                child: Text('Chưa có template',
-                    style: TextStyle(color: AppColors.textSecondary)));
+            return Center(
+                child: Text('Chưa có mẫu thông báo',
+                    style: TextStyle(
+                        color:
+                            Theme.of(context).colorScheme.onSurfaceVariant)));
           }
           return ListView.separated(
             padding: const EdgeInsets.all(16),
@@ -91,7 +114,7 @@ class _NotificationTemplatesPageState extends State<NotificationTemplatesPage> {
             separatorBuilder: (_, __) => const SizedBox(height: 8),
             itemBuilder: (_, i) {
               final t = templates[i];
-              final (color, icon) = _channelStyle(t.channel);
+              final (color, icon) = _channelStyle(context, t.channel);
               return Card(
                 margin: EdgeInsets.zero,
                 child: InkWell(
@@ -123,15 +146,17 @@ class _NotificationTemplatesPageState extends State<NotificationTemplatesPage> {
                                           fontWeight: FontWeight.w600,
                                           fontSize: 13)),
                                   Text(t.code,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                           fontSize: 11,
-                                          color: AppColors.textSecondary)),
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant)),
                                 ],
                               ),
                             ),
                             Switch(
                               value: t.active,
-                              onChanged: (_) {},
+                              onChanged: (active) => _save(t, active: active),
                             ),
                           ],
                         ),
@@ -139,7 +164,9 @@ class _NotificationTemplatesPageState extends State<NotificationTemplatesPage> {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: AppColors.background,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Column(
@@ -154,9 +181,11 @@ class _NotificationTemplatesPageState extends State<NotificationTemplatesPage> {
                                 const SizedBox(height: 4),
                               ],
                               Text(t.body,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontSize: 12,
-                                      color: AppColors.textSecondary,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
                                       height: 1.4)),
                             ],
                           ),
@@ -180,88 +209,150 @@ class _NotificationTemplatesPageState extends State<NotificationTemplatesPage> {
     );
   }
 
-  void _showEdit(BuildContext context, _Template t) {
-    showModalBottomSheet(
+  Future<void> _save(_Template template,
+      {String? code,
+      String? name,
+      String? channel,
+      String? subject,
+      String? body,
+      bool? active}) async {
+    try {
+      await sl<ApiService>().saveNotificationTemplate({
+        if (template.id != null) 'id': template.id,
+        'code': (code ?? template.code).trim(),
+        'name': (name ?? template.name).trim(),
+        'channel': channel ?? template.channel,
+        'titleTemplate': (subject ?? template.subject).trim(),
+        'bodyTemplate': (body ?? template.body).trim(),
+        'active': active ?? template.active,
+      });
+      _reload();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã lưu mẫu thông báo')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Không thể lưu mẫu thông báo. Vui lòng thử lại.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _showEdit(BuildContext context, _Template t) async {
+    final code = TextEditingController(text: t.code);
+    final name = TextEditingController(text: t.name);
+    final subject = TextEditingController(text: t.subject);
+    final body = TextEditingController(text: t.body);
+    var channel = t.channel;
+    final accepted = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(
-            20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(t.name,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 16)),
-              Text(t.code,
-                  style: const TextStyle(
-                      fontSize: 11, color: AppColors.textSecondary)),
-              const SizedBox(height: 16),
-              if (t.channel == 'EMAIL')
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, update) => Padding(
+          padding: EdgeInsets.fromLTRB(
+              20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(t.id == null ? 'Tạo mẫu thông báo' : 'Sửa mẫu thông báo',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 16),
                 TextField(
-                  controller: TextEditingController(text: t.subject),
-                  decoration: const InputDecoration(
-                      labelText: 'Subject (tiêu đề)', isDense: true),
+                  controller: code,
+                  enabled: t.id == null,
+                  decoration: const InputDecoration(labelText: 'Mã mẫu'),
                 ),
-              if (t.channel == 'EMAIL') const SizedBox(height: 12),
-              TextField(
-                controller: TextEditingController(text: t.body),
-                maxLines: 5,
-                decoration: const InputDecoration(
-                  labelText: 'Body (Handlebars syntax)',
-                  isDense: true,
+                const SizedBox(height: 12),
+                TextField(
+                  controller: name,
+                  decoration: const InputDecoration(labelText: 'Tên mẫu'),
                 ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Biến hỗ trợ: {{studentName}} {{parentName}} {{teacherName}} '
-                '{{period}} {{date}} {{score}} {{subject}} {{invoiceCode}} '
-                '{{totalAmount}} {{dueDate}}',
-                style: TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textSecondary,
-                    fontStyle: FontStyle.italic),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.play_arrow_rounded, size: 16),
-                      label: const Text('Test gửi'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Đã lưu template'),
-                            backgroundColor: AppColors.success,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
-                      style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.adminAccent),
-                      child: const Text('Lưu'),
-                    ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: channel,
+                  decoration: const InputDecoration(labelText: 'Kênh'),
+                  items: const ['IN_APP', 'EMAIL', 'PUSH']
+                      .map((value) =>
+                          DropdownMenuItem(value: value, child: Text(value)))
+                      .toList(),
+                  onChanged: (value) =>
+                      update(() => channel = value ?? 'IN_APP'),
+                ),
+                if (channel == 'EMAIL') ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: subject,
+                    decoration: const InputDecoration(
+                        labelText: 'Tiêu đề email', isDense: true),
                   ),
                 ],
-              ),
-            ],
+                const SizedBox(height: 12),
+                TextField(
+                  controller: body,
+                  maxLines: 5,
+                  decoration: const InputDecoration(
+                    labelText: 'Nội dung mẫu',
+                    isDense: true,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Biến hỗ trợ: {{studentName}} {{parentName}} {{teacherName}} '
+                  '{{period}} {{date}} {{score}} {{subject}} {{invoiceCode}} '
+                  '{{totalAmount}} {{dueDate}}',
+                  style: TextStyle(
+                      fontSize: 10,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontStyle: FontStyle.italic),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () {
+                          final valid = code.text.trim().isNotEmpty &&
+                              name.text.trim().isNotEmpty &&
+                              body.text.trim().isNotEmpty;
+                          if (valid) Navigator.pop(ctx, true);
+                        },
+                        style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.adminAccent),
+                        child: const Text('Lưu'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
+    if (accepted == true) {
+      await _save(t,
+          code: code.text,
+          name: name.text,
+          channel: channel,
+          subject: subject.text,
+          body: body.text);
+    }
+    code.dispose();
+    name.dispose();
+    subject.dispose();
+    body.dispose();
   }
 }
 

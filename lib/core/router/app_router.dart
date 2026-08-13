@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/data/models/user_model.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../features/auth/presentation/bloc/auth_event.dart';
 import '../../features/auth/presentation/bloc/auth_state.dart';
 import '../../features/auth/presentation/pages/forgot_password_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
+import '../../features/auth/presentation/pages/reset_password_page.dart';
 import '../../features/auth/presentation/pages/change_password_page.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/admin/presentation/pages/admin_home.dart';
-import '../../features/academic_staff/presentation/pages/academic_staff_home.dart';
-import '../../features/accountant/presentation/pages/accountant_home.dart';
 import '../../features/teacher/presentation/pages/teacher_home.dart';
 import '../../features/student/presentation/pages/student_home.dart';
 import '../../features/parent/presentation/pages/parent_home.dart';
@@ -27,13 +28,16 @@ class AppRouter {
       final authState = _authBloc.state;
       final atSplash = state.matchedLocation == '/splash';
       final atLogin = state.matchedLocation.startsWith('/login') ||
-          state.matchedLocation.startsWith('/forgot-password');
+          state.matchedLocation.startsWith('/forgot-password') ||
+          state.matchedLocation.startsWith('/reset-password');
       final atPasswordChange = state.matchedLocation == '/change-password';
 
       if (authState is AuthInitial || authState is AuthLoading) {
         return atSplash ? null : '/splash';
       }
-      if (authState is AuthUnauthenticated || authState is AuthLoginFailure) {
+      if (authState is AuthUnauthenticated ||
+          authState is AuthLoginFailure ||
+          authState is AuthForgotPasswordSent) {
         return atLogin ? null : '/login';
       }
       if (authState is AuthAuthenticated) {
@@ -57,14 +61,20 @@ class AppRouter {
         path: '/forgot-password',
         builder: (_, __) => const ForgotPasswordPage(),
       ),
-      GoRoute(path: '/admin', builder: (_, __) => const AdminHome()),
       GoRoute(
-          path: '/academic-staff',
-          builder: (_, __) => const AcademicStaffHome()),
-      GoRoute(path: '/accountant', builder: (_, __) => const AccountantHome()),
+        path: '/reset-password',
+        builder: (_, state) => ResetPasswordPage(
+          initialToken: state.uri.queryParameters['token'],
+        ),
+      ),
+      GoRoute(path: '/admin', builder: (_, __) => const AdminHome()),
       GoRoute(path: '/teacher', builder: (_, __) => const TeacherHome()),
       GoRoute(path: '/student', builder: (_, __) => const StudentHome()),
       GoRoute(path: '/parent', builder: (_, __) => const ParentHome()),
+      GoRoute(
+        path: '/unsupported-role',
+        builder: (_, __) => const _UnsupportedRolePage(),
+      ),
     ],
   );
 
@@ -72,20 +82,52 @@ class AppRouter {
     switch (user.role) {
       case 'ADMIN':
         return '/admin';
-      case 'ACADEMIC_STAFF':
-        return '/academic-staff';
-      case 'ACCOUNTANT':
-        return '/accountant';
       case 'TEACHER':
         return '/teacher';
       case 'PARENT':
         return '/parent';
-      default:
+      case 'STUDENT':
         return '/student';
+      default:
+        return '/unsupported-role';
     }
   }
 
   void dispose() => config.dispose();
+}
+
+class _UnsupportedRolePage extends StatelessWidget {
+  const _UnsupportedRolePage();
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('Không có quyền truy cập')),
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.lock_outline_rounded, size: 48),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Tài khoản này chưa được cấp một trong bốn vai trò sử dụng ứng dụng.',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  FilledButton(
+                    onPressed: () => context
+                        .read<AuthBloc>()
+                        .add(const AuthLogoutRequested()),
+                    child: const Text('Đăng xuất'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
 }
 
 class _GoRouterRefreshBloc extends ChangeNotifier {

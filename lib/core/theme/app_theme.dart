@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
@@ -32,6 +31,8 @@ class AppTheme {
     final dark = colors.brightness == Brightness.dark;
     final background = dark ? const Color(0xFF09111F) : const Color(0xFFF3F7FC);
     final outline = dark ? const Color(0xFF26354D) : const Color(0xFFDCE5F2);
+    final appBarBackground = dark ? const Color(0xFF121B2B) : colors.primary;
+    final appBarForeground = dark ? colors.onSurface : Colors.white;
     final textTheme = Typography.material2021(
       platform: TargetPlatform.android,
       colorScheme: colors,
@@ -82,14 +83,14 @@ class AppTheme {
         labelLarge: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: colors.surface,
-        foregroundColor: colors.onSurface,
+        backgroundColor: appBarBackground,
+        foregroundColor: appBarForeground,
         surfaceTintColor: Colors.transparent,
         scrolledUnderElevation: 1,
         elevation: 0,
         centerTitle: false,
         titleTextStyle: TextStyle(
-          color: colors.onSurface,
+          color: appBarForeground,
           fontSize: 20,
           fontWeight: FontWeight.w800,
           letterSpacing: -0.3,
@@ -106,6 +107,12 @@ class AppTheme {
         color: colors.surface,
         margin: EdgeInsets.zero,
       ),
+      listTileTheme: ListTileThemeData(
+        textColor: colors.onSurface,
+        iconColor: colors.onSurfaceVariant,
+        subtitleTextStyle: TextStyle(color: colors.onSurfaceVariant),
+      ),
+      iconTheme: IconThemeData(color: colors.onSurfaceVariant),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: dark ? const Color(0xFF172338) : Colors.white,
@@ -190,15 +197,15 @@ class AppTheme {
       chipTheme: ChipThemeData(
         side: BorderSide(color: outline),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        labelStyle: const TextStyle(fontWeight: FontWeight.w600),
+        backgroundColor: colors.surfaceContainerHigh,
+        selectedColor: colors.primaryContainer,
+        labelStyle: TextStyle(
+          color: colors.onSurface,
+          fontWeight: FontWeight.w600,
+        ),
       ),
       tabBarTheme: TabBarThemeData(
         dividerColor: Colors.transparent,
-        indicatorSize: TabBarIndicatorSize.tab,
-        indicator: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: colors.primaryContainer,
-        ),
         labelColor: colors.onPrimaryContainer,
         unselectedLabelColor: colors.onSurfaceVariant,
         labelStyle: const TextStyle(fontWeight: FontWeight.w700),

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -18,7 +17,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   static const _showDemoAccounts = bool.fromEnvironment(
     'SHOW_DEMO_ACCOUNTS',
-    defaultValue: !kReleaseMode,
+    defaultValue: false,
   );
   final _formKey = GlobalKey<FormState>();
   final _usernameCtrl = TextEditingController();
@@ -312,28 +311,31 @@ class _LoginPageState extends State<LoginPage> {
         'Quản trị',
         String.fromEnvironment('DEMO_ADMIN_USERNAME', defaultValue: 'admin'),
         String.fromEnvironment('DEMO_ADMIN_PASSWORD',
-            defaultValue: 'admin@123'),
+            defaultValue: 'Admin123@@'),
         AppColors.adminAccent
       ),
       (
         'Giáo viên',
-        String.fromEnvironment('DEMO_TEACHER_USERNAME', defaultValue: 'gv.hoa'),
+        String.fromEnvironment('DEMO_TEACHER_USERNAME',
+            defaultValue: 'gv.nguyenminh'),
         String.fromEnvironment('DEMO_TEACHER_PASSWORD',
-            defaultValue: 'teacher@123'),
+            defaultValue: 'nguyenminh123@'),
         AppColors.teacherAccent
       ),
       (
         'Học sinh',
-        String.fromEnvironment('DEMO_STUDENT_USERNAME', defaultValue: 'hs.an'),
+        String.fromEnvironment('DEMO_STUDENT_USERNAME',
+            defaultValue: 'hs.nguyenminhan'),
         String.fromEnvironment('DEMO_STUDENT_PASSWORD',
-            defaultValue: 'student@123'),
+            defaultValue: 'nguyenminhanh123@@'),
         AppColors.studentAccent
       ),
       (
         'Phụ huynh',
-        String.fromEnvironment('DEMO_PARENT_USERNAME', defaultValue: 'ph.pham'),
+        String.fromEnvironment('DEMO_PARENT_USERNAME',
+            defaultValue: 'ph.nguyenvanhung'),
         String.fromEnvironment('DEMO_PARENT_PASSWORD',
-            defaultValue: 'parent@123'),
+            defaultValue: 'nguyenvanhung123@'),
         AppColors.parentAccent
       ),
     ];
@@ -346,11 +348,11 @@ class _LoginPageState extends State<LoginPage> {
       children: [
         const Divider(),
         const SizedBox(height: 12),
-        const Text(
+        Text(
           'Đăng nhập nhanh',
           style: TextStyle(
             fontSize: 12,
-            color: AppColors.textSecondary,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.w600,
             letterSpacing: 0,
           ),

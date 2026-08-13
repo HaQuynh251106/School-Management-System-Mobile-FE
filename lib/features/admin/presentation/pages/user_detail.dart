@@ -91,13 +91,35 @@ class _AdminUserDetailState extends State<AdminUserDetail> {
     final messenger = ScaffoldMessenger.of(context);
     try {
       if (action == 'reset') {
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Đặt lại xác thực?'),
+            content: const Text(
+              'Tất cả phiên đăng nhập hiện tại của người dùng sẽ bị thu hồi. '
+              'Tài khoản LOCAL nhận link đặt lại; tài khoản SSO được hướng dẫn qua hệ thống chung.',
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Hủy')),
+              FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Xác nhận')),
+            ],
+          ),
+        );
+        if (confirmed != true || !mounted) return;
         final result = await _api.resetUserPassword(widget.id);
         if (!mounted) return;
         await showDialog<void>(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Mật khẩu tạm thời'),
-            content: SelectableText(result['password']?.toString() ?? ''),
+            title: Text(result['authType'] == 'SSO'
+                ? 'Tài khoản đăng nhập qua hệ thống chung'
+                : 'Đã gửi link đặt lại'),
+            content: Text(result['message']?.toString() ??
+                'Yêu cầu đặt lại xác thực đã được xử lý.'),
             actions: [
               TextButton(
                   onPressed: () => Navigator.pop(context),
@@ -120,8 +142,8 @@ class _AdminUserDetailState extends State<AdminUserDetail> {
       ));
     } catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(
-        content: Text('Không thể thực hiện: $e'),
+      messenger.showSnackBar(const SnackBar(
+        content: Text('Không thể thực hiện. Vui lòng thử lại.'),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
       ));
@@ -257,9 +279,9 @@ class _AdminUserDetailState extends State<AdminUserDetail> {
                 return const Center(child: CircularProgressIndicator());
               }
               if (snap.hasError) {
-                return Card(
+                return const Card(
                     child: ListTile(
-                        title: Text('Không tải được lịch sử: ${snap.error}')));
+                        title: Text('Không thể tải lịch sử đăng nhập.')));
               }
               final history = snap.data ?? const [];
               if (history.isEmpty) {
@@ -346,8 +368,9 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ListTile(
         title: Text(label,
-            style:
-                const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant)),
         subtitle: Text(value,
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
       );

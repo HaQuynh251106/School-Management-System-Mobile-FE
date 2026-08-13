@@ -92,7 +92,9 @@ server.get('/me/children', (req, res) => {
 
 server.use(router);
 
-const PORT = process.env.PORT || 4000;
+// Keep the local fixture server on a different port from the real backend.
+// It must never become the application's implicit API source.
+const PORT = process.env.PORT || 4400;
 server.listen(PORT, () => {
-  console.log(`SSE mock API running at http://localhost:${PORT}`);
+  console.log(`Development fixture API running at http://localhost:${PORT}`);
 });

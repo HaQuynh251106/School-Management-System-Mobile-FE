@@ -6,7 +6,7 @@ import '../../../../core/network/api_service.dart';
 import '../../../../shared/widgets/section_header.dart';
 
 class InvoiceLineItem {
-  const InvoiceLineItem(this.name, this.amount);
+  InvoiceLineItem(this.name, this.amount);
   final String name;
   final int amount;
 }
@@ -70,7 +70,7 @@ class InvoiceDetailPage extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                _buildHeader(),
+                _buildHeader(context),
                 const SizedBox(height: 16),
                 const SectionHeader(title: 'Các khoản'),
                 const SizedBox(height: 8),
@@ -152,10 +152,14 @@ class InvoiceDetailPage extends StatelessWidget {
               top: false,
               child: Container(
                 padding: const EdgeInsets.all(16),
-                decoration: const BoxDecoration(
-                  color: AppColors.surface,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
                   border: Border(
-                      top: BorderSide(color: AppColors.divider, width: 0.5)),
+                    top: BorderSide(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                      width: 0.5,
+                    ),
+                  ),
                 ),
                 child: SizedBox(
                   width: double.infinity,
@@ -176,7 +180,7 @@ class InvoiceDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -206,8 +210,9 @@ class InvoiceDetailPage extends StatelessWidget {
               ),
               const Spacer(),
               Text('Mã: $invoiceCode',
-                  style: const TextStyle(
-                      fontSize: 11, color: AppColors.textSecondary)),
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
             ],
           ),
           const SizedBox(height: 12),
@@ -216,20 +221,23 @@ class InvoiceDetailPage extends StatelessWidget {
                   const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 4),
           Text('Học sinh: $childName',
-              style: const TextStyle(
-                  fontSize: 13, color: AppColors.textSecondary)),
+              style: TextStyle(
+                  fontSize: 13,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
           const SizedBox(height: 4),
           Row(
             children: [
-              const Icon(Icons.event_rounded,
-                  size: 14, color: AppColors.textSecondary),
+              Icon(Icons.event_rounded,
+                  size: 14,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
               const SizedBox(width: 4),
               Text(
                 status == 'PAID'
                     ? 'Đã thanh toán ngày $paidAt'
                     : 'Hạn thanh toán: $dueDate',
-                style: const TextStyle(
-                    fontSize: 12, color: AppColors.textSecondary),
+                style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ],
           ),
@@ -257,7 +265,7 @@ class InvoiceDetailPage extends StatelessWidget {
               icon: Icons.qr_code_rounded,
               name: 'VietQR - Techcombank',
               subtitle:
-                  'Quét mã bằng ứng dụng ngân hàng và chờ Kế toán đối soát',
+                  'Quét mã bằng ứng dụng ngân hàng và chờ nhà trường xác nhận',
               color: AppColors.accountantAccent,
               onTap: () => _processPayment(context),
             ),
@@ -314,11 +322,12 @@ class InvoiceDetailPage extends StatelessWidget {
                   'Chủ tài khoản', (result['accountName'] ?? '').toString()),
               _QrLine('Nội dung', (result['transferContent'] ?? '').toString()),
               const SizedBox(height: 10),
-              const Text(
-                  'Hóa đơn chỉ được ghi nhận đã thanh toán sau khi Kế toán xác nhận tiền về.',
+              Text(
+                  'Hóa đơn được ghi nhận đã thanh toán sau khi nhà trường xác nhận tiền về.',
                   textAlign: TextAlign.center,
-                  style:
-                      TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
             ]),
           ),
           actions: [
@@ -335,7 +344,7 @@ class InvoiceDetailPage extends StatelessWidget {
                         ScaffoldMessenger.of(context)
                             .showSnackBar(const SnackBar(
                           content: Text(
-                              'Đã gửi thông tin chuyển khoản, vui lòng chờ Kế toán đối soát.'),
+                              'Đã gửi thông tin chuyển khoản, vui lòng chờ nhà trường xác nhận.'),
                           backgroundColor: AppColors.success,
                         ));
                         Navigator.pop(context);
@@ -350,8 +359,8 @@ class InvoiceDetailPage extends StatelessWidget {
     } catch (error) {
       if (!context.mounted) return;
       Navigator.pop(context); // close loader
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Không thể tạo VietQR: $error'),
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Không thể tạo mã thanh toán. Vui lòng thử lại.'),
         backgroundColor: AppColors.error,
       ));
     }
@@ -370,7 +379,8 @@ class _QrLine extends StatelessWidget {
           SizedBox(
               width: 92,
               child: Text(label,
-                  style: const TextStyle(color: AppColors.textSecondary))),
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant))),
           Expanded(
               child: SelectableText(value,
                   style: const TextStyle(fontWeight: FontWeight.w700))),
@@ -403,7 +413,8 @@ class _PaymentMethodTile extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.divider),
+            border:
+                Border.all(color: Theme.of(context).colorScheme.outlineVariant),
           ),
           child: Row(
             children: [
@@ -425,13 +436,16 @@ class _PaymentMethodTile extends StatelessWidget {
                         style: const TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 14)),
                     Text(subtitle,
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.textSecondary)),
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant)),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded,
-                  color: AppColors.textSecondary),
+              Icon(Icons.chevron_right_rounded,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
             ],
           ),
         ),
@@ -453,9 +467,12 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icon, color: AppColors.textSecondary, size: 20),
+      leading: Icon(icon,
+          color: Theme.of(context).colorScheme.onSurfaceVariant, size: 20),
       title: Text(label,
-          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          style: TextStyle(
+              fontSize: 12,
+              color: Theme.of(context).colorScheme.onSurfaceVariant)),
       subtitle: Text(value,
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
     );
