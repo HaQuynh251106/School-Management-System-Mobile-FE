@@ -2,12 +2,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dio/dio.dart';
 
 import '../../data/auth_repository.dart';
+import '../../../../core/network/realtime_service.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  AuthBloc({required AuthRepository repository})
-      : _repository = repository,
+  AuthBloc({
+    required AuthRepository repository,
+    RealtimeService? realtime,
+  })  : _repository = repository,
+        _realtime = realtime,
         super(const AuthInitial()) {
     on<AuthStarted>(_onStarted);
     on<AuthLoginRequested>(_onLoginRequested);
@@ -16,11 +20,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   final AuthRepository _repository;
+  final RealtimeService? _realtime;
 
   Future<void> _onStarted(AuthStarted event, Emitter<AuthState> emit) async {
     emit(const AuthLoading());
     final user = await _repository.tryRestoreSession();
     if (user != null) {
+      await _realtime?.restartForAuthenticatedSession();
       emit(AuthAuthenticated(user));
     } else {
       emit(const AuthUnauthenticated());
@@ -37,6 +43,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         username: event.username,
         password: event.password,
       );
+      await _realtime?.restartForAuthenticatedSession();
       emit(AuthAuthenticated(user));
     } on DioException catch (e) {
       final responseData = e.response?.data;
@@ -54,6 +61,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthLogoutRequested event,
     Emitter<AuthState> emit,
   ) async {
+    _realtime?.disconnect();
     await _repository.logout();
     emit(const AuthUnauthenticated());
   }
@@ -64,10 +72,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(const AuthLoading());
     try {
-      await _repository.forgotPassword(event.email);
-      emit(const AuthForgotPasswordSent());
+      final result = await _repository.forgotPassword(event.email);
+      emit(AuthForgotPasswordSent(
+        emailDeliveryAvailable: result['deliveryChannel'] == 'EMAIL',
+        devResetToken: result['devResetToken']?.toString(),
+      ));
     } catch (_) {
-      emit(const AuthForgotPasswordSent());
+      emit(const AuthForgotPasswordFailed(
+          'Không thể kết nối máy chủ. Vui lòng thử lại.'));
     }
   }
 }

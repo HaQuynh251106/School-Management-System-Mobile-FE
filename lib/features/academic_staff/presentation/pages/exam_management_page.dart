@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/network/api_service.dart';
+import 'exam_auto_plan_page.dart';
 
 class ExamManagementPage extends StatefulWidget {
   const ExamManagementPage({super.key});
@@ -35,6 +36,16 @@ class _ExamManagementPageState extends State<ExamManagementPage> {
     appBar: AppBar(
       title: const Text('Kỳ thi'),
       actions: [
+        IconButton(
+          tooltip: 'Tự xếp lịch thi',
+          onPressed: () async {
+            await Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const ExamAutoPlanPage()));
+            await _reload();
+          },
+          icon: const Icon(Icons.auto_awesome_rounded),
+        ),
         IconButton(
           tooltip: 'Tải lại',
           onPressed: _reload,

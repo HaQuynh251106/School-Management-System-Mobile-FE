@@ -2,6 +2,7 @@ class UserModel {
   const UserModel({
     required this.id,
     required this.username,
+    this.userCode,
     required this.fullName,
     required this.role,
     required this.status,
@@ -13,12 +14,14 @@ class UserModel {
     this.className,
     this.classId,
     this.teacherCode,
+    this.mainSubjectId,
     this.mainSubject,
     this.childrenIds,
   });
 
   final String id;
   final String username;
+  final String? userCode;
   final String fullName;
   final String role;
   final String status;
@@ -30,12 +33,14 @@ class UserModel {
   final String? className;
   final String? classId;
   final String? teacherCode;
+  final String? mainSubjectId;
   final String? mainSubject;
   final List<String>? childrenIds;
 
   factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
         id: json['id'] as String,
         username: json['username'] as String,
+        userCode: json['userCode'] as String?,
         fullName: json['fullName'] as String,
         role: json['role'] as String,
         status: json['status'] as String,
@@ -48,6 +53,7 @@ class UserModel {
         className: json['className'] as String?,
         classId: json['classId'] as String?,
         teacherCode: json['teacherCode'] as String?,
+        mainSubjectId: json['mainSubjectId'] as String?,
         mainSubject: json['mainSubject'] as String?,
         childrenIds: (json['childrenIds'] as List?)?.cast<String>(),
       );
@@ -55,6 +61,7 @@ class UserModel {
   Map<String, dynamic> toJson() => {
         'id': id,
         'username': username,
+        'userCode': userCode,
         'fullName': fullName,
         'role': role,
         'status': status,
@@ -66,6 +73,7 @@ class UserModel {
         'className': className,
         'classId': classId,
         'teacherCode': teacherCode,
+        'mainSubjectId': mainSubjectId,
         'mainSubject': mainSubject,
         'childrenIds': childrenIds,
       };

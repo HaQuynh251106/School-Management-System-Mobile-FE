@@ -45,23 +45,27 @@ class ChatThread {
   }
 
   factory ChatThread.fromContact(Map<String, dynamic> json) => ChatThread(
-        userId: json['id']?.toString(),
-        name: (json['fullName'] ?? '').toString(),
-        role: (json['role'] ?? '').toString(),
-        lastMessage: 'Bắt đầu hội thoại',
-        lastTime: '',
-      );
+    userId: json['id']?.toString(),
+    name: (json['fullName'] ?? '').toString(),
+    role: (json['role'] ?? '').toString(),
+    lastMessage: 'Bắt đầu hội thoại',
+    lastTime: '',
+  );
 
   factory ChatThread.fromAnnouncement(
-      Map<String, dynamic> json, List<Map<String, dynamic>> scopes) {
+    Map<String, dynamic> json,
+    List<Map<String, dynamic>> scopes,
+  ) {
     final audience = (json['audience'] ?? '').toString();
     final separator = audience.indexOf(':');
     final target = separator < 0 ? audience : audience.substring(0, separator);
     final classId = separator < 0 ? '' : audience.substring(separator + 1);
-    final matched =
-        scopes.where((item) => item['classId']?.toString() == classId);
-    final classCode =
-        matched.isEmpty ? classId : matched.first['classCode'].toString();
+    final matched = scopes.where(
+      (item) => item['classId']?.toString() == classId,
+    );
+    final classCode = matched.isEmpty
+        ? classId
+        : matched.first['classCode'].toString();
     final recipientLabel = switch (target) {
       'CLASS_STUDENTS' || 'CLASS' => 'Học sinh',
       'CLASS_PARENTS' => 'Phụ huynh',
@@ -88,36 +92,114 @@ class ChatListPage extends StatefulWidget {
   const ChatListPage({
     super.key,
     required this.accent,
-    this.threads,
     this.allowBroadcast = false,
   });
 
   final Color accent;
-
-  /// Giữ lại cho tương thích với caller cũ (vd: `threads: _parentThreads`).
-  /// Widget BỎ QUA giá trị này và luôn lấy dữ liệu LIVE từ API.
-  final List<ChatThread>? threads;
   final bool allowBroadcast;
 
   @override
   State<ChatListPage> createState() => _ChatListPageState();
 }
 
+class LiveChatAction extends StatefulWidget {
+  const LiveChatAction({
+    super.key,
+    required this.accent,
+    this.allowBroadcast = false,
+  });
+
+  final Color accent;
+  final bool allowBroadcast;
+
+  @override
+  State<LiveChatAction> createState() => _LiveChatActionState();
+}
+
+class _LiveChatActionState extends State<LiveChatAction> {
+  late Future<int> _future = _loadUnread();
+
+  Future<int> _loadUnread() async {
+    final rows = await sl<ApiService>().chatThreads();
+    return rows.fold<int>(
+      0,
+      (sum, row) => sum + ((row['unread'] as num?)?.toInt() ?? 0),
+    );
+  }
+
+  Future<void> _openChat() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ChatListPage(
+          accent: widget.accent,
+          allowBroadcast: widget.allowBroadcast,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _future = _loadUnread());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<int>(
+      future: _future,
+      builder: (context, snapshot) {
+        final unread = snapshot.data ?? 0;
+        return Stack(
+          children: [
+            IconButton(
+              tooltip: 'Tin nhắn',
+              icon: const Icon(Icons.chat_bubble_outline_rounded),
+              onPressed: _openChat,
+            ),
+            if (unread > 0)
+              Positioned(
+                right: 7,
+                top: 7,
+                child: Container(
+                  constraints: const BoxConstraints(minWidth: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.error,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    unread > 99 ? '99+' : '$unread',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 class _ChatListPageState extends State<ChatListPage> {
   late Future<List<List<Map<String, dynamic>>>> _future = _load();
 
   Future<List<List<Map<String, dynamic>>>> _load() => Future.wait([
-        sl<ApiService>().chatThreads(),
-        sl<ApiService>().chatContacts(),
-        if (widget.allowBroadcast)
-          sl<ApiService>().teacherAnnouncementScopes()
-        else
-          Future.value(<Map<String, dynamic>>[]),
-        if (widget.allowBroadcast)
-          sl<ApiService>().teacherAnnouncements()
-        else
-          Future.value(<Map<String, dynamic>>[]),
-      ]);
+    sl<ApiService>().chatThreads(),
+    sl<ApiService>().chatContacts(),
+    if (widget.allowBroadcast)
+      sl<ApiService>().teacherAnnouncementScopes()
+    else
+      Future.value(<Map<String, dynamic>>[]),
+    if (widget.allowBroadcast)
+      sl<ApiService>().teacherAnnouncements()
+    else
+      Future.value(<Map<String, dynamic>>[]),
+  ]);
 
   void _reload() {
     setState(() {
@@ -129,20 +211,25 @@ class _ChatListPageState extends State<ChatListPage> {
   Widget build(BuildContext context) {
     final accent = widget.accent;
     final authState = context.watch<AuthBloc>().state;
-    final viewerRole =
-        authState is AuthAuthenticated ? authState.user.role : '';
+    final viewerRole = authState is AuthAuthenticated
+        ? authState.user.role
+        : '';
     return FutureBuilder<List<List<Map<String, dynamic>>>>(
       future: _future,
       builder: (context, snap) {
         final loading = snap.connectionState != ConnectionState.done;
-        final threadRows =
-            snap.data == null ? const <Map<String, dynamic>>[] : snap.data![0];
-        final contactRows =
-            snap.data == null ? const <Map<String, dynamic>>[] : snap.data![1];
-        final announcementScopes =
-            snap.data == null ? const <Map<String, dynamic>>[] : snap.data![2];
-        final announcementRows =
-            snap.data == null ? const <Map<String, dynamic>>[] : snap.data![3];
+        final threadRows = snap.data == null
+            ? const <Map<String, dynamic>>[]
+            : snap.data![0];
+        final contactRows = snap.data == null
+            ? const <Map<String, dynamic>>[]
+            : snap.data![1];
+        final announcementScopes = snap.data == null
+            ? const <Map<String, dynamic>>[]
+            : snap.data![2];
+        final announcementRows = snap.data == null
+            ? const <Map<String, dynamic>>[]
+            : snap.data![3];
         final canBroadcast =
             widget.allowBroadcast && announcementScopes.isNotEmpty;
         final existing = threadRows.map(ChatThread.fromJson).toList();
@@ -163,7 +250,8 @@ class _ChatListPageState extends State<ChatListPage> {
         final dms = threads.where((t) => !t.isBroadcast).toList();
         final broadcasts = announcementRows
             .map(
-                (item) => ChatThread.fromAnnouncement(item, announcementScopes))
+              (item) => ChatThread.fromAnnouncement(item, announcementScopes),
+            )
             .toList();
         final threadList = RefreshIndicator(
           onRefresh: () async {
@@ -209,23 +297,25 @@ class _ChatListPageState extends State<ChatListPage> {
             body: loading
                 ? const Center(child: CircularProgressIndicator())
                 : snap.hasError
-                    ? Center(
-                        child: Text('Lỗi: ${snap.error}',
-                            style: const TextStyle(
-                                color: AppColors.textSecondary)))
-                    : canBroadcast
-                        ? TabBarView(
-                            children: [
-                              threadList,
-                              _ThreadList(
-                                threads: broadcasts,
-                                accent: accent,
-                                viewerRole: viewerRole,
-                                onConversationClosed: _reload,
-                              ),
-                            ],
-                          )
-                        : threadList,
+                ? Center(
+                    child: Text(
+                      'Lỗi: ${snap.error}',
+                      style: const TextStyle(color: AppColors.textSecondary),
+                    ),
+                  )
+                : canBroadcast
+                ? TabBarView(
+                    children: [
+                      threadList,
+                      _ThreadList(
+                        threads: broadcasts,
+                        accent: accent,
+                        viewerRole: viewerRole,
+                        onConversationClosed: _reload,
+                      ),
+                    ],
+                  )
+                : threadList,
           ),
         );
       },
@@ -236,9 +326,13 @@ class _ChatListPageState extends State<ChatListPage> {
     final messenger = ScaffoldMessenger.of(context);
     if (!mounted) return;
     if (classes.isEmpty) {
-      messenger.showSnackBar(const SnackBar(
+      messenger.showSnackBar(
+        const SnackBar(
           content: Text(
-              'Chỉ giáo viên chủ nhiệm mới có thể gửi thông báo tới học sinh và phụ huynh.')));
+            'Chỉ giáo viên chủ nhiệm mới có thể gửi thông báo tới học sinh và phụ huynh.',
+          ),
+        ),
+      );
       return;
     }
     final delivered = await showModalBottomSheet<int>(
@@ -251,11 +345,13 @@ class _ChatListPageState extends State<ChatListPage> {
     );
     if (delivered == null || !mounted) return;
     _reload();
-    messenger.showSnackBar(SnackBar(
-      content: Text('Đã gửi thông báo tới $delivered người nhận'),
-      backgroundColor: AppColors.success,
-      behavior: SnackBarBehavior.floating,
-    ));
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('Đã gửi thông báo tới $delivered người nhận'),
+        backgroundColor: AppColors.success,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 }
 
@@ -288,8 +384,9 @@ class _BroadcastSheetState extends State<_BroadcastSheet> {
   }
 
   int get _recipientCount {
-    final scope = widget.classes
-        .firstWhere((item) => item['classId'].toString() == _classId);
+    final scope = widget.classes.firstWhere(
+      (item) => item['classId'].toString() == _classId,
+    );
     final students = (scope['studentCount'] as num?)?.toInt() ?? 0;
     final parents = (scope['parentCount'] as num?)?.toInt() ?? 0;
     return switch (_recipientTarget) {
@@ -318,34 +415,43 @@ class _BroadcastSheetState extends State<_BroadcastSheet> {
         idempotencyKey: _idempotencyKey,
       );
       if (!mounted) return;
-      final delivered = (result['recipientCount'] as num?)?.toInt() ??
+      final delivered =
+          (result['recipientCount'] as num?)?.toInt() ??
           (preview['recipientCount'] as num?)?.toInt() ??
           _recipientCount;
       Navigator.pop(context, delivered);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Không thể gửi: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Không thể gửi: $e')));
       setState(() => _sending = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final scope = widget.classes
-        .firstWhere((item) => item['classId'].toString() == _classId);
+    final scope = widget.classes.firstWhere(
+      (item) => item['classId'].toString() == _classId,
+    );
     final studentCount = (scope['studentCount'] as num?)?.toInt() ?? 0;
     final parentCount = (scope['parentCount'] as num?)?.toInt() ?? 0;
     final recipientCount = _recipientCount;
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
-          20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+        20,
+        20,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Gửi thông báo lớp học',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          const Text(
+            'Gửi thông báo lớp học',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
           const SizedBox(height: 4),
           const Text(
             'Điểm số và điểm danh được thông báo tự động khi lưu. Biểu mẫu này chỉ dùng để trao đổi tình hình lớp học.',
@@ -355,12 +461,18 @@ class _BroadcastSheetState extends State<_BroadcastSheet> {
           DropdownButtonFormField<String>(
             initialValue: _classId,
             decoration: const InputDecoration(
-                labelText: 'Lớp phụ trách', isDense: true),
+              labelText: 'Lớp phụ trách',
+              isDense: true,
+            ),
             items: widget.classes
-                .map((item) => DropdownMenuItem(
+                .map(
+                  (item) => DropdownMenuItem(
                     value: item['classId'].toString(),
                     child: Text(
-                        '${item['classCode']} · ${item['homeroom'] == true ? 'Chủ nhiệm' : 'Giảng dạy'}')))
+                      '${item['classCode']} · ${item['homeroom'] == true ? 'Chủ nhiệm' : 'Giảng dạy'}',
+                    ),
+                  ),
+                )
                 .toList(),
             onChanged: (value) => setState(() => _classId = value!),
           ),
@@ -374,8 +486,10 @@ class _BroadcastSheetState extends State<_BroadcastSheet> {
             ),
             child: const Row(
               children: [
-                Icon(Icons.auto_awesome_rounded,
-                    color: AppColors.teacherAccent),
+                Icon(
+                  Icons.auto_awesome_rounded,
+                  color: AppColors.teacherAccent,
+                ),
                 SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -389,27 +503,35 @@ class _BroadcastSheetState extends State<_BroadcastSheet> {
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: _recipientTarget,
-            decoration:
-                const InputDecoration(labelText: 'Người nhận', isDense: true),
+            decoration: const InputDecoration(
+              labelText: 'Người nhận',
+              isDense: true,
+            ),
             items: [
               DropdownMenuItem(
-                  value: 'CLASS_ALL',
-                  child: Text(
-                      'Học sinh & phụ huynh (${studentCount + parentCount})')),
+                value: 'CLASS_ALL',
+                child: Text(
+                  'Học sinh & phụ huynh (${studentCount + parentCount})',
+                ),
+              ),
               DropdownMenuItem(
-                  value: 'CLASS_STUDENTS',
-                  child: Text('Học sinh ($studentCount)')),
+                value: 'CLASS_STUDENTS',
+                child: Text('Học sinh ($studentCount)'),
+              ),
               DropdownMenuItem(
-                  value: 'CLASS_PARENTS',
-                  child: Text('Phụ huynh ($parentCount)')),
+                value: 'CLASS_PARENTS',
+                child: Text('Phụ huynh ($parentCount)'),
+              ),
             ],
             onChanged: (value) => setState(() => _recipientTarget = value!),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: _priority,
-            decoration:
-                const InputDecoration(labelText: 'Mức độ', isDense: true),
+            decoration: const InputDecoration(
+              labelText: 'Mức độ',
+              isDense: true,
+            ),
             items: const [
               DropdownMenuItem(value: 'NORMAL', child: Text('Thông thường')),
               DropdownMenuItem(value: 'IMPORTANT', child: Text('Quan trọng')),
@@ -421,8 +543,10 @@ class _BroadcastSheetState extends State<_BroadcastSheet> {
           TextField(
             controller: _titleCtrl,
             maxLength: 255,
-            decoration:
-                const InputDecoration(labelText: 'Tiêu đề', isDense: true),
+            decoration: const InputDecoration(
+              labelText: 'Tiêu đề',
+              isDense: true,
+            ),
           ),
           const SizedBox(height: 8),
           TextField(
@@ -443,7 +567,8 @@ class _BroadcastSheetState extends State<_BroadcastSheet> {
               style: FilledButton.styleFrom(backgroundColor: widget.accent),
               icon: const Icon(Icons.send_rounded),
               label: Text(
-                  _sending ? 'Đang gửi...' : 'Gửi tới $recipientCount người'),
+                _sending ? 'Đang gửi...' : 'Gửi tới $recipientCount người',
+              ),
             ),
           ),
         ],
@@ -468,8 +593,11 @@ class _ThreadList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (threads.isEmpty) {
       return const Center(
-          child: Text('Không có cuộc trò chuyện',
-              style: TextStyle(color: AppColors.textSecondary)));
+        child: Text(
+          'Không có cuộc trò chuyện',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+      );
     }
     return ListView.separated(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -489,15 +617,23 @@ class _ThreadList extends StatelessWidget {
           title: Row(
             children: [
               Expanded(
-                child: Text(t.name,
-                    style: TextStyle(
-                        fontWeight:
-                            t.unread > 0 ? FontWeight.bold : FontWeight.w500,
-                        fontSize: 14)),
+                child: Text(
+                  t.name,
+                  style: TextStyle(
+                    fontWeight: t.unread > 0
+                        ? FontWeight.bold
+                        : FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                ),
               ),
-              Text(t.lastTime,
-                  style: const TextStyle(
-                      fontSize: 11, color: AppColors.textSecondary)),
+              Text(
+                t.lastTime,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                ),
+              ),
             ],
           ),
           subtitle: Row(
@@ -507,11 +643,14 @@ class _ThreadList extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (t.role.isNotEmpty)
-                      Text(_chatRoleLabel(t.role, viewerRole),
-                          style: TextStyle(
-                              fontSize: 10,
-                              color: accent,
-                              fontWeight: FontWeight.w600)),
+                      Text(
+                        _chatRoleLabel(t.role, viewerRole),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: accent,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     Text(
                       t.lastMessage,
                       maxLines: 1,
@@ -521,8 +660,9 @@ class _ThreadList extends StatelessWidget {
                         color: t.unread > 0
                             ? AppColors.textPrimary
                             : AppColors.textSecondary,
-                        fontWeight:
-                            t.unread > 0 ? FontWeight.w500 : FontWeight.normal,
+                        fontWeight: t.unread > 0
+                            ? FontWeight.w500
+                            : FontWeight.normal,
                       ),
                     ),
                   ],
@@ -531,8 +671,10 @@ class _ThreadList extends StatelessWidget {
               if (t.unread > 0)
                 Container(
                   margin: const EdgeInsets.only(left: 6),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: accent,
                     borderRadius: BorderRadius.circular(8),
@@ -540,9 +682,10 @@ class _ThreadList extends StatelessWidget {
                   child: Text(
                     '${t.unread}',
                     style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold),
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
             ],
@@ -558,21 +701,30 @@ class _ThreadList extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(t.role,
-                          style: TextStyle(
-                              color: accent, fontWeight: FontWeight.w600)),
+                      Text(
+                        t.role,
+                        style: TextStyle(
+                          color: accent,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                       const SizedBox(height: 12),
                       Text(t.lastMessage),
                       const SizedBox(height: 12),
-                      Text(t.lastTime,
-                          style: const TextStyle(
-                              color: AppColors.textSecondary, fontSize: 12)),
+                      Text(
+                        t.lastTime,
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
                     ],
                   ),
                   actions: [
                     TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text('Đóng')),
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Đóng'),
+                    ),
                   ],
                 ),
               );
@@ -608,13 +760,13 @@ class _ThreadList extends StatelessWidget {
 }
 
 String _chatRoleLabel(String role, String viewerRole) => switch (role) {
-      'TEACHER' => 'Giáo viên phụ trách',
-      'STUDENT' =>
-        viewerRole == 'STUDENT' ? 'Bạn cùng lớp' : 'Học sinh lớp chủ nhiệm',
-      'PARENT' => 'Phụ huynh lớp chủ nhiệm',
-      'ADMIN' => 'Quản trị viên',
-      _ => role,
-    };
+  'TEACHER' => 'Giáo viên phụ trách',
+  'STUDENT' =>
+    viewerRole == 'STUDENT' ? 'Bạn cùng lớp' : 'Học sinh lớp chủ nhiệm',
+  'PARENT' => 'Phụ huynh lớp chủ nhiệm',
+  'ADMIN' => 'Quản trị viên',
+  _ => role,
+};
 
 class ChatMessage {
   const ChatMessage({
@@ -658,7 +810,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       time: '08:30',
     ),
     const ChatMessage(
-      text: 'Vâng anh chị, em nắm rồi. Cô đã đánh dấu vắng có phép. '
+      text:
+          'Vâng anh chị, em nắm rồi. Cô đã đánh dấu vắng có phép. '
           'Bài tập về nhà cô sẽ gửi qua app.',
       fromMe: false,
       time: '08:32',
@@ -670,7 +823,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       time: '08:33',
     ),
     const ChatMessage(
-      text: 'Tối nay cô có gửi bài về nhà chương 3 cho con, '
+      text:
+          'Tối nay cô có gửi bài về nhà chương 3 cho con, '
           'phụ huynh nhắc cháu làm trước khi đi học buổi sau nhé.',
       fromMe: false,
       time: '15:42',
@@ -688,11 +842,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     final text = _ctrl.text.trim();
     if (text.isEmpty) return;
     setState(() {
-      _messages.add(ChatMessage(
-        text: text,
-        fromMe: true,
-        time: 'Vừa xong',
-      ));
+      _messages.add(ChatMessage(text: text, fromMe: true, time: 'Vừa xong'));
       _ctrl.clear();
     });
   }
@@ -705,8 +855,10 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(widget.title, style: const TextStyle(fontSize: 15)),
-            Text(widget.subtitle,
-                style: const TextStyle(fontSize: 11, color: Colors.white70)),
+            Text(
+              widget.subtitle,
+              style: const TextStyle(fontSize: 11, color: Colors.white70),
+            ),
           ],
         ),
         backgroundColor: widget.accent,
@@ -724,9 +876,10 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               itemBuilder: (_, i) {
                 final m = _messages[i];
                 return _Bubble(
-                    message: m,
-                    accent: widget.accent,
-                    showSender: widget.isBroadcast);
+                  message: m,
+                  accent: widget.accent,
+                  showSender: widget.isBroadcast,
+                );
               },
             ),
           ),
@@ -737,13 +890,16 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               decoration: const BoxDecoration(
                 color: AppColors.surface,
                 border: Border(
-                    top: BorderSide(color: AppColors.divider, width: 0.5)),
+                  top: BorderSide(color: AppColors.divider, width: 0.5),
+                ),
               ),
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.attach_file_rounded,
-                        color: AppColors.textSecondary),
+                    icon: const Icon(
+                      Icons.attach_file_rounded,
+                      color: AppColors.textSecondary,
+                    ),
                     onPressed: () {},
                   ),
                   Expanded(
@@ -787,12 +943,14 @@ class _Bubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        mainAxisAlignment:
-            message.fromMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: message.fromMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         children: [
           Container(
             constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.72),
+              maxWidth: MediaQuery.of(context).size.width * 0.72,
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: message.fromMe ? accent : AppColors.surface,
@@ -802,8 +960,9 @@ class _Bubble extends StatelessWidget {
                 bottomLeft: Radius.circular(message.fromMe ? 14 : 4),
                 bottomRight: Radius.circular(message.fromMe ? 4 : 14),
               ),
-              border:
-                  message.fromMe ? null : Border.all(color: AppColors.divider),
+              border: message.fromMe
+                  ? null
+                  : Border.all(color: AppColors.divider),
             ),
             child: Column(
               crossAxisAlignment: message.fromMe
@@ -816,17 +975,19 @@ class _Bubble extends StatelessWidget {
                     child: Text(
                       message.senderName!,
                       style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: accent),
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: accent,
+                      ),
                     ),
                   ),
                 Text(
                   message.text,
                   style: TextStyle(
                     fontSize: 14,
-                    color:
-                        message.fromMe ? Colors.white : AppColors.textPrimary,
+                    color: message.fromMe
+                        ? Colors.white
+                        : AppColors.textPrimary,
                     height: 1.35,
                   ),
                 ),
@@ -873,8 +1034,8 @@ class _ChatThreadPage extends StatefulWidget {
 class _ChatThreadPageState extends State<_ChatThreadPage> {
   final _ctrl = TextEditingController();
   final _scrollCtrl = ScrollController();
-  late Future<List<Map<String, dynamic>>> _future =
-      sl<ApiService>().chatMessages(widget.withUserId);
+  late Future<List<Map<String, dynamic>>> _future = sl<ApiService>()
+      .chatMessages(widget.withUserId);
   bool _sending = false;
   StreamSubscription<RealtimeEvent>? _subscription;
 
@@ -882,16 +1043,18 @@ class _ChatThreadPageState extends State<_ChatThreadPage> {
   void initState() {
     super.initState();
     final realtime = sl<RealtimeService>()..connect();
-    _subscription = realtime.events.where((event) {
-      if (event.type != 'CHAT' && event.type != 'CHAT_READ') return false;
-      if (event.type == 'CHAT_READ') {
-        return (event.data['readByUserId'] ?? '').toString() ==
-            widget.withUserId;
-      }
-      final sender = (event.data['fromUserId'] ?? '').toString();
-      final receiver = (event.data['toUserId'] ?? '').toString();
-      return sender == widget.withUserId || receiver == widget.withUserId;
-    }).listen((_) => _reload());
+    _subscription = realtime.events
+        .where((event) {
+          if (event.type != 'CHAT' && event.type != 'CHAT_READ') return false;
+          if (event.type == 'CHAT_READ') {
+            return (event.data['readByUserId'] ?? '').toString() ==
+                widget.withUserId;
+          }
+          final sender = (event.data['fromUserId'] ?? '').toString();
+          final receiver = (event.data['toUserId'] ?? '').toString();
+          return sender == widget.withUserId || receiver == widget.withUserId;
+        })
+        .listen((_) => _reload());
   }
 
   String get _myId {
@@ -972,8 +1135,10 @@ class _ChatThreadPageState extends State<_ChatThreadPage> {
           children: [
             Text(widget.title, style: const TextStyle(fontSize: 15)),
             if (widget.subtitle.isNotEmpty)
-              Text(widget.subtitle,
-                  style: const TextStyle(fontSize: 11, color: Colors.white70)),
+              Text(
+                widget.subtitle,
+                style: const TextStyle(fontSize: 11, color: Colors.white70),
+              ),
           ],
         ),
         backgroundColor: widget.accent,
@@ -989,8 +1154,10 @@ class _ChatThreadPageState extends State<_ChatThreadPage> {
                 }
                 if (snap.hasError) {
                   return Center(
-                    child: Text('Lỗi: ${snap.error}',
-                        style: const TextStyle(color: AppColors.textSecondary)),
+                    child: Text(
+                      'Lỗi: ${snap.error}',
+                      style: const TextStyle(color: AppColors.textSecondary),
+                    ),
                   );
                 }
                 final messages = (snap.data ?? [])
@@ -998,15 +1165,19 @@ class _ChatThreadPageState extends State<_ChatThreadPage> {
                     .toList();
                 if (messages.isEmpty) {
                   return const Center(
-                    child: Text('Chưa có tin nhắn',
-                        style: TextStyle(color: AppColors.textSecondary)),
+                    child: Text(
+                      'Chưa có tin nhắn',
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
                   );
                 }
                 _scrollToBottom();
                 return ListView.builder(
                   controller: _scrollCtrl,
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 16,
+                    horizontal: 12,
+                  ),
                   itemCount: messages.length,
                   itemBuilder: (_, i) => _Bubble(
                     message: messages[i],
@@ -1024,7 +1195,8 @@ class _ChatThreadPageState extends State<_ChatThreadPage> {
               decoration: const BoxDecoration(
                 color: AppColors.surface,
                 border: Border(
-                    top: BorderSide(color: AppColors.divider, width: 0.5)),
+                  top: BorderSide(color: AppColors.divider, width: 0.5),
+                ),
               ),
               child: Row(
                 children: [
@@ -1035,11 +1207,13 @@ class _ChatThreadPageState extends State<_ChatThreadPage> {
                       minLines: 1,
                       maxLines: 4,
                       maxLength: 2000,
-                      buildCounter: (_,
-                              {required currentLength,
-                              required isFocused,
-                              maxLength}) =>
-                          null,
+                      buildCounter:
+                          (
+                            _, {
+                            required currentLength,
+                            required isFocused,
+                            maxLength,
+                          }) => null,
                       decoration: const InputDecoration(
                         hintText: 'Nhập tin nhắn...',
                         border: InputBorder.none,

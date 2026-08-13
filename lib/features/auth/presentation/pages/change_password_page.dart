@@ -39,8 +39,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       context.read<AuthBloc>().add(const AuthLogoutRequested());
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Không thể đổi mật khẩu: $error'),
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content:
+            Text('Không thể đổi mật khẩu. Vui lòng kiểm tra lại và thử lại.'),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
       ));
@@ -73,15 +74,18 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                               color: Colors.white, size: 32),
                         ),
                         const SizedBox(height: 18),
-                        const Text('Đổi mật khẩu lần đầu',
+                        const Text('Đổi mật khẩu',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                                 fontSize: 22, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 8),
-                        const Text(
-                          'Tài khoản đang dùng mật khẩu tạm. Hãy tạo mật khẩu riêng trước khi tiếp tục.',
+                        Text(
+                          'Nhập mật khẩu hiện tại và đặt mật khẩu mới cho tài khoản.',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: AppColors.textSecondary),
+                          style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant),
                         ),
                         const SizedBox(height: 24),
                         _passwordField(_current, 'Mật khẩu hiện tại'),

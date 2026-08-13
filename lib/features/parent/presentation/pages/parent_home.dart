@@ -21,6 +21,7 @@ import '../../../auth/presentation/bloc/auth_state.dart';
 import 'invoice_detail.dart';
 import 'parent_attendance_detail.dart';
 import 'parent_subject_detail.dart';
+import 'parent_timetable_page.dart';
 
 // =================== MOCK DATA ===================
 
@@ -416,6 +417,26 @@ class _MonitorTabState extends State<_MonitorTab> {
         padding: const EdgeInsets.all(16),
         children: [
           _ChildCard(child: child, onSwitch: widget.onSwitchChild),
+          const SizedBox(height: 12),
+          Card(
+            child: ListTile(
+              leading: const CircleAvatar(
+                child: Icon(Icons.calendar_month_rounded),
+              ),
+              title: const Text('Thời khóa biểu'),
+              subtitle: Text('Lịch học chính thức của ${child.name}'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ParentTimetablePage(
+                    studentId: child.id,
+                    studentName: child.name,
+                    className: child.className,
+                  ),
+                ),
+              ),
+            ),
+          ),
           FutureBuilder<SchoolDayStatus>(
             future: _todayStatus,
             builder: (context, snapshot) {
@@ -2102,10 +2123,8 @@ class _ProfileTab extends StatelessWidget {
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => const ChatListPage(
-                        accent: AppColors.parentAccent,
-                        threads: _parentThreads,
-                      ),
+                      builder: (_) =>
+                          const ChatListPage(accent: AppColors.parentAccent),
                     ),
                   ),
                 ),
@@ -2169,38 +2188,6 @@ class _ProfileTab extends StatelessWidget {
 
 // =================== SHARED ACTIONS ===================
 
-const _parentThreads = <ChatThread>[
-  ChatThread(
-    name: 'Trần Thị Hoa',
-    role: 'GVCN lớp 10A1',
-    lastMessage: 'Vâng anh chị, em nắm rồi. Bài tập về nhà cô sẽ gửi qua app.',
-    lastTime: '08:32',
-    unread: 0,
-  ),
-  ChatThread(
-    name: 'Lê Văn Minh',
-    role: 'GV Vật lý 10A1',
-    lastMessage: 'Em An làm bài kiểm tra rất tốt, anh chị động viên cháu nhé.',
-    lastTime: 'Hôm qua',
-    unread: 1,
-  ),
-  ChatThread(
-    name: 'Phạm Quốc Bảo',
-    role: 'GV Tiếng Anh 10A1',
-    lastMessage: 'Lịch thi GK sẽ được dời sang tuần sau.',
-    lastTime: '3 ngày trước',
-    unread: 0,
-  ),
-  ChatThread(
-    name: 'Lớp 10A1',
-    role: 'Thông báo từ GVCN',
-    lastMessage: 'Cô gửi bài tập về nhà chương 3 nhé!',
-    lastTime: 'Hôm qua',
-    unread: 0,
-    isBroadcast: true,
-  ),
-];
-
 class _PNotiAction extends StatelessWidget {
   const _PNotiAction();
 
@@ -2215,46 +2202,6 @@ class _PChatAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final unread = _parentThreads.fold<int>(0, (s, t) => s + t.unread);
-    return Padding(
-      padding: const EdgeInsets.only(right: 0),
-      child: Stack(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.chat_bubble_outline_rounded),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const ChatListPage(
-                  accent: AppColors.parentAccent,
-                  threads: _parentThreads,
-                ),
-              ),
-            ),
-          ),
-          if (unread > 0)
-            Positioned(
-              right: 8,
-              top: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                decoration: BoxDecoration(
-                  color: AppColors.error,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                constraints: const BoxConstraints(minWidth: 14),
-                child: Text(
-                  '$unread',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
+    return const LiveChatAction(accent: AppColors.parentAccent);
   }
 }

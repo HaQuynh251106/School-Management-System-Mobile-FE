@@ -114,40 +114,6 @@ class _TeacherClassSlotDetailState extends State<TeacherClassSlotDetail> {
                             color: Colors.white70, fontSize: 12)),
                   ],
                 ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _ActionButton(
-                        icon: Icons.fact_check_rounded,
-                        label: 'Điểm danh',
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Mở tab Điểm danh từ menu dưới'),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _ActionButton(
-                        icon: Icons.grade_rounded,
-                        label: 'Nhập điểm',
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Mở tab Điểm số từ menu dưới'),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
               ],
             ),
           ),
@@ -160,9 +126,11 @@ class _TeacherClassSlotDetailState extends State<TeacherClassSlotDetail> {
                 }
                 if (snap.hasError) {
                   return Center(
-                      child: Text('Lỗi: ${snap.error}',
-                          style:
-                              const TextStyle(color: AppColors.textSecondary)));
+                      child: Text('Không thể tải danh sách học sinh.',
+                          style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant)));
                 }
                 final students = snap.data ?? [];
                 return Column(
@@ -173,33 +141,17 @@ class _TeacherClassSlotDetailState extends State<TeacherClassSlotDetail> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           SectionHeader(title: 'Sĩ số: ${students.length}'),
-                          Row(
-                            children: [
-                              OutlinedButton.icon(
-                                onPressed: () {},
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 6),
-                                  minimumSize: Size.zero,
-                                  tapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                ),
-                                icon: const Icon(Icons.file_download_outlined,
-                                    size: 16),
-                                label: const Text('Xuất danh sách',
-                                    style: TextStyle(fontSize: 12)),
-                              ),
-                            ],
-                          ),
                         ],
                       ),
                     ),
                     Expanded(
                       child: students.isEmpty
-                          ? const Center(
+                          ? Center(
                               child: Text('Lớp chưa có học sinh',
                                   style: TextStyle(
-                                      color: AppColors.textSecondary)))
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant)))
                           : ListView.separated(
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 16),
@@ -229,14 +181,11 @@ class _TeacherClassSlotDetailState extends State<TeacherClassSlotDetail> {
                                           fontWeight: FontWeight.w500,
                                           fontSize: 14)),
                                   subtitle: Text('Mã HS: $code',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                           fontSize: 11,
-                                          color: AppColors.textSecondary)),
-                                  trailing: const Icon(
-                                      Icons.chat_bubble_outline_rounded,
-                                      size: 18,
-                                      color: AppColors.teacherAccent),
-                                  onTap: () {},
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant)),
                                 );
                               },
                             ),
@@ -247,44 +196,6 @@ class _TeacherClassSlotDetailState extends State<TeacherClassSlotDetail> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white.withValues(alpha: 0.15),
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Column(
-            children: [
-              Icon(icon, color: Colors.white, size: 22),
-              const SizedBox(height: 4),
-              Text(label,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600)),
-            ],
-          ),
-        ),
       ),
     );
   }

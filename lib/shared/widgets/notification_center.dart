@@ -9,7 +9,7 @@ import '../../core/network/realtime_service.dart';
 import '../../core/theme/app_colors.dart';
 
 class NotificationItem {
-  const NotificationItem({
+  NotificationItem({
     this.id,
     required this.title,
     required this.body,
@@ -19,7 +19,7 @@ class NotificationItem {
     this.read = false,
   });
 
-  /// Backend id (null cho mock data tĩnh).
+  /// Định danh thông báo do Backend trả về.
   final String? id;
   final String title;
   final String body;
@@ -61,7 +61,7 @@ class NotificationCenter extends StatefulWidget {
   @override
   State<NotificationCenter> createState() => _NotificationCenterState();
 
-  static (IconData, Color) _styleFor(String category) {
+  static (IconData, Color) _styleFor(BuildContext context, String category) {
     switch (category) {
       case 'ATTENDANCE':
       case 'ATTENDANCE_ALERT':
@@ -91,7 +91,10 @@ class NotificationCenter extends StatefulWidget {
       case 'EXTRACURRICULAR':
         return (Icons.sports_basketball_rounded, AppColors.teacherAccent);
       default:
-        return (Icons.notifications_outlined, AppColors.textSecondary);
+        return (
+          Icons.notifications_outlined,
+          Theme.of(context).colorScheme.onSurfaceVariant
+        );
     }
   }
 
@@ -233,8 +236,8 @@ class _NotificationCenterState extends State<NotificationCenter> {
     } catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(
-        SnackBar(
-          content: Text('Lỗi: $e'),
+        const SnackBar(
+          content: Text('Không thể cập nhật thông báo. Vui lòng thử lại.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -262,8 +265,8 @@ class _NotificationCenterState extends State<NotificationCenter> {
     } catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(
-        SnackBar(
-          content: Text('Lỗi: $e'),
+        const SnackBar(
+          content: Text('Không thể cập nhật thông báo. Vui lòng thử lại.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -319,9 +322,11 @@ class _NotificationCenterState extends State<NotificationCenter> {
                 ? const Center(child: CircularProgressIndicator())
                 : snap.hasError
                     ? Center(
-                        child: Text('Lỗi: ${snap.error}',
-                            style: const TextStyle(
-                                color: AppColors.textSecondary)))
+                        child: Text('Không thể tải thông báo.',
+                            style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant)))
                     : TabBarView(
                         children: [
                           _NotiList(
@@ -350,16 +355,18 @@ class _NotiList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
-      return const Center(
+      return Center(
           child: Text('Không có thông báo',
-              style: TextStyle(color: AppColors.textSecondary)));
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant)));
     }
     return ListView.separated(
       itemCount: items.length,
       separatorBuilder: (_, __) => const Divider(height: 0),
       itemBuilder: (_, i) {
         final item = items[i];
-        final (icon, color) = NotificationCenter._styleFor(item.category);
+        final (icon, color) =
+            NotificationCenter._styleFor(context, item.category);
         final isUrgent = item.priority == 'URGENT';
         final isImportant = item.priority == 'IMPORTANT';
         final priorityColor = isUrgent ? AppColors.error : AppColors.warning;
@@ -451,8 +458,11 @@ class _NotiList extends StatelessWidget {
                         ),
                       ),
                     Text(item.time,
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.textSecondary)),
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant)),
                   ],
                 ),
               ],
@@ -513,8 +523,9 @@ class _NotificationPreferenceSheetState
               const Text('Kênh nhận thông báo',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
               const SizedBox(height: 6),
-              const Text('Chọn cách nhà trường có thể gửi thông tin tới bạn.',
-                  style: TextStyle(color: AppColors.textSecondary)),
+              Text('Chọn cách nhà trường có thể gửi thông tin tới bạn.',
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
               const SizedBox(height: 12),
               FutureBuilder<List<Map<String, dynamic>>>(
                 future: _future,

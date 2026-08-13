@@ -6,6 +6,7 @@ void main() {
     final user = UserModel.fromJson({
       'id': 'stu-1',
       'username': 'hs.an',
+      'userCode': 'HS000001',
       'fullName': 'Phạm Hoài An',
       'role': 'STUDENT',
       'status': 'ACTIVE',
@@ -16,6 +17,7 @@ void main() {
     expect(user.id, 'stu-1');
     expect(user.role, 'STUDENT');
     expect(user.studentCode, 'HS001');
+    expect(user.userCode, 'HS000001');
     expect(user.toJson()['username'], 'hs.an');
   });
 }

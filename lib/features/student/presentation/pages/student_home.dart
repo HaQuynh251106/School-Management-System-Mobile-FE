@@ -90,27 +90,6 @@ class _TSlot {
   final String room;
 }
 
-const _weekSlots = <int, List<_TSlot>>{
-  0: [
-    _TSlot('Toán', 'Tiết 1', '07:00–07:45', 'P201'),
-    _TSlot('Vật lý', 'Tiết 2', '07:50–08:35', 'P201'),
-    _TSlot('Ngữ văn', 'Tiết 3', '08:45–09:30', 'P201'),
-  ],
-  1: [
-    _TSlot('Tiếng Anh', 'Tiết 1', '07:00–07:45', 'P201'),
-    _TSlot('Sinh học', 'Tiết 2', '07:50–08:35', 'P201'),
-  ],
-  2: [_TSlot('Toán', 'Tiết 1', '07:00–07:45', 'P201')],
-  3: [
-    _TSlot('Vật lý', 'Tiết 2', '07:50–08:35', 'Lab 1'),
-    _TSlot('Tiếng Anh', 'Tiết 3', '08:45–09:30', 'P201'),
-  ],
-  4: [
-    _TSlot('Ngữ văn', 'Tiết 1', '07:00–07:45', 'P201'),
-    _TSlot('Toán', 'Tiết 4', '09:35–10:20', 'P201'),
-  ],
-};
-
 class _TimetableTab extends StatefulWidget {
   const _TimetableTab();
 

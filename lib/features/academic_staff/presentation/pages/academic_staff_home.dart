@@ -9,8 +9,10 @@ import '../../../../shared/widgets/role_page_intro.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_event.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
-import 'auto_timetable_page.dart';
+import 'academic_plan_progress_page.dart';
+import 'academic_structure_workflow_page.dart';
 import 'exam_management_page.dart';
+import 'timetable_operations_page.dart';
 import 'year_end_management_page.dart';
 
 class AcademicStaffHome extends StatefulWidget {
@@ -143,6 +145,15 @@ class _AcademicOverview extends StatelessWidget {
         const SizedBox(height: 8),
         const _SectionTitle('Việc cần kiểm tra', Icons.fact_check_outlined),
         const SizedBox(height: 8),
+        _InfoCard(
+          icon: Icons.insights_rounded,
+          title: 'Kế hoạch và tiến độ giảng dạy',
+          subtitle:
+              'Thiết lập yêu cầu chương trình và đối chiếu tiến độ giáo viên cập nhật.',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const AcademicPlanProgressPage()),
+          ),
+        ),
         const _InfoCard(
           icon: Icons.calendar_month_rounded,
           title: 'Phiên bản thời khóa biểu',
@@ -177,6 +188,21 @@ class _StructurePage extends StatelessWidget {
           accent: AppColors.academicStaffAccent,
           icon: Icons.account_tree_rounded,
         ),
+        _InfoCard(
+          icon: Icons.hub_outlined,
+          title: 'Thiết lập cơ cấu và phân lớp đầu năm',
+          subtitle:
+              'Tạo năm học, học kỳ, tiếp nhận học sinh và phân lớp theo quy trình.',
+          onTap: () async {
+            await Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const AcademicStructureWorkflowPage(),
+              ),
+            );
+            reload();
+          },
+        ),
+        const SizedBox(height: 12),
         const _SectionTitle('Năm học và học kỳ', Icons.date_range_rounded),
         ...data.years.map(
           (year) => Card(
@@ -589,13 +615,13 @@ class _TimetableVersionsPageState extends State<_TimetableVersionsPage> {
                   ),
                   title: const Text('Tự tạo thời khóa biểu'),
                   subtitle: const Text(
-                    'Xem trước phương án, kiểm tra xung đột rồi mới áp dụng.',
+                    'Chọn ngày học, phạm vi, xem trước, lưu nháp rồi phát hành.',
                   ),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () async {
                     await Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => const AutoTimetablePage(),
+                        builder: (_) => const TimetableOperationsPage(),
                       ),
                     );
                     _reload();

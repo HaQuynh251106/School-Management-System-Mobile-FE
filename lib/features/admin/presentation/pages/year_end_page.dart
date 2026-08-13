@@ -37,8 +37,8 @@ class _YearEndPageState extends State<YearEndPage> {
       _load(_yearId);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Không thể lưu hạnh kiểm: $e'),
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Không thể lưu hạnh kiểm. Vui lòng thử lại.'),
         backgroundColor: AppColors.error,
       ));
     }
@@ -74,8 +74,9 @@ class _YearEndPageState extends State<YearEndPage> {
       _load(_yearId);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Chưa thể chốt năm học: $e'),
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content:
+            Text('Chưa thể chốt năm học. Vui lòng kiểm tra dữ liệu còn thiếu.'),
         backgroundColor: AppColors.error,
       ));
     } finally {
@@ -90,7 +91,14 @@ class _YearEndPageState extends State<YearEndPage> {
         'PROMOTED_PENDING_CLASS' => 'Chờ xếp lớp',
         'GRADUATED' => 'Tốt nghiệp',
         'RETAINED' => 'Lưu ban',
-        _ => value,
+        _ => 'Chưa xác định',
+      };
+
+  String _yearStatus(Object? value) => switch ('$value'.toUpperCase()) {
+        'ACTIVE' => 'Đang áp dụng',
+        'PLANNED' => 'Sắp tới',
+        'COMPLETED' => 'Đã kết thúc',
+        _ => 'Chưa xác định',
       };
 
   @override
@@ -125,7 +133,8 @@ class _YearEndPageState extends State<YearEndPage> {
                 items: (snap.data ?? const [])
                     .map((year) => DropdownMenuItem<String>(
                           value: year['id']?.toString(),
-                          child: Text('${year['code']} · ${year['status']}'),
+                          child: Text(
+                              '${year['code']} · ${_yearStatus(year['status'])}'),
                         ))
                     .toList(),
                 onChanged: _load,
@@ -143,9 +152,8 @@ class _YearEndPageState extends State<YearEndPage> {
                         return const Center(child: CircularProgressIndicator());
                       }
                       if (snap.hasError) {
-                        return Center(
-                            child:
-                                Text('Không tải được dữ liệu: ${snap.error}'));
+                        return const Center(
+                            child: Text('Không thể tải dữ liệu tổng kết.'));
                       }
                       final rows = snap.data ?? const [];
                       if (rows.isEmpty) {

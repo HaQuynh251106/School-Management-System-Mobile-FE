@@ -28,9 +28,26 @@ class AuthApi {
     return response.data!;
   }
 
-  Future<void> forgotPassword(String email) async {
-    await _api.forgotPassword(
+  Future<Map<String, dynamic>> forgotPassword(String email) async {
+    final response = await _api.forgotPassword(
       forgotPasswordRequest: identity.ForgotPasswordRequest(email: email),
+    );
+    final data = response.data!;
+    return {
+      ...data.toJson(),
+      'deliveryChannel': data.devResetToken == null ? 'EMAIL' : 'DEVELOPMENT',
+    };
+  }
+
+  Future<void> resetPassword({
+    required String token,
+    required String newPassword,
+  }) async {
+    await _api.resetPassword(
+      resetPasswordRequest: identity.ResetPasswordRequest(
+        token: token,
+        newPassword: newPassword,
+      ),
     );
   }
 

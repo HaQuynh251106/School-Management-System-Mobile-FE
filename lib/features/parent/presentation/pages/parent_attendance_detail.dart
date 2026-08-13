@@ -12,6 +12,7 @@ class ParentAttendanceDetail extends StatelessWidget {
     required this.date,
     required this.status,
     this.note,
+    this.periodNo,
   });
 
   final String childName;
@@ -19,6 +20,7 @@ class ParentAttendanceDetail extends StatelessWidget {
   final String date;
   final String status;
   final String? note;
+  final int? periodNo;
 
   String get _statusLabel => switch (status) {
         'PRESENT' => 'Có mặt',
@@ -28,12 +30,12 @@ class ParentAttendanceDetail extends StatelessWidget {
         _ => status,
       };
 
-  Color get _statusColor => switch (status) {
+  Color _statusColor(BuildContext context) => switch (status) {
         'PRESENT' => AppColors.present,
         'ABSENT_EXCUSED' => AppColors.absentExcused,
         'ABSENT_UNEXCUSED' => AppColors.absentUnexcused,
         'LATE' => AppColors.late,
-        _ => AppColors.textSecondary,
+        _ => Theme.of(context).colorScheme.onSurfaceVariant,
       };
 
   @override
@@ -49,9 +51,10 @@ class ParentAttendanceDetail extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: _statusColor.withValues(alpha: 0.1),
+              color: _statusColor(context).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _statusColor.withValues(alpha: 0.3)),
+              border: Border.all(
+                  color: _statusColor(context).withValues(alpha: 0.3)),
             ),
             child: Column(
               children: [
@@ -59,7 +62,7 @@ class ParentAttendanceDetail extends StatelessWidget {
                   width: 64,
                   height: 64,
                   decoration: BoxDecoration(
-                    color: _statusColor.withValues(alpha: 0.2),
+                    color: _statusColor(context).withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -68,7 +71,7 @@ class ParentAttendanceDetail extends StatelessWidget {
                         : status == 'LATE'
                             ? Icons.access_time_filled_rounded
                             : Icons.cancel_rounded,
-                    color: _statusColor,
+                    color: _statusColor(context),
                     size: 40,
                   ),
                 ),
@@ -76,7 +79,7 @@ class ParentAttendanceDetail extends StatelessWidget {
                 Text(
                   _statusLabel,
                   style: TextStyle(
-                      color: _statusColor,
+                      color: _statusColor(context),
                       fontWeight: FontWeight.bold,
                       fontSize: 18),
                 ),
@@ -98,22 +101,20 @@ class ParentAttendanceDetail extends StatelessWidget {
                 _InfoRow(
                     icon: Icons.book_rounded, label: 'Môn học', value: subject),
                 const Divider(height: 0),
-                const _InfoRow(
+                _InfoRow(
                     icon: Icons.access_time_rounded,
                     label: 'Tiết',
-                    value: 'Tiết 2 • 07:50–08:35'),
-                const Divider(height: 0),
-                const _InfoRow(
-                    icon: Icons.person_outline_rounded,
-                    label: 'GV bộ môn',
-                    value: 'Trần Thị Bình'),
+                    value: periodNo == null ? '—' : 'Tiết $periodNo'),
                 const Divider(height: 0),
                 ListTile(
-                  leading: const Icon(Icons.flag_outlined,
-                      color: AppColors.textSecondary, size: 20),
-                  title: const Text('Trạng thái',
+                  leading: Icon(Icons.flag_outlined,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      size: 20),
+                  title: Text('Trạng thái',
                       style: TextStyle(
-                          fontSize: 12, color: AppColors.textSecondary)),
+                          fontSize: 12,
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant)),
                   trailing: AttendanceBadge(status),
                 ),
               ],
@@ -141,82 +142,7 @@ class ParentAttendanceDetail extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: 20),
-          if (status == 'ABSENT_UNEXCUSED') ...[
-            FilledButton.icon(
-              onPressed: () => _showAbsenceForm(context),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.parentAccent,
-              ),
-              icon: const Icon(Icons.assignment_outlined),
-              label: const Text('Gửi đơn xin phép bổ sung'),
-            ),
-            const SizedBox(height: 8),
-          ],
-          OutlinedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Đã mở chat với GVCN.'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-            icon: const Icon(Icons.chat_bubble_outline_rounded),
-            label: const Text('Liên hệ GVCN'),
-          ),
         ],
-      ),
-    );
-  }
-
-  void _showAbsenceForm(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(
-            20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Đơn xin phép',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 12),
-            const TextField(
-              decoration: InputDecoration(
-                labelText: 'Lý do',
-                isDense: true,
-              ),
-              maxLines: 3,
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.parentAccent,
-                ),
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content:
-                          Text('Đã gửi đơn xin phép. GV sẽ duyệt trong 24h.'),
-                      backgroundColor: AppColors.success,
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
-                child: const Text('Gửi'),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -235,9 +161,12 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icon, color: AppColors.textSecondary, size: 20),
+      leading: Icon(icon,
+          color: Theme.of(context).colorScheme.onSurfaceVariant, size: 20),
       title: Text(label,
-          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          style: TextStyle(
+              fontSize: 12,
+              color: Theme.of(context).colorScheme.onSurfaceVariant)),
       subtitle: Text(value,
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
     );

@@ -11,12 +11,14 @@ class AttendanceRecordDetail extends StatelessWidget {
     required this.date,
     required this.status,
     this.note,
+    this.periodNo,
   });
 
   final String subject;
   final String date;
   final String status;
   final String? note;
+  final int? periodNo;
 
   String get _statusLabel {
     switch (status) {
@@ -32,7 +34,7 @@ class AttendanceRecordDetail extends StatelessWidget {
     return status;
   }
 
-  Color get _statusColor {
+  Color _statusColor(BuildContext context) {
     switch (status) {
       case 'PRESENT':
         return AppColors.present;
@@ -43,7 +45,7 @@ class AttendanceRecordDetail extends StatelessWidget {
       case 'LATE':
         return AppColors.late;
     }
-    return AppColors.textSecondary;
+    return Theme.of(context).colorScheme.onSurfaceVariant;
   }
 
   @override
@@ -59,9 +61,10 @@ class AttendanceRecordDetail extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: _statusColor.withValues(alpha: 0.1),
+              color: _statusColor(context).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _statusColor.withValues(alpha: 0.3)),
+              border: Border.all(
+                  color: _statusColor(context).withValues(alpha: 0.3)),
             ),
             child: Column(
               children: [
@@ -69,7 +72,7 @@ class AttendanceRecordDetail extends StatelessWidget {
                   width: 64,
                   height: 64,
                   decoration: BoxDecoration(
-                    color: _statusColor.withValues(alpha: 0.2),
+                    color: _statusColor(context).withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -78,7 +81,7 @@ class AttendanceRecordDetail extends StatelessWidget {
                         : status == 'LATE'
                             ? Icons.access_time_filled_rounded
                             : Icons.cancel_rounded,
-                    color: _statusColor,
+                    color: _statusColor(context),
                     size: 40,
                   ),
                 ),
@@ -86,7 +89,7 @@ class AttendanceRecordDetail extends StatelessWidget {
                 Text(
                   _statusLabel,
                   style: TextStyle(
-                      color: _statusColor,
+                      color: _statusColor(context),
                       fontWeight: FontWeight.bold,
                       fontSize: 18),
                 ),
@@ -108,22 +111,20 @@ class AttendanceRecordDetail extends StatelessWidget {
                 _InfoRow(
                     icon: Icons.book_rounded, label: 'Môn học', value: subject),
                 const Divider(height: 0),
-                const _InfoRow(
+                _InfoRow(
                     icon: Icons.access_time_rounded,
                     label: 'Tiết',
-                    value: 'Tiết 2 • 07:50–08:35'),
-                const Divider(height: 0),
-                const _InfoRow(
-                    icon: Icons.person_outline_rounded,
-                    label: 'Giáo viên',
-                    value: 'Trần Thị Bình'),
+                    value: periodNo == null ? '—' : 'Tiết $periodNo'),
                 const Divider(height: 0),
                 ListTile(
-                  leading: const Icon(Icons.flag_outlined,
-                      color: AppColors.textSecondary, size: 20),
-                  title: const Text('Trạng thái',
+                  leading: Icon(Icons.flag_outlined,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      size: 20),
+                  title: Text('Trạng thái',
                       style: TextStyle(
-                          fontSize: 12, color: AppColors.textSecondary)),
+                          fontSize: 12,
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant)),
                   trailing: AttendanceBadge(status),
                 ),
               ],
@@ -151,22 +152,6 @@ class AttendanceRecordDetail extends StatelessWidget {
               ),
             ),
           ],
-          if (status == 'ABSENT_UNEXCUSED') ...[
-            const SizedBox(height: 20),
-            OutlinedButton.icon(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content:
-                        Text('Đã gửi yêu cầu PH cung cấp đơn xin phép cho GV.'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
-              icon: const Icon(Icons.assignment_late_outlined),
-              label: const Text('Yêu cầu PH gửi đơn xin phép'),
-            ),
-          ],
         ],
       ),
     );
@@ -186,9 +171,12 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icon, color: AppColors.textSecondary, size: 20),
+      leading: Icon(icon,
+          color: Theme.of(context).colorScheme.onSurfaceVariant, size: 20),
       title: Text(label,
-          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          style: TextStyle(
+              fontSize: 12,
+              color: Theme.of(context).colorScheme.onSurfaceVariant)),
       subtitle: Text(value,
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
     );

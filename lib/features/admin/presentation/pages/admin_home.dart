@@ -22,6 +22,7 @@ import 'fee_period_detail.dart';
 import 'notification_templates_page.dart';
 import 'teaching_assignments_page.dart';
 import 'timetable_scheduling.dart';
+import 'user_import_page.dart';
 import 'year_end_page.dart';
 import 'user_detail.dart';
 
@@ -677,7 +678,12 @@ class _UsersTabState extends State<_UsersTab> {
             IconButton(
               icon: const Icon(Icons.upload_file_outlined),
               tooltip: 'Import Excel',
-              onPressed: () {},
+              onPressed: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const UserImportPage()),
+                );
+                _refresh();
+              },
             ),
             const _AdminNotiAction(),
           ],
@@ -2220,7 +2226,7 @@ class _SettingsTab extends StatelessWidget {
               _AdminSettingsTile(
                 icon: Icons.account_balance_wallet_outlined,
                 label: 'Thanh toán MoMo',
-                onTap: () => _todoSnack(context, 'Cấu hình MoMo Sandbox'),
+                onTap: () => _unsupportedSnack(context, 'Cấu hình MoMo'),
               ),
             ],
           ),
@@ -2282,10 +2288,10 @@ class _SettingsTab extends StatelessWidget {
     );
   }
 
-  void _todoSnack(BuildContext context, String label) {
+  void _unsupportedSnack(BuildContext context, String label) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$label — Đang phát triển'),
+        content: Text('$label chưa được máy chủ hỗ trợ'),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -2349,7 +2355,7 @@ class _SettingsSection extends StatelessWidget {
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('${item.label} — Đang phát triển'),
+                    content: Text('${item.label} chưa được máy chủ hỗ trợ'),
                     behavior: SnackBarBehavior.floating,
                   ),
                 );

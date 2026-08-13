@@ -23,6 +23,7 @@ import 'attendance_session_detail.dart';
 import 'class_slot_detail.dart';
 import 'exam_grading_page.dart';
 import 'homeroom_year_end_page.dart';
+import 'teacher_progress_page.dart';
 
 class TeacherHome extends StatefulWidget {
   const TeacherHome({super.key});
@@ -260,6 +261,56 @@ class _TeacherTimetableData {
 
   final List<Map<String, dynamic>> timetable;
   final List<SchoolDayStatus> statuses;
+}
+
+class TeacherScopeSummary {
+  const TeacherScopeSummary({
+    required this.homeroomClassCodes,
+    required this.teachingClassCodes,
+    required this.subjectNames,
+  });
+
+  final List<String> homeroomClassCodes;
+  final List<String> teachingClassCodes;
+  final List<String> subjectNames;
+
+  factory TeacherScopeSummary.fromApi({
+    required String teacherId,
+    required List<Map<String, dynamic>> classes,
+    required List<Map<String, dynamic>> assignments,
+  }) {
+    String value(Map<String, dynamic> row, String preferred, String fallback) =>
+        (row[preferred] ?? row[fallback] ?? '').toString().trim();
+    final homeroomCodes = <String>{
+      for (final schoolClass in classes)
+        if ('${schoolClass['homeroomTeacherId']}' == teacherId &&
+            value(schoolClass, 'code', 'id').isNotEmpty)
+          value(schoolClass, 'code', 'id'),
+    };
+    final teachingCodes = <String>{
+      for (final assignment in assignments)
+        if (value(assignment, 'classCode', 'classId').isNotEmpty)
+          value(assignment, 'classCode', 'classId'),
+    };
+    final subjects = <String>{
+      for (final assignment in assignments)
+        if (value(assignment, 'subjectName', 'subjectId').isNotEmpty)
+          value(assignment, 'subjectName', 'subjectId'),
+    };
+    return TeacherScopeSummary(
+      homeroomClassCodes: homeroomCodes.toList(),
+      teachingClassCodes: teachingCodes.toList(),
+      subjectNames: subjects.toList(),
+    );
+  }
+
+  String get homeroomLabel => homeroomClassCodes.isEmpty
+      ? 'Chưa được phân công'
+      : homeroomClassCodes.join(', ');
+
+  String get teachingLabel => teachingClassCodes.isEmpty
+      ? 'Chưa được phân công giảng dạy'
+      : '${subjectNames.join(', ')} • ${teachingClassCodes.length} lớp';
 }
 
 class _SlotCard extends StatelessWidget {
@@ -2240,6 +2291,24 @@ class _ProfileTab extends StatelessWidget {
                 const Divider(height: 0),
                 ListTile(
                   leading: const Icon(
+                    Icons.trending_up_rounded,
+                    color: AppColors.teacherAccent,
+                  ),
+                  title: const Text('Tiến độ giảng dạy'),
+                  subtitle: const Text(
+                    'Cập nhật bài đã dạy và đề xuất lịch bù',
+                    style: TextStyle(fontSize: 11),
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const TeacherProgressPage(),
+                    ),
+                  ),
+                ),
+                const Divider(height: 0),
+                ListTile(
+                  leading: const Icon(
                     Icons.auto_awesome_rounded,
                     color: AppColors.teacherAccent,
                   ),
@@ -2278,7 +2347,6 @@ class _ProfileTab extends StatelessWidget {
                       builder: (_) => const ChatListPage(
                         accent: AppColors.teacherAccent,
                         allowBroadcast: true,
-                        threads: _teacherThreads,
                       ),
                     ),
                   ),
@@ -2981,46 +3049,6 @@ class _TAssignmentList extends StatelessWidget {
 
 // ===================== ACTIONS & MOCK =====================
 
-const _teacherThreads = <ChatThread>[
-  ChatThread(
-    name: 'Phạm Văn Quân',
-    role: 'PH em An (10A1)',
-    lastMessage: 'Dạ vâng, em cảm ơn cô.',
-    lastTime: '08:33',
-    unread: 0,
-  ),
-  ChatThread(
-    name: 'Nguyễn Văn Đức',
-    role: 'PH em Châu (10A1)',
-    lastMessage: 'Tối nay em rảnh, cô có thể gọi không ạ?',
-    lastTime: 'Hôm qua',
-    unread: 2,
-  ),
-  ChatThread(
-    name: 'Phạm Hoài An',
-    role: 'HS lớp 10A1',
-    lastMessage: 'Cô ơi, em chưa hiểu bài 3...',
-    lastTime: '2 ngày trước',
-    unread: 1,
-  ),
-  ChatThread(
-    name: 'Lớp 10A1',
-    role: '38 thành viên',
-    lastMessage: 'Cô gửi bài tập về nhà chương 3 nhé!',
-    lastTime: 'Hôm qua',
-    unread: 0,
-    isBroadcast: true,
-  ),
-  ChatThread(
-    name: 'Lớp 10A2',
-    role: '40 thành viên',
-    lastMessage: 'Mai kiểm tra 15 phút, các em ôn bài kỹ.',
-    lastTime: '3 ngày trước',
-    unread: 0,
-    isBroadcast: true,
-  ),
-];
-
 class _NotiAction extends StatelessWidget {
   const _NotiAction();
 
@@ -3035,47 +3063,9 @@ class _ChatAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final unread = _teacherThreads.fold<int>(0, (s, t) => s + t.unread);
-    return Padding(
-      padding: const EdgeInsets.only(right: 0),
-      child: Stack(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.chat_bubble_outline_rounded),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const ChatListPage(
-                  accent: AppColors.teacherAccent,
-                  allowBroadcast: true,
-                  threads: _teacherThreads,
-                ),
-              ),
-            ),
-          ),
-          if (unread > 0)
-            Positioned(
-              right: 8,
-              top: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                decoration: BoxDecoration(
-                  color: AppColors.error,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                constraints: const BoxConstraints(minWidth: 14),
-                child: Text(
-                  '$unread',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-        ],
-      ),
+    return const LiveChatAction(
+      accent: AppColors.teacherAccent,
+      allowBroadcast: true,
     );
   }
 }

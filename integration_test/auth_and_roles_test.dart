@@ -13,8 +13,9 @@ import 'package:sse_mobile/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:sse_mobile/features/auth/presentation/bloc/auth_event.dart';
 
 const _adminPassword = String.fromEnvironment('E2E_ADMIN_PASSWORD');
-const _academicStaffPassword =
-    String.fromEnvironment('E2E_ACADEMIC_STAFF_PASSWORD');
+const _academicStaffPassword = String.fromEnvironment(
+  'E2E_ACADEMIC_STAFF_PASSWORD',
+);
 const _accountantPassword = String.fromEnvironment('E2E_ACCOUNTANT_PASSWORD');
 const _teacherPassword = String.fromEnvironment('E2E_TEACHER_PASSWORD');
 const _studentPassword = String.fromEnvironment('E2E_STUDENT_PASSWORD');
@@ -27,16 +28,17 @@ void main() {
   testWidgets('API đăng nhập trả đúng đủ sáu vai trò', (tester) async {
     final dio = Dio(BaseOptions(baseUrl: Env.baseUrl));
     expect(
-        [
-          _adminPassword,
-          _academicStaffPassword,
-          _accountantPassword,
-          _teacherPassword,
-          _studentPassword,
-          _parentPassword
-        ].every((value) => value.isNotEmpty),
-        isTrue,
-        reason: 'Thiếu biến E2E_*_PASSWORD');
+      [
+        _adminPassword,
+        _academicStaffPassword,
+        _accountantPassword,
+        _teacherPassword,
+        _studentPassword,
+        _parentPassword,
+      ].every((value) => value.isNotEmpty),
+      isTrue,
+      reason: 'Thiếu biến E2E_*_PASSWORD',
+    );
     final accounts = <(String, String, String)>[
       ('admin', _adminPassword, 'ADMIN'),
       ('giaovu', _academicStaffPassword, 'ACADEMIC_STAFF'),
@@ -51,16 +53,20 @@ void main() {
         '/auth/login',
         data: {'username': account.$1, 'password': account.$2},
       );
-      expect(response.statusCode, 200,
-          reason: 'Đăng nhập thất bại: ${account.$1}');
+      expect(
+        response.statusCode,
+        200,
+        reason: 'Đăng nhập thất bại: ${account.$1}',
+      );
       final user = response.data!['user'] as Map<String, dynamic>;
       expect(user['role'], account.$3);
       expect(response.data!['accessToken'], isNotEmpty);
     }
   }, skip: !runLive);
 
-  testWidgets('học sinh đăng nhập qua giao diện và mở đúng trang chủ',
-      (tester) async {
+  testWidgets('học sinh đăng nhập qua giao diện và mở đúng trang chủ', (
+    tester,
+  ) async {
     await initializeDateFormatting('vi_VN');
     FlutterSecureStorage.setMockInitialValues({});
     await setupServiceLocator();
