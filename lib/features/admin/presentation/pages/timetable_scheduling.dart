@@ -80,14 +80,8 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
     if (showLoader && mounted) setState(() => _loading = true);
     try {
       final values = await Future.wait([
-        _api.timetableSlots(
-          classId: _classId!,
-          semesterId: _semesterId!,
-        ),
-        _api.teachingAssignments(
-          classId: _classId!,
-          semesterId: _semesterId!,
-        ),
+        _api.timetableSlots(classId: _classId!, semesterId: _semesterId!),
+        _api.teachingAssignments(classId: _classId!, semesterId: _semesterId!),
       ]);
       _slots = values[0];
       _assignments = values[1];
@@ -106,10 +100,159 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
   }
 
   Future<void> _openAssignments() async {
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => const TeachingAssignmentsPage(),
-    ));
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const TeachingAssignmentsPage()));
     await _loadSlots();
+  }
+
+  Future<void> _autoSchedule() async {
+    if (_semesterId == null) return;
+    final selectedDays = _days.map((day) => day.$1).toSet();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Tự xếp thời khóa biểu'),
+          content: SizedBox(
+            width: 460,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Chọn các ngày được phép xếp tiết học trong tuần.'),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _days.map((day) {
+                    return FilterChip(
+                      label: Text(day.$2),
+                      selected: selectedDays.contains(day.$1),
+                      onSelected: (selected) => setDialogState(() {
+                        if (selected) {
+                          selectedDays.add(day.$1);
+                        } else {
+                          selectedDays.remove(day.$1);
+                        }
+                      }),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Ngày nghỉ/lễ theo lịch cụ thể không xóa TKB tuần. Ứng dụng sẽ hiển thị nghỉ và bỏ điểm danh trong ngày đó.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Hủy'),
+            ),
+            FilledButton.icon(
+              onPressed: selectedDays.isEmpty
+                  ? null
+                  : () => Navigator.pop(dialogContext, true),
+              icon: const Icon(Icons.auto_awesome_rounded),
+              label: const Text('Xem trước'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() => _loading = true);
+    try {
+      final preview = await _api.autoPlanTimetable(
+        _semesterId!,
+        allowedDays: selectedDays.toList(),
+      );
+      if (!mounted) return;
+      final proposed = (preview['proposedSlots'] as num?)?.toInt() ?? 0;
+      final unscheduled = (preview['unscheduledSlots'] as num?)?.toInt() ?? 0;
+      final warnings =
+          (preview['warnings'] as List?)?.cast<Object>() ?? const [];
+      final shouldApply = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Kết quả xem trước'),
+          content: SizedBox(
+            width: 480,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Có thể xếp: $proposed tiết'),
+                  Text(
+                    'Chưa xếp được: $unscheduled tiết',
+                    style: TextStyle(
+                      color: unscheduled == 0
+                          ? AppColors.success
+                          : AppColors.error,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if (warnings.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Cảnh báo',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 6),
+                    for (final warning in warnings.take(8))
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          '• $warning',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Quay lại'),
+            ),
+            FilledButton(
+              onPressed: unscheduled > 0
+                  ? null
+                  : () => Navigator.pop(dialogContext, true),
+              child: const Text('Áp dụng lịch'),
+            ),
+          ],
+        ),
+      );
+      if (shouldApply != true) return;
+      await _api.autoPlanTimetable(
+        _semesterId!,
+        apply: true,
+        allowedDays: selectedDays.toList(),
+      );
+      await _loadSlots(showLoader: false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đã áp dụng thời khóa biểu tự động.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (error) {
+      _showError('Không thể tự xếp thời khóa biểu: $error');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
@@ -119,6 +262,11 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
         title: const Text('Xếp thời khóa biểu'),
         backgroundColor: AppColors.adminAccent,
         actions: [
+          IconButton(
+            onPressed: _loading || _semesterId == null ? null : _autoSchedule,
+            tooltip: 'Tự xếp thời khóa biểu',
+            icon: const Icon(Icons.auto_awesome_rounded),
+          ),
           IconButton(
             onPressed: _openAssignments,
             tooltip: 'Phân công giáo viên bộ môn',
@@ -144,7 +292,9 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
                   child: Text(
                     'Đã xếp ${_assignments.fold<int>(0, (sum, item) => sum + ((item['scheduledPeriods'] as num?)?.toInt() ?? 0))}/${_assignments.fold<int>(0, (sum, item) => sum + ((item['weeklyPeriods'] as num?)?.toInt() ?? 0))} tiết theo phân công · ${_assignments.where((item) => item['fullyScheduled'] == true).length}/${_assignments.length} môn đã đủ lịch',
                     style: const TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary),
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
                 TextButton.icon(
@@ -159,35 +309,39 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _classes.isEmpty || _semesters.isEmpty
-                    ? const Center(
-                        child: Text('Cần tạo lớp và học kỳ trước khi xếp lịch'))
-                    : SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
+                ? const Center(
+                    child: Text('Cần tạo lớp và học kỳ trước khi xếp lịch'),
+                  )
+                : SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        children: [
+                          Row(
                             children: [
-                              Row(children: [
-                                const SizedBox(width: 42),
-                                ..._days
-                                    .map((day) => _HeaderCell(text: day.$2)),
-                              ]),
-                              for (final period in _periods)
-                                Row(children: [
-                                  _PeriodCell(period: period),
-                                  ..._days.map((day) {
-                                    final slot = _slot(day.$1, period);
-                                    return _GridCell(
-                                      slot: slot,
-                                      onTap: () =>
-                                          _editSlot(day.$1, period, slot),
-                                    );
-                                  }),
-                                ]),
+                              const SizedBox(width: 42),
+                              ..._days.map((day) => _HeaderCell(text: day.$2)),
                             ],
                           ),
-                        ),
+                          for (final period in _periods)
+                            Row(
+                              children: [
+                                _PeriodCell(period: period),
+                                ..._days.map((day) {
+                                  final slot = _slot(day.$1, period);
+                                  return _GridCell(
+                                    slot: slot,
+                                    onTap: () =>
+                                        _editSlot(day.$1, period, slot),
+                                  );
+                                }),
+                              ],
+                            ),
+                        ],
                       ),
+                    ),
+                  ),
           ),
         ],
       ),
@@ -198,45 +352,61 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
     return Container(
       color: AppColors.surface,
       padding: const EdgeInsets.all(12),
-      child: Row(children: [
-        Expanded(
-          child: DropdownButtonFormField<String>(
-            initialValue: _classId,
-            decoration: const InputDecoration(labelText: 'Lớp', isDense: true),
-            items: _classes
-                .map((item) => DropdownMenuItem(
-                    value: item['id'].toString(),
-                    child: Text((item['code'] ?? item['name']).toString())))
-                .toList(),
-            onChanged: (value) async {
-              setState(() => _classId = value);
-              await _loadSlots();
-            },
+      child: Row(
+        children: [
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              initialValue: _classId,
+              decoration: const InputDecoration(
+                labelText: 'Lớp',
+                isDense: true,
+              ),
+              items: _classes
+                  .map(
+                    (item) => DropdownMenuItem(
+                      value: item['id'].toString(),
+                      child: Text((item['code'] ?? item['name']).toString()),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) async {
+                setState(() => _classId = value);
+                await _loadSlots();
+              },
+            ),
           ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: DropdownButtonFormField<String>(
-            initialValue: _semesterId,
-            decoration:
-                const InputDecoration(labelText: 'Học kỳ', isDense: true),
-            items: _semesters
-                .map((item) => DropdownMenuItem(
-                    value: item['id'].toString(),
-                    child: Text((item['name'] ?? item['code']).toString())))
-                .toList(),
-            onChanged: (value) async {
-              setState(() => _semesterId = value);
-              await _loadSlots();
-            },
+          const SizedBox(width: 10),
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              initialValue: _semesterId,
+              decoration: const InputDecoration(
+                labelText: 'Học kỳ',
+                isDense: true,
+              ),
+              items: _semesters
+                  .map(
+                    (item) => DropdownMenuItem(
+                      value: item['id'].toString(),
+                      child: Text((item['name'] ?? item['code']).toString()),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) async {
+                setState(() => _semesterId = value);
+                await _loadSlots();
+              },
+            ),
           ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 
   Future<void> _editSlot(
-      String day, int period, Map<String, dynamic>? current) async {
+    String day,
+    int period,
+    Map<String, dynamic>? current,
+  ) async {
     if (_classId == null || _semesterId == null) return;
     List<Map<String, dynamic>> available;
     try {
@@ -271,34 +441,49 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
           for (final item in available) {
             if (item['id']?.toString() == assignmentId) selected = item;
           }
-          final canSave = selected != null &&
+          final canSave =
+              selected != null &&
               (current != null || selected['canSchedule'] == true);
-          final hasSchedulable =
-              available.any((item) => item['canSchedule'] == true);
+          final hasSchedulable = available.any(
+            (item) => item['canSchedule'] == true,
+          );
           return Padding(
             padding: EdgeInsets.fromLTRB(
-                20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+              20,
+              20,
+              20,
+              MediaQuery.of(context).viewInsets.bottom + 20,
+            ),
             child: SingleChildScrollView(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Text(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
                     '${_days.firstWhere((item) => item.$1 == day).$2} · Tiết $period',
                     style: const TextStyle(
-                        fontSize: 17, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 7),
-                const Text(
-                  'Chỉ hiển thị giáo viên bộ môn đã được phân công cho lớp.',
-                  textAlign: TextAlign.center,
-                  style:
-                      TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: assignmentId,
-                  isExpanded: true,
-                  decoration:
-                      const InputDecoration(labelText: 'Phân công giảng dạy'),
-                  items: available
-                      .map((item) => DropdownMenuItem(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  const Text(
+                    'Chỉ hiển thị giáo viên bộ môn đã được phân công cho lớp.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    initialValue: assignmentId,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Phân công giảng dạy',
+                    ),
+                    items: available
+                        .map(
+                          (item) => DropdownMenuItem(
                             value: item['id']?.toString(),
                             enabled:
                                 current != null || item['canSchedule'] == true,
@@ -306,115 +491,139 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
                               '${item['subjectName']} · ${item['teacherName']} · lớp này ${item['scheduledPeriods']}/${item['weeklyPeriods']} tiết · tổng ${item['teacherClassCount']} lớp',
                               overflow: TextOverflow.ellipsis,
                             ),
-                          ))
-                      .toList(),
-                  onChanged: (value) => update(() => assignmentId = value),
-                ),
-                if (available.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 10),
-                    child: Text(
-                      'Lớp chưa có phân công bộ môn. Hãy tạo phân công trước khi xếp lịch.',
-                      style: TextStyle(fontSize: 12, color: AppColors.error),
-                    ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) => update(() => assignmentId = value),
                   ),
-                if (current == null && available.isNotEmpty && !hasSchedulable)
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.only(top: 10),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.warning.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                          color: AppColors.warning.withValues(alpha: 0.3)),
+                  if (available.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 10),
+                      child: Text(
+                        'Lớp chưa có phân công bộ môn. Hãy tạo phân công trước khi xếp lịch.',
+                        style: TextStyle(fontSize: 12, color: AppColors.error),
+                      ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Tất cả phân công của lớp đã đủ số tiết mỗi tuần.',
-                          style: TextStyle(fontWeight: FontWeight.w600),
+                  if (current == null &&
+                      available.isNotEmpty &&
+                      !hasSchedulable)
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(top: 10),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppColors.warning.withValues(alpha: 0.3),
                         ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Để xếp thêm, hãy tăng số tiết/tuần của môn hoặc sửa một tiết đang có.',
-                          style: TextStyle(
-                              fontSize: 12, color: AppColors.textSecondary),
-                        ),
-                        const SizedBox(height: 8),
-                        OutlinedButton.icon(
-                          onPressed: () =>
-                              Navigator.pop(sheetContext, 'assignments'),
-                          icon: const Icon(Icons.tune_rounded),
-                          label: const Text('Điều chỉnh phân công'),
-                        ),
-                      ],
-                    ),
-                  ),
-                const SizedBox(height: 10),
-                ...available.where((item) => item['canSchedule'] != true).map(
-                      (item) => Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.only(bottom: 7),
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.error.withValues(alpha: 0.07),
-                          borderRadius: BorderRadius.circular(9),
-                          border: Border.all(
-                              color: AppColors.error.withValues(alpha: 0.2)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.warning_amber_rounded,
-                                size: 18, color: AppColors.error),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                '${item['subjectName']} · ${item['teacherName']}: ${item['availabilityMessage']}',
-                                style: const TextStyle(fontSize: 12),
-                              ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Tất cả phân công của lớp đã đủ số tiết mỗi tuần.',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Để xếp thêm, hãy tăng số tiết/tuần của môn hoặc sửa một tiết đang có.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
                             ),
-                          ],
+                          ),
+                          const SizedBox(height: 8),
+                          OutlinedButton.icon(
+                            onPressed: () =>
+                                Navigator.pop(sheetContext, 'assignments'),
+                            icon: const Icon(Icons.tune_rounded),
+                            label: const Text('Điều chỉnh phân công'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 10),
+                  ...available
+                      .where((item) => item['canSchedule'] != true)
+                      .map(
+                        (item) => Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 7),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.error.withValues(alpha: 0.07),
+                            borderRadius: BorderRadius.circular(9),
+                            border: Border.all(
+                              color: AppColors.error.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.warning_amber_rounded,
+                                size: 18,
+                                color: AppColors.error,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  '${item['subjectName']} · ${item['teacherName']}: ${item['availabilityMessage']}',
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                const SizedBox(height: 5),
-                DropdownButtonFormField<String>(
-                  initialValue: roomCode,
-                  decoration: const InputDecoration(labelText: 'Phòng học'),
-                  items: _rooms
-                      .map((item) => DropdownMenuItem(
-                          value: item['code'].toString(),
-                          child: Text(item['code'].toString())))
-                      .toList(),
-                  onChanged: (value) => update(() => roomCode = value),
-                ),
-                const SizedBox(height: 18),
-                Row(children: [
-                  if (current != null) ...[
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => Navigator.pop(sheetContext, 'delete'),
-                        icon: const Icon(Icons.delete_outline_rounded,
-                            color: AppColors.error),
-                        label: const Text('Xóa',
-                            style: TextStyle(color: AppColors.error)),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                  ],
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: canSave
-                          ? () => Navigator.pop(sheetContext, 'save')
-                          : null,
-                      child:
-                          Text(current == null ? 'Thêm tiết' : 'Lưu thay đổi'),
-                    ),
+                  const SizedBox(height: 5),
+                  DropdownButtonFormField<String>(
+                    initialValue: roomCode,
+                    decoration: const InputDecoration(labelText: 'Phòng học'),
+                    items: _rooms
+                        .map(
+                          (item) => DropdownMenuItem(
+                            value: item['code'].toString(),
+                            child: Text(item['code'].toString()),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) => update(() => roomCode = value),
                   ),
-                ]),
-              ]),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      if (current != null) ...[
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () =>
+                                Navigator.pop(sheetContext, 'delete'),
+                            icon: const Icon(
+                              Icons.delete_outline_rounded,
+                              color: AppColors.error,
+                            ),
+                            label: const Text(
+                              'Xóa',
+                              style: TextStyle(color: AppColors.error),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                      ],
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: canSave
+                              ? () => Navigator.pop(sheetContext, 'save')
+                              : null,
+                          child: Text(
+                            current == null ? 'Thêm tiết' : 'Lưu thay đổi',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -429,8 +638,9 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
       if (action == 'delete' && current != null) {
         await _api.deleteTimetableSlot(current['id'].toString());
       } else if (action == 'save') {
-        final selected = available
-            .firstWhere((item) => item['id']?.toString() == assignmentId);
+        final selected = available.firstWhere(
+          (item) => item['id']?.toString() == assignmentId,
+        );
         final time = _times[period]!;
         final data = <String, dynamic>{
           'classId': _classId,
@@ -458,11 +668,13 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
 
   void _showError(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      backgroundColor: AppColors.error,
-      behavior: SnackBarBehavior.floating,
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 }
 
@@ -472,14 +684,15 @@ class _HeaderCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: 104,
-        height: 38,
-        alignment: Alignment.center,
-        color: AppColors.adminAccent,
-        child: Text(text,
-            style: const TextStyle(
-                color: Colors.white, fontWeight: FontWeight.bold)),
-      );
+    width: 104,
+    height: 38,
+    alignment: Alignment.center,
+    color: AppColors.adminAccent,
+    child: Text(
+      text,
+      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+    ),
+  );
 }
 
 class _PeriodCell extends StatelessWidget {
@@ -488,17 +701,21 @@ class _PeriodCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: 42,
-        height: 72,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: AppColors.adminAccent.withValues(alpha: 0.06),
-          border: Border.all(color: AppColors.divider),
-        ),
-        child: Text('T$period',
-            style: const TextStyle(
-                fontWeight: FontWeight.bold, color: AppColors.adminAccent)),
-      );
+    width: 42,
+    height: 72,
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      color: AppColors.adminAccent.withValues(alpha: 0.06),
+      border: Border.all(color: AppColors.divider),
+    ),
+    child: Text(
+      'T$period',
+      style: const TextStyle(
+        fontWeight: FontWeight.bold,
+        color: AppColors.adminAccent,
+      ),
+    ),
+  );
 }
 
 class _GridCell extends StatelessWidget {
@@ -508,41 +725,55 @@ class _GridCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => InkWell(
-        onTap: onTap,
-        child: Container(
-          width: 104,
-          height: 72,
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: slot == null
-                ? AppColors.background
-                : AppColors.adminAccent.withValues(alpha: 0.08),
-            border: Border.all(color: AppColors.divider),
-          ),
-          child: slot == null
-              ? const Icon(Icons.add_rounded,
-                  color: AppColors.textSecondary, size: 20)
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(slot!['subjectName']?.toString() ?? '',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.adminAccent)),
-                    const SizedBox(height: 3),
-                    Text(slot!['teacherName']?.toString() ?? '',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 9, color: AppColors.textSecondary)),
-                    Text(slot!['roomCode']?.toString() ?? 'Không phòng',
-                        style: const TextStyle(
-                            fontSize: 9, color: AppColors.textSecondary)),
-                  ],
+    onTap: onTap,
+    child: Container(
+      width: 104,
+      height: 72,
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: slot == null
+            ? AppColors.background
+            : AppColors.adminAccent.withValues(alpha: 0.08),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: slot == null
+          ? const Icon(
+              Icons.add_rounded,
+              color: AppColors.textSecondary,
+              size: 20,
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  slot!['subjectName']?.toString() ?? '',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.adminAccent,
+                  ),
                 ),
-        ),
-      );
+                const SizedBox(height: 3),
+                Text(
+                  slot!['teacherName']?.toString() ?? '',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 9,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                Text(
+                  slot!['roomCode']?.toString() ?? 'Không phòng',
+                  style: const TextStyle(
+                    fontSize: 9,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+    ),
+  );
 }

@@ -367,6 +367,12 @@ class ApiService {
     semesterId: semesterId,
   )).data!.map((item) => item.toJson()).toList();
 
+  Future<List<Map<String, dynamic>>> classTimetableSlots(
+    String classId,
+  ) async => _list(
+    await _dio.get('/timetableSlots', queryParameters: {'classId': classId}),
+  );
+
   Future<Map<String, dynamic>> createTimetableSlot(
     Map<String, dynamic> data,
   ) async => (await _academicApi.createTimetableSlot(

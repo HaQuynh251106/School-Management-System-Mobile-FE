@@ -8,12 +8,14 @@ import '../../../../shared/widgets/section_header.dart';
 class AdminClassDetail extends StatelessWidget {
   const AdminClassDetail({
     super.key,
+    required this.classId,
     required this.className,
     required this.gradeName,
     required this.homeroom,
     required this.studentCount,
   });
 
+  final String classId;
   final String className;
   final String gradeName;
   final String homeroom;
@@ -21,9 +23,11 @@ class AdminClassDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = className.trim().toLowerCase().startsWith('lớp ')
-        ? className.trim()
-        : 'Lớp ${className.trim()}';
+    final normalizedName = className.trim();
+    final title = normalizedName.toLowerCase().startsWith('lớp ')
+        ? normalizedName
+        : 'Lớp $normalizedName';
+
     return DefaultTabController(
       length: 3,
       child: Scaffold(
@@ -44,13 +48,14 @@ class AdminClassDetail extends StatelessWidget {
         body: TabBarView(
           children: [
             _InfoTab(
+              classId: classId,
               className: className,
               gradeName: gradeName,
               homeroom: homeroom,
               studentCount: studentCount,
             ),
-            _StudentsTab(className: className),
-            const _TimetableSummaryTab(),
+            _StudentsTab(classId: classId),
+            _TimetableSummaryTab(classId: classId),
           ],
         ),
       ),
@@ -58,13 +63,144 @@ class AdminClassDetail extends StatelessWidget {
   }
 }
 
-class _InfoTab extends StatelessWidget {
+class _InfoTab extends StatefulWidget {
   const _InfoTab({
+    required this.classId,
     required this.className,
     required this.gradeName,
     required this.homeroom,
     required this.studentCount,
   });
+
+  final String classId;
+  final String className;
+  final String gradeName;
+  final String homeroom;
+  final int studentCount;
+
+  @override
+  State<_InfoTab> createState() => _InfoTabState();
+}
+
+class _InfoTabState extends State<_InfoTab> {
+  late Future<ClassOverviewMetrics> _future = _load();
+
+  Future<ClassOverviewMetrics> _load() async {
+    final api = sl<ApiService>();
+    final results = await Future.wait<dynamic>([
+      api.grades(classId: widget.classId),
+      api.attendance(classId: widget.classId),
+      api.teachingAssignments(classId: widget.classId),
+    ]);
+    return ClassOverviewMetrics.fromRaw(
+      grades: (results[0] as List).cast<Map<String, dynamic>>(),
+      attendance: (results[1] as List).cast<Map<String, dynamic>>(),
+      assignments: (results[2] as List).cast<Map<String, dynamic>>(),
+    );
+  }
+
+  void _reload() => setState(() => _future = _load());
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _ClassHeader(
+          className: widget.className,
+          gradeName: widget.gradeName,
+          homeroom: widget.homeroom,
+          studentCount: widget.studentCount,
+        ),
+        const SizedBox(height: 20),
+        const SectionHeader(title: 'Thống kê'),
+        const SizedBox(height: 10),
+        FutureBuilder<ClassOverviewMetrics>(
+          future: _future,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 32),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (snapshot.hasError || snapshot.data == null) {
+              return Center(
+                child: OutlinedButton.icon(
+                  onPressed: _reload,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Tải lại dữ liệu lớp'),
+                ),
+              );
+            }
+
+            final data = snapshot.data!;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: _StatCard(
+                        label: 'TB lớp',
+                        value: data.averageScoreLabel,
+                        color: AppColors.success,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _StatCard(
+                        label: 'Tỉ lệ CC',
+                        value: data.attendanceRateLabel,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _StatCard(
+                        label: 'Vắng KP',
+                        value: '${data.unexcusedCount}',
+                        color: AppColors.error,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const SectionHeader(title: 'Giáo viên bộ môn'),
+                const SizedBox(height: 8),
+                if (data.assignments.isEmpty)
+                  const Text(
+                    'Chưa có phân công giảng dạy',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  )
+                else
+                  Card(
+                    child: Column(
+                      children: [
+                        for (var i = 0; i < data.assignments.length; i++) ...[
+                          if (i > 0) const Divider(height: 0),
+                          _AssignmentTile(assignment: data.assignments[i]),
+                        ],
+                      ],
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _ClassHeader extends StatelessWidget {
+  const _ClassHeader({
+    required this.className,
+    required this.gradeName,
+    required this.homeroom,
+    required this.studentCount,
+  });
+
   final String className;
   final String gradeName;
   final String homeroom;
@@ -72,141 +208,76 @@ class _InfoTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+    return Container(
       padding: const EdgeInsets.all(16),
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.adminAccent, Color(0xFF3949AB)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppColors.adminAccent, Color(0xFF3949AB)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(8),
             ),
-            borderRadius: BorderRadius.circular(8),
+            alignment: Alignment.center,
+            child: Text(
+              className,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: Text(
-                    className,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  gradeName,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      gradeName,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'GVCN: $homeroom',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: Colors.white70),
-                    ),
-                    Text(
-                      'Sĩ số: $studentCount HS',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: Colors.white70),
-                    ),
-                  ],
+                const SizedBox(height: 4),
+                Text(
+                  'GVCN: ${homeroom.isEmpty ? 'Chưa phân công' : homeroom}',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.white70),
                 ),
-              ),
-            ],
+                Text(
+                  'Sĩ số: $studentCount HS',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.white70),
+                ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 20),
-        const SectionHeader(title: 'Thống kê'),
-        const SizedBox(height: 10),
-        const Row(
-          children: [
-            Expanded(
-                child: _StatCard(
-                    label: 'TB lớp', value: '7.8', color: AppColors.success)),
-            SizedBox(width: 10),
-            Expanded(
-                child: _StatCard(
-                    label: 'Tỉ lệ CC', value: '94%', color: AppColors.primary)),
-            SizedBox(width: 10),
-            Expanded(
-                child: _StatCard(
-                    label: 'Vắng KP', value: '3', color: AppColors.error)),
-          ],
-        ),
-        const SizedBox(height: 20),
-        const SectionHeader(title: 'GV bộ môn'),
-        const SizedBox(height: 8),
-        const Card(
-          child: Column(
-            children: [
-              ListTile(
-                leading: Icon(Icons.functions_rounded,
-                    color: AppColors.teacherAccent),
-                title: Text('Toán'),
-                subtitle: Text('Trần Thị Hoa'),
-              ),
-              Divider(height: 0),
-              ListTile(
-                leading: Icon(Icons.science_outlined,
-                    color: AppColors.teacherAccent),
-                title: Text('Vật lý'),
-                subtitle: Text('Lê Văn Minh'),
-              ),
-              Divider(height: 0),
-              ListTile(
-                leading: Icon(Icons.menu_book_rounded,
-                    color: AppColors.teacherAccent),
-                title: Text('Ngữ văn'),
-                subtitle: Text('Nguyễn Thị Hồng'),
-              ),
-              Divider(height: 0),
-              ListTile(
-                leading: Icon(Icons.translate_rounded,
-                    color: AppColors.teacherAccent),
-                title: Text('Tiếng Anh'),
-                subtitle: Text('Phạm Quốc Bảo'),
-              ),
-              Divider(height: 0),
-              ListTile(
-                leading: Icon(Icons.biotech_outlined,
-                    color: AppColors.teacherAccent),
-                title: Text('Sinh học'),
-                subtitle: Text('Trần Thị Bình'),
-              ),
-            ],
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
 class _StatCard extends StatelessWidget {
-  const _StatCard(
-      {required this.label, required this.value, required this.color});
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
   final String label;
   final String value;
   final Color color;
@@ -214,24 +285,24 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+      child: SizedBox(
+        height: 80,
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
               value,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: color,
-                  ),
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               label,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: AppColors.textSecondary),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -240,32 +311,45 @@ class _StatCard extends StatelessWidget {
   }
 }
 
+class _AssignmentTile extends StatelessWidget {
+  const _AssignmentTile({required this.assignment});
+
+  final Map<String, dynamic> assignment;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheduled = (assignment['scheduledPeriods'] as num?)?.toInt() ?? 0;
+    final weekly = (assignment['weeklyPeriods'] as num?)?.toInt() ?? 0;
+    return ListTile(
+      leading: const Icon(
+        Icons.school_outlined,
+        color: AppColors.teacherAccent,
+      ),
+      title: Text(assignment['subjectName']?.toString() ?? ''),
+      subtitle: Text(
+        assignment['teacherName']?.toString() ?? 'Chưa có giáo viên',
+      ),
+      trailing: Text(
+        '$scheduled/$weekly tiết',
+        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+      ),
+    );
+  }
+}
+
 class _StudentsTab extends StatefulWidget {
-  const _StudentsTab({required this.className});
-  final String className;
+  const _StudentsTab({required this.classId});
+
+  final String classId;
 
   @override
   State<_StudentsTab> createState() => _StudentsTabState();
 }
 
 class _StudentsTabState extends State<_StudentsTab> {
-  late final Future<List<Map<String, dynamic>>> _future = _load();
+  late final Future<List<Map<String, dynamic>>> _future = sl<ApiService>()
+      .classStudents(widget.classId);
   String _query = '';
-
-  /// Tìm classId theo tên/mã lớp rồi tải danh sách học sinh của lớp đó.
-  Future<List<Map<String, dynamic>>> _load() async {
-    final api = sl<ApiService>();
-    final classes = await api.classes();
-    final match = classes.firstWhere(
-      (c) =>
-          (c['name'] ?? '').toString() == widget.className ||
-          (c['code'] ?? '').toString() == widget.className,
-      orElse: () => const <String, dynamic>{},
-    );
-    final id = (match['id'] ?? '').toString();
-    if (id.isEmpty) return const [];
-    return api.classStudents(id);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -274,98 +358,89 @@ class _StudentsTabState extends State<_StudentsTab> {
         Container(
           padding: const EdgeInsets.all(12),
           color: AppColors.surface,
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  onChanged: (v) =>
-                      setState(() => _query = v.trim().toLowerCase()),
-                  decoration: InputDecoration(
-                    hintText: 'Tìm HS...',
-                    prefixIcon: const Icon(Icons.search, size: 18),
-                    isDense: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: AppColors.divider),
-                    ),
-                  ),
-                ),
+          child: TextField(
+            onChanged: (value) =>
+                setState(() => _query = value.trim().toLowerCase()),
+            decoration: InputDecoration(
+              hintText: 'Tìm học sinh...',
+              prefixIcon: const Icon(Icons.search, size: 18),
+              isDense: true,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: AppColors.divider),
               ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.person_add_rounded,
-                    color: AppColors.adminAccent),
-                onPressed: () {},
-              ),
-            ],
+            ),
           ),
         ),
         Expanded(
           child: FutureBuilder<List<Map<String, dynamic>>>(
             future: _future,
-            builder: (context, snap) {
-              if (snap.connectionState != ConnectionState.done) {
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
                 return const Center(child: CircularProgressIndicator());
               }
-              if (snap.hasError) {
-                return Center(
-                    child: Text('Lỗi: ${snap.error}',
-                        style:
-                            const TextStyle(color: AppColors.textSecondary)));
+              if (snapshot.hasError) {
+                return const Center(
+                  child: Text(
+                    'Không thể tải danh sách học sinh',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                );
               }
-              final all = snap.data ?? [];
+
+              final all = snapshot.data ?? [];
               final students = _query.isEmpty
                   ? all
-                  : all.where((s) {
-                      final name =
-                          (s['fullName'] ?? '').toString().toLowerCase();
-                      final code =
-                          (s['studentCode'] ?? '').toString().toLowerCase();
+                  : all.where((student) {
+                      final name = (student['fullName'] ?? '')
+                          .toString()
+                          .toLowerCase();
+                      final code = (student['studentCode'] ?? '')
+                          .toString()
+                          .toLowerCase();
                       return name.contains(_query) || code.contains(_query);
                     }).toList();
               if (students.isEmpty) {
                 return const Center(
-                    child: Text('Không có học sinh',
-                        style: TextStyle(color: AppColors.textSecondary)));
+                  child: Text(
+                    'Không có học sinh',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                );
               }
+
               return ListView.separated(
                 itemCount: students.length,
                 separatorBuilder: (_, __) => const Divider(height: 0),
-                itemBuilder: (_, i) {
-                  final s = students[i];
-                  final name = (s['fullName'] ?? '').toString();
-                  final code = (s['studentCode'] ?? '').toString();
+                itemBuilder: (context, index) {
+                  final student = students[index];
                   return ListTile(
                     leading: CircleAvatar(
                       radius: 18,
-                      backgroundColor:
-                          AppColors.studentAccent.withValues(alpha: 0.14),
+                      backgroundColor: AppColors.studentAccent.withValues(
+                        alpha: 0.14,
+                      ),
                       child: Text(
-                        '${i + 1}',
-                        style:
-                            Theme.of(context).textTheme.labelMedium?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.studentAccent,
-                                ),
+                        '${index + 1}',
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.studentAccent,
+                            ),
                       ),
                     ),
                     title: Text(
-                      name,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
+                      (student['fullName'] ?? '').toString(),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     subtitle: Text(
-                      code,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: AppColors.textSecondary),
+                      (student['studentCode'] ?? '').toString(),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
                     ),
-                    trailing: const Icon(Icons.chevron_right_rounded,
-                        color: AppColors.textSecondary, size: 18),
-                    onTap: () {},
                   );
                 },
               );
@@ -378,91 +453,174 @@ class _StudentsTabState extends State<_StudentsTab> {
 }
 
 class _TimetableSummaryTab extends StatelessWidget {
-  const _TimetableSummaryTab();
+  const _TimetableSummaryTab({required this.classId});
 
-  static const _days = ['T2', 'T3', 'T4', 'T5', 'T6'];
-  static const _slots = {
-    0: ['Toán', 'Vật lý', 'Ngữ văn', 'Tiếng Anh'],
-    1: ['Tiếng Anh', 'Sinh học', 'Toán'],
-    2: ['Toán', 'Ngữ văn', 'Hóa học'],
-    3: ['Vật lý', 'Tiếng Anh', 'Lịch sử'],
-    4: ['Ngữ văn', 'Toán', 'Địa lý', 'GDCD'],
-  };
+  final String classId;
+
+  static const _days = [
+    ('MON', 'Thứ 2'),
+    ('TUE', 'Thứ 3'),
+    ('WED', 'Thứ 4'),
+    ('THU', 'Thứ 5'),
+    ('FRI', 'Thứ 6'),
+    ('SAT', 'Thứ 7'),
+  ];
+
+  List<Map<String, dynamic>> _slotsForDay(
+    List<Map<String, dynamic>> all,
+    String dayCode,
+  ) {
+    final slots = all.where((slot) => slot['dayOfWeek'] == dayCode).toList();
+    slots.sort(
+      (a, b) => ((a['periodNo'] as num?)?.toInt() ?? 0).compareTo(
+        (b['periodNo'] as num?)?.toInt() ?? 0,
+      ),
+    );
+    return slots;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.success.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.check_circle_outline_rounded,
-                  color: AppColors.success, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'TKB HK2 đã hoàn tất, không có xung đột',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        for (var d = 0; d < _days.length; d++) ...[
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8, top: 8),
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: sl<ApiService>().classTimetableSlots(classId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return const Center(child: Text('Không thể tải thời khóa biểu'));
+        }
+
+        final all = snapshot.data ?? [];
+        if (all.isEmpty) {
+          return const Center(
             child: Text(
-              _days[d],
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.adminAccent,
-                  ),
+              'Lớp chưa có thời khóa biểu',
+              style: TextStyle(color: AppColors.textSecondary),
             ),
-          ),
-          ..._slots[d]!.asMap().entries.map(
-                (e) => Card(
-                  margin: const EdgeInsets.only(bottom: 6),
-                  child: ListTile(
-                    leading: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: AppColors.adminAccent.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Center(
-                        child: Text('${e.key + 1}',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.adminAccent)),
-                      ),
-                    ),
-                    title: Text(
-                      e.value,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: Text(
-                      'Tiết ${e.key + 1}',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: AppColors.textSecondary),
+          );
+        }
+
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            for (final day in _days)
+              if (_slotsForDay(all, day.$1).isNotEmpty) ...[
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, bottom: 8),
+                  child: Text(
+                    day.$2,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.adminAccent,
                     ),
                   ),
                 ),
-              ),
-        ],
-      ],
+                for (final slot in _slotsForDay(all, day.$1))
+                  _TimetableSlotTile(slot: slot),
+              ],
+          ],
+        );
+      },
     );
   }
+}
+
+class _TimetableSlotTile extends StatelessWidget {
+  const _TimetableSlotTile({required this.slot});
+
+  final Map<String, dynamic> slot;
+
+  @override
+  Widget build(BuildContext context) {
+    final details = [
+      '${slot['startTime'] ?? ''}-${slot['endTime'] ?? ''}',
+      slot['teacherName']?.toString() ?? '',
+      slot['roomCode']?.toString() ?? '',
+    ].where((value) => value.replaceAll('-', '').trim().isNotEmpty).join(' · ');
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 6),
+      child: ListTile(
+        leading: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: AppColors.adminAccent.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            '${slot['periodNo'] ?? ''}',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppColors.adminAccent,
+            ),
+          ),
+        ),
+        title: Text(
+          slot['subjectName']?.toString() ?? '',
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text(
+          details,
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+        ),
+        trailing: slot['locked'] == true
+            ? const Icon(Icons.lock_outline_rounded, size: 18)
+            : null,
+      ),
+    );
+  }
+}
+
+class ClassOverviewMetrics {
+  const ClassOverviewMetrics({
+    required this.averageScore,
+    required this.attendanceRate,
+    required this.unexcusedCount,
+    required this.assignments,
+  });
+
+  factory ClassOverviewMetrics.fromRaw({
+    required List<Map<String, dynamic>> grades,
+    required List<Map<String, dynamic>> attendance,
+    required List<Map<String, dynamic>> assignments,
+  }) {
+    final scores = grades
+        .map((grade) => grade['score'])
+        .whereType<num>()
+        .map((score) => score.toDouble())
+        .toList();
+    final attended = attendance.where((record) {
+      return const {'PRESENT', 'LATE'}.contains(record['status']);
+    }).length;
+
+    return ClassOverviewMetrics(
+      averageScore: scores.isEmpty
+          ? null
+          : scores.reduce((a, b) => a + b) / scores.length,
+      attendanceRate: attendance.isEmpty
+          ? null
+          : attended * 100 / attendance.length,
+      unexcusedCount: attendance.where((record) {
+        return record['status'] == 'ABSENT_UNEXCUSED';
+      }).length,
+      assignments: assignments,
+    );
+  }
+
+  final double? averageScore;
+  final double? attendanceRate;
+  final int unexcusedCount;
+  final List<Map<String, dynamic>> assignments;
+
+  String get averageScoreLabel =>
+      averageScore == null ? '—' : averageScore!.toStringAsFixed(1);
+  String get attendanceRateLabel =>
+      attendanceRate == null ? '—' : '${attendanceRate!.round()}%';
 }
