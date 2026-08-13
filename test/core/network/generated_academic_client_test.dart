@@ -104,6 +104,29 @@ void main() {
     expect(_body(requests[4])['periodNo'], 1);
   });
 
+  test('ApiService previews and applies automatic timetable safely', () async {
+    final requests = <RequestOptions>[];
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'));
+    dio.httpClientAdapter = _AcademicAdapter(requests);
+    final api = ApiService(dio);
+
+    final preview = await api.autoPlanTimetable('sm-1');
+    final applied = await api.autoPlanTimetable('sm-1', apply: true);
+
+    expect(preview['applied'], isFalse);
+    expect(applied['applied'], isTrue);
+    expect(requests.map((request) => request.path), [
+      '/timetableSlots/auto-plan',
+      '/timetableSlots/auto-plan',
+    ]);
+    expect(_body(requests.first), {
+      'semesterId': 'sm-1',
+      'apply': false,
+      'allowPartial': false,
+    });
+    expect(_body(requests.last)['apply'], isTrue);
+  });
+
   test(
     'ApiService uses typed attendance reads, states and bulk marks',
     () async {
@@ -423,6 +446,25 @@ class _AcademicAdapter implements HttpClientAdapter {
       ('POST', '/rooms') => _room,
       ('POST', '/teaching-assignments') => _assignment,
       ('POST', '/timetableSlots') => _slot,
+      ('POST', '/timetableSlots/auto-plan') => {
+        'semesterId': 'sm-1',
+        'existingSlots': 1,
+        'proposedSlots': 1,
+        'unscheduledSlots': 0,
+        'applied': _body(options)['apply'],
+        'items': [
+          {
+            'classCode': '10A1',
+            'subjectName': 'Toan',
+            'teacherName': 'Tran Thi Hoa',
+            'roomCode': 'P201',
+            'dayOfWeek': 'TUE',
+            'periodNo': 2,
+            'status': 'PROPOSED',
+          },
+        ],
+        'warnings': <String>[],
+      },
       ('POST', '/attendance/bulk') => [_attendanceRecord],
       ('POST', '/attendance/unlock') => _unlockedSession,
       ('POST', '/grades/bulk') => [_grade],
@@ -492,8 +534,9 @@ class _AcademicAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
-Map<String, dynamic> _body(RequestOptions request) =>
-    (jsonDecode(request.data as String) as Map).cast<String, dynamic>();
+Map<String, dynamic> _body(RequestOptions request) => request.data is String
+    ? (jsonDecode(request.data as String) as Map).cast<String, dynamic>()
+    : (request.data as Map).cast<String, dynamic>();
 
 const _year = {
   'id': 'ay-1',

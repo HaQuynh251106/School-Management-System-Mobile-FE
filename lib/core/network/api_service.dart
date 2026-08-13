@@ -383,6 +383,16 @@ class ApiService {
   Future<void> deleteTimetableSlot(String id) async =>
       _dio.delete('/timetableSlots/$id');
 
+  Future<Map<String, dynamic>> autoPlanTimetable(
+    String semesterId, {
+    bool apply = false,
+  }) async => _map(
+    await _dio.post(
+      '/timetableSlots/auto-plan',
+      data: {'semesterId': semesterId, 'apply': apply, 'allowPartial': false},
+    ),
+  );
+
   Future<List<Map<String, dynamic>>> timetableVersions(
     String semesterId,
   ) async => _list(

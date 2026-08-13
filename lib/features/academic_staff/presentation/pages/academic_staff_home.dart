@@ -9,6 +9,7 @@ import '../../../../shared/widgets/role_page_intro.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_event.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
+import 'auto_timetable_page.dart';
 import 'exam_management_page.dart';
 import 'year_end_management_page.dart';
 
@@ -297,7 +298,30 @@ class _TimetableVersionsPageState extends State<_TimetableVersionsPage> {
         return Column(
           children: [
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Card(
+                child: ListTile(
+                  leading: const CircleAvatar(
+                    child: Icon(Icons.auto_awesome_rounded),
+                  ),
+                  title: const Text('Tự tạo thời khóa biểu'),
+                  subtitle: const Text(
+                    'Xem trước phương án, kiểm tra xung đột rồi mới áp dụng.',
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () async {
+                    await Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const AutoTimetablePage(),
+                      ),
+                    );
+                    _reload();
+                  },
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               child: DropdownButtonFormField<String>(
                 initialValue: _selected,
                 decoration: const InputDecoration(
