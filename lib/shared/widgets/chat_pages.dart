@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/di/service_locator.dart';
+import '../../core/network/api_error_message.dart';
 import '../../core/network/api_service.dart';
 import '../../core/network/realtime_service.dart';
 import '../../core/theme/app_colors.dart';
@@ -22,7 +23,7 @@ class ChatThread {
     this.isBroadcast = false,
   });
 
-  /// Id người đối thoại từ backend (null cho mock data tĩnh).
+  /// Mã người đối thoại do hệ thống trả về.
   final String? userId;
   final String name;
   final String role;
@@ -31,8 +32,7 @@ class ChatThread {
   final int unread;
   final bool isBroadcast;
 
-  /// Map 1 thread từ REST backend sang model mà thread-row UI đang render.
-  /// API: {userId, name, lastMessage, lastTime(ISO), unread(int)}
+  /// Chuyển dữ liệu hội thoại sang nội dung hiển thị.
   factory ChatThread.fromJson(Map<String, dynamic> json) {
     return ChatThread(
       userId: json['userId']?.toString(),
@@ -299,7 +299,10 @@ class _ChatListPageState extends State<ChatListPage> {
                 : snap.hasError
                 ? Center(
                     child: Text(
-                      'Lỗi: ${snap.error}',
+                      apiErrorMessage(
+                        snap.error,
+                        fallback: 'Không thể tải danh sách hội thoại.',
+                      ),
                       style: const TextStyle(color: AppColors.textSecondary),
                     ),
                   )
@@ -420,11 +423,18 @@ class _BroadcastSheetState extends State<_BroadcastSheet> {
           (preview['recipientCount'] as num?)?.toInt() ??
           _recipientCount;
       Navigator.pop(context, delivered);
-    } catch (e) {
+    } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Không thể gửi: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            apiErrorMessage(
+              error,
+              fallback: 'Không thể gửi thông báo. Vui lòng thử lại.',
+            ),
+          ),
+        ),
+      );
       setState(() => _sending = false);
     }
   }
@@ -739,17 +749,6 @@ class _ThreadList extends StatelessWidget {
                   ),
                 ),
               );
-            } else {
-              await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => ChatRoomPage(
-                    title: t.name,
-                    subtitle: t.role,
-                    accent: accent,
-                    isBroadcast: t.isBroadcast,
-                  ),
-                ),
-              );
             }
             onConversationClosed?.call();
           },
@@ -776,156 +775,12 @@ class ChatMessage {
     this.senderName,
     this.read = false,
   });
+
   final String text;
   final bool fromMe;
   final String time;
   final String? senderName;
   final bool read;
-}
-
-class ChatRoomPage extends StatefulWidget {
-  const ChatRoomPage({
-    super.key,
-    required this.title,
-    required this.subtitle,
-    required this.accent,
-    this.isBroadcast = false,
-  });
-
-  final String title;
-  final String subtitle;
-  final Color accent;
-  final bool isBroadcast;
-
-  @override
-  State<ChatRoomPage> createState() => _ChatRoomPageState();
-}
-
-class _ChatRoomPageState extends State<ChatRoomPage> {
-  final _ctrl = TextEditingController();
-  final List<ChatMessage> _messages = [
-    const ChatMessage(
-      text: 'Chào cô ạ, hôm nay con em vắng vì bị sốt nhẹ.',
-      fromMe: true,
-      time: '08:30',
-    ),
-    const ChatMessage(
-      text:
-          'Vâng anh chị, em nắm rồi. Cô đã đánh dấu vắng có phép. '
-          'Bài tập về nhà cô sẽ gửi qua app.',
-      fromMe: false,
-      time: '08:32',
-      senderName: 'Trần Thị Hoa',
-    ),
-    const ChatMessage(
-      text: 'Dạ vâng, em cảm ơn cô.',
-      fromMe: true,
-      time: '08:33',
-    ),
-    const ChatMessage(
-      text:
-          'Tối nay cô có gửi bài về nhà chương 3 cho con, '
-          'phụ huynh nhắc cháu làm trước khi đi học buổi sau nhé.',
-      fromMe: false,
-      time: '15:42',
-      senderName: 'Trần Thị Hoa',
-    ),
-  ];
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  void _send() {
-    final text = _ctrl.text.trim();
-    if (text.isEmpty) return;
-    setState(() {
-      _messages.add(ChatMessage(text: text, fromMe: true, time: 'Vừa xong'));
-      _ctrl.clear();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.title, style: const TextStyle(fontSize: 15)),
-            Text(
-              widget.subtitle,
-              style: const TextStyle(fontSize: 11, color: Colors.white70),
-            ),
-          ],
-        ),
-        backgroundColor: widget.accent,
-        actions: [
-          IconButton(icon: const Icon(Icons.phone_outlined), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-              itemCount: _messages.length,
-              itemBuilder: (_, i) {
-                final m = _messages[i];
-                return _Bubble(
-                  message: m,
-                  accent: widget.accent,
-                  showSender: widget.isBroadcast,
-                );
-              },
-            ),
-          ),
-          SafeArea(
-            top: false,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                border: Border(
-                  top: BorderSide(color: AppColors.divider, width: 0.5),
-                ),
-              ),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(
-                      Icons.attach_file_rounded,
-                      color: AppColors.textSecondary,
-                    ),
-                    onPressed: () {},
-                  ),
-                  Expanded(
-                    child: TextField(
-                      controller: _ctrl,
-                      textCapitalization: TextCapitalization.sentences,
-                      decoration: const InputDecoration(
-                        hintText: 'Nhập tin nhắn...',
-                        border: InputBorder.none,
-                        isDense: true,
-                      ),
-                      onSubmitted: (_) => _send(),
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.send_rounded, color: widget.accent),
-                    onPressed: _send,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _Bubble extends StatelessWidget {
@@ -934,6 +789,7 @@ class _Bubble extends StatelessWidget {
     required this.accent,
     required this.showSender,
   });
+
   final ChatMessage message;
   final Color accent;
   final bool showSender;
@@ -1085,11 +941,16 @@ class _ChatThreadPageState extends State<_ChatThreadPage> {
       if (!mounted) return;
       _ctrl.clear();
       _reload();
-    } catch (e) {
+    } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Gửi thất bại: $e'),
+          content: Text(
+            apiErrorMessage(
+              error,
+              fallback: 'Không thể gửi tin nhắn. Vui lòng thử lại.',
+            ),
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -1155,7 +1016,10 @@ class _ChatThreadPageState extends State<_ChatThreadPage> {
                 if (snap.hasError) {
                   return Center(
                     child: Text(
-                      'Lỗi: ${snap.error}',
+                      apiErrorMessage(
+                        snap.error,
+                        fallback: 'Không thể tải nội dung hội thoại.',
+                      ),
                       style: const TextStyle(color: AppColors.textSecondary),
                     ),
                   );

@@ -65,7 +65,9 @@ class _ClubManagementPageState extends State<ClubManagementPage> {
             }
             if (snapshot.hasError) {
               return _ErrorState(
-                  message: _errorMessage(snapshot.error), onRetry: _reload);
+                message: _errorMessage(snapshot.error),
+                onRetry: _reload,
+              );
             }
             final data = snapshot.data!;
             return TabBarView(
@@ -101,9 +103,11 @@ class _ClubManagementPageState extends State<ClubManagementPage> {
 
   Widget _registrationsView(List<Map<String, dynamic>> registrations) {
     final visible = registrations
-        .where((item) =>
-            _registrationFilter == 'ALL' ||
-            item['status']?.toString() == _registrationFilter)
+        .where(
+          (item) =>
+              _registrationFilter == 'ALL' ||
+              item['status']?.toString() == _registrationFilter,
+        )
         .toList();
     return RefreshIndicator(
       onRefresh: _reload,
@@ -133,30 +137,37 @@ class _ClubManagementPageState extends State<ClubManagementPage> {
               padding: EdgeInsets.only(top: 96),
               child: Column(
                 children: [
-                  Icon(Icons.inbox_outlined,
-                      size: 48, color: AppColors.textSecondary),
+                  Icon(
+                    Icons.inbox_outlined,
+                    size: 48,
+                    color: AppColors.textSecondary,
+                  ),
                   SizedBox(height: 10),
                   Text('Không có đăng ký phù hợp'),
                 ],
               ),
             )
           else
-            ...visible.expand((registration) => [
-                  _RegistrationRow(
-                    registration: registration,
-                    busy: _busyRegistrationId == registration['id'],
-                    onApprove: () => _decide(registration, approve: true),
-                    onReject: () => _decide(registration, approve: false),
-                  ),
-                  const Divider(height: 1),
-                ]),
+            ...visible.expand(
+              (registration) => [
+                _RegistrationRow(
+                  registration: registration,
+                  busy: _busyRegistrationId == registration['id'],
+                  onApprove: () => _decide(registration, approve: true),
+                  onReject: () => _decide(registration, approve: false),
+                ),
+                const Divider(height: 1),
+              ],
+            ),
         ],
       ),
     );
   }
 
-  Future<void> _decide(Map<String, dynamic> registration,
-      {required bool approve}) async {
+  Future<void> _decide(
+    Map<String, dynamic> registration, {
+    required bool approve,
+  }) async {
     final id = registration['id'].toString();
     final noteController = TextEditingController();
     final confirmed = await showDialog<bool>(
@@ -168,7 +179,8 @@ class _ClubManagementPageState extends State<ClubManagementPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-                '${registration['studentName']} · ${registration['clubName']}'),
+              '${registration['studentName']} · ${registration['clubName']}',
+            ),
             const SizedBox(height: 12),
             TextField(
               controller: noteController,
@@ -181,8 +193,9 @@ class _ClubManagementPageState extends State<ClubManagementPage> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Đóng')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Đóng'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: approve
@@ -237,36 +250,41 @@ class _ClubManagementPageState extends State<ClubManagementPage> {
       builder: (sheetContext) => StatefulBuilder(
         builder: (context, setSheetState) => Padding(
           padding: EdgeInsets.fromLTRB(
-              16, 8, 16, 16 + MediaQuery.viewInsetsOf(context).bottom),
+            16,
+            8,
+            16,
+            16 + MediaQuery.viewInsetsOf(context).bottom,
+          ),
           child: Form(
             key: formKey,
             child: ListView(
               shrinkWrap: true,
               children: [
                 const Center(
-                  child: SizedBox(
-                    width: 32,
-                    child: Divider(thickness: 4),
-                  ),
+                  child: SizedBox(width: 32, child: Divider(thickness: 4)),
                 ),
                 const SizedBox(height: 8),
-                const Text('Tạo câu lạc bộ',
-                    style:
-                        TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                const Text(
+                  'Tạo câu lạc bộ',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: code,
                   textCapitalization: TextCapitalization.characters,
                   decoration: const InputDecoration(
-                      labelText: 'Mã CLB', prefixIcon: Icon(Icons.tag_rounded)),
+                    labelText: 'Mã CLB',
+                    prefixIcon: Icon(Icons.tag_rounded),
+                  ),
                   validator: _required,
                 ),
                 const SizedBox(height: 10),
                 TextFormField(
                   controller: name,
                   decoration: const InputDecoration(
-                      labelText: 'Tên câu lạc bộ',
-                      prefixIcon: Icon(Icons.groups_rounded)),
+                    labelText: 'Tên câu lạc bộ',
+                    prefixIcon: Icon(Icons.groups_rounded),
+                  ),
                   validator: _required,
                 ),
                 const SizedBox(height: 10),
@@ -274,16 +292,18 @@ class _ClubManagementPageState extends State<ClubManagementPage> {
                   controller: description,
                   maxLines: 2,
                   decoration: const InputDecoration(
-                      labelText: 'Mô tả',
-                      prefixIcon: Icon(Icons.notes_rounded)),
+                    labelText: 'Mô tả',
+                    prefixIcon: Icon(Icons.notes_rounded),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 TextFormField(
                   controller: schedule,
                   decoration: const InputDecoration(
-                      labelText: 'Lịch sinh hoạt',
-                      hintText: 'Ví dụ: Thứ Bảy 08:00-10:00',
-                      prefixIcon: Icon(Icons.schedule_rounded)),
+                    labelText: 'Lịch sinh hoạt',
+                    hintText: 'Ví dụ: Thứ Bảy 08:00-10:00',
+                    prefixIcon: Icon(Icons.schedule_rounded),
+                  ),
                   validator: _required,
                 ),
                 const SizedBox(height: 10),
@@ -294,12 +314,13 @@ class _ClubManagementPageState extends State<ClubManagementPage> {
                         controller: capacity,
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
-                            labelText: 'Sức chứa',
-                            prefixIcon: Icon(Icons.event_seat_outlined)),
+                          labelText: 'Sức chứa',
+                          prefixIcon: Icon(Icons.event_seat_outlined),
+                        ),
                         validator: (value) =>
                             (int.tryParse(value ?? '') ?? 0) < 1
-                                ? 'Sức chứa phải lớn hơn 0'
-                                : null,
+                            ? 'Sức chứa phải lớn hơn 0'
+                            : null,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -308,13 +329,14 @@ class _ClubManagementPageState extends State<ClubManagementPage> {
                         controller: fee,
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
-                            labelText: 'Phí tham gia',
-                            suffixText: 'đ',
-                            prefixIcon: Icon(Icons.payments_outlined)),
+                          labelText: 'Phí tham gia',
+                          suffixText: 'đ',
+                          prefixIcon: Icon(Icons.payments_outlined),
+                        ),
                         validator: (value) =>
                             (int.tryParse(value ?? '') ?? -1) < 0
-                                ? 'Phí không hợp lệ'
-                                : null,
+                            ? 'Phí không hợp lệ'
+                            : null,
                       ),
                     ),
                   ],
@@ -356,8 +378,10 @@ class _ClubManagementPageState extends State<ClubManagementPage> {
                       : () async {
                           if (formKey.currentState?.validate() != true) return;
                           if (registrationEnd.isBefore(registrationStart)) {
-                            _message('Ngày kết thúc phải sau ngày bắt đầu',
-                                error: true);
+                            _message(
+                              'Ngày kết thúc phải sau ngày bắt đầu',
+                              error: true,
+                            );
                             return;
                           }
                           setSheetState(() => saving = true);
@@ -391,7 +415,8 @@ class _ClubManagementPageState extends State<ClubManagementPage> {
                   icon: saving
                       ? const SizedBox.square(
                           dimension: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2))
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
                       : const Icon(Icons.check_rounded),
                   label: Text(saving ? 'Đang tạo...' : 'Tạo câu lạc bộ'),
                 ),
@@ -410,11 +435,13 @@ class _ClubManagementPageState extends State<ClubManagementPage> {
   }
 
   void _message(String message, {bool error = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      backgroundColor: error ? AppColors.error : null,
-      behavior: SnackBarBehavior.floating,
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: error ? AppColors.error : null,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 }
 
@@ -438,27 +465,36 @@ class _AdminClubCard extends StatelessWidget {
               children: [
                 CircleAvatar(
                   backgroundColor: AppColors.adminAccent.withValues(alpha: .1),
-                  child: const Icon(Icons.groups_rounded,
-                      color: AppColors.adminAccent),
+                  child: const Icon(
+                    Icons.groups_rounded,
+                    color: AppColors.adminAccent,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(club['name']?.toString() ?? 'Câu lạc bộ',
-                          style: const TextStyle(fontWeight: FontWeight.w700)),
-                      Text('${club['code']} · ${club['schedule']}',
-                          style: const TextStyle(
-                              fontSize: 12, color: AppColors.textSecondary)),
+                      Text(
+                        club['name']?.toString() ?? 'Câu lạc bộ',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      Text(
+                        '${club['code']} · ${club['schedule']}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 _StatusBadge(
-                    label: club['active'] == true ? 'Đang mở' : 'Tạm dừng',
-                    color: club['active'] == true
-                        ? AppColors.success
-                        : AppColors.textSecondary),
+                  label: club['active'] == true ? 'Đang mở' : 'Tạm dừng',
+                  color: club['active'] == true
+                      ? AppColors.success
+                      : AppColors.textSecondary,
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -484,8 +520,10 @@ class _AdminClubCard extends StatelessWidget {
             const SizedBox(height: 7),
             Text(
               'Đăng ký: ${_displayDate(club['registrationStart'])} - ${_displayDate(club['registrationEnd'])}',
-              style:
-                  const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
             ),
           ],
         ),
@@ -524,17 +562,25 @@ class _RegistrationRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(registration['studentName']?.toString() ?? 'Học sinh',
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
-                Text(registration['clubName']?.toString() ?? '',
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary)),
+                Text(
+                  registration['studentName']?.toString() ?? 'Học sinh',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  registration['clubName']?.toString() ?? '',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 _RegistrationStatus(status: status),
                 if (registration['invoiceId'] != null) ...[
                   const SizedBox(height: 4),
-                  Text('Hóa đơn: ${registration['invoiceId']}',
-                      style: const TextStyle(fontSize: 11)),
+                  Text(
+                    'Hóa đơn: ${registration['invoiceId']}',
+                    style: const TextStyle(fontSize: 11),
+                  ),
                 ],
               ],
             ),
@@ -544,8 +590,9 @@ class _RegistrationRow extends StatelessWidget {
                 ? const Padding(
                     padding: EdgeInsets.all(12),
                     child: SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2)),
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
                   )
                 : PopupMenuButton<String>(
                     tooltip: 'Xử lý đăng ký',
@@ -555,8 +602,10 @@ class _RegistrationRow extends StatelessWidget {
                       PopupMenuItem(
                         value: 'approve',
                         child: ListTile(
-                          leading: Icon(Icons.check_circle_outline_rounded,
-                              color: AppColors.success),
+                          leading: Icon(
+                            Icons.check_circle_outline_rounded,
+                            color: AppColors.success,
+                          ),
                           title: Text('Duyệt'),
                           contentPadding: EdgeInsets.zero,
                         ),
@@ -564,8 +613,10 @@ class _RegistrationRow extends StatelessWidget {
                       PopupMenuItem(
                         value: 'reject',
                         child: ListTile(
-                          leading: Icon(Icons.cancel_outlined,
-                              color: AppColors.error),
+                          leading: Icon(
+                            Icons.cancel_outlined,
+                            color: AppColors.error,
+                          ),
                           title: Text('Từ chối'),
                           contentPadding: EdgeInsets.zero,
                         ),
@@ -603,56 +654,65 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-            color: color.withValues(alpha: .1),
-            borderRadius: BorderRadius.circular(6)),
-        child: Text(label,
-            style: TextStyle(
-                color: color, fontSize: 11, fontWeight: FontWeight.w700)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: .1),
+      borderRadius: BorderRadius.circular(6),
+    ),
+    child: Text(
+      label,
+      style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700),
+    ),
+  );
 }
 
 class _DateField extends StatelessWidget {
-  const _DateField(
-      {required this.label, required this.value, required this.onTap});
+  const _DateField({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
   final String label;
   final DateTime value;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(6),
-        child: InputDecorator(
-          decoration: InputDecoration(
-              labelText: label,
-              prefixIcon: const Icon(Icons.calendar_month_outlined),
-              suffixIcon: const Icon(Icons.chevron_right_rounded)),
-          child: Text(_displayDate(value)),
-        ),
-      );
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(6),
+    child: InputDecorator(
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: const Icon(Icons.calendar_month_outlined),
+        suffixIcon: const Icon(Icons.chevron_right_rounded),
+      ),
+      child: Text(_displayDate(value)),
+    ),
+  );
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState(
-      {required this.icon, required this.message, required this.onRefresh});
+  const _EmptyState({
+    required this.icon,
+    required this.message,
+    required this.onRefresh,
+  });
   final IconData icon;
   final String message;
   final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) => RefreshIndicator(
-        onRefresh: onRefresh,
-        child: ListView(
-          children: [
-            const SizedBox(height: 180),
-            Icon(icon, size: 52, color: AppColors.textSecondary),
-            const SizedBox(height: 10),
-            Center(child: Text(message)),
-          ],
-        ),
-      );
+    onRefresh: onRefresh,
+    child: ListView(
+      children: [
+        const SizedBox(height: 180),
+        Icon(icon, size: 52, color: AppColors.textSecondary),
+        const SizedBox(height: 10),
+        Center(child: Text(message)),
+      ],
+    ),
+  );
 }
 
 class _ErrorState extends StatelessWidget {
@@ -662,24 +722,24 @@ class _ErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline_rounded, size: 44),
-              const SizedBox(height: 10),
-              Text(message, textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Thử lại'),
-              ),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.error_outline_rounded, size: 44),
+          const SizedBox(height: 10),
+          Text(message, textAlign: TextAlign.center),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Thử lại'),
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 }
 
 class _AdminClubData {

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:dio/dio.dart';
 
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_error_message.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/utils/vi_date_format.dart';
 
 class AdminFeePeriodDetail extends StatefulWidget {
   const AdminFeePeriodDetail({super.key, required this.periodId});
@@ -54,7 +55,14 @@ class _AdminFeePeriodDetailState extends State<AdminFeePeriodDetail> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(_message(error)), backgroundColor: AppColors.error),
+            content: Text(
+              apiErrorMessage(
+                error,
+                fallback: 'Không thể thực hiện thao tác. Vui lòng thử lại.',
+              ),
+            ),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     } finally {
@@ -62,35 +70,22 @@ class _AdminFeePeriodDetailState extends State<AdminFeePeriodDetail> {
     }
   }
 
-  String _message(Object error) {
-    if (error is DioException) {
-      final data = error.response?.data;
-      if (data is Map && data['error'] != null) return '${data['error']}';
-      if (error.message != null && error.message!.trim().isNotEmpty) {
-        return error.message!.trim();
-      }
-    }
-    final text = error.toString();
-    final match = RegExp(r'error:\s*([^,}]+)').firstMatch(text);
-    return match?.group(1)?.trim() ?? text;
-  }
-
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Chi tiết đợt thu')),
-        body: FutureBuilder<_FeePeriodData>(
-          future: _future,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState != ConnectionState.done) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (snapshot.hasError) {
-              return _LoadError(onRetry: _refresh);
-            }
-            return _body(snapshot.data!);
-          },
-        ),
-      );
+    appBar: AppBar(title: const Text('Chi tiết đợt thu')),
+    body: FutureBuilder<_FeePeriodData>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return _LoadError(onRetry: _refresh);
+        }
+        return _body(snapshot.data!);
+      },
+    ),
+  );
 
   Widget _body(_FeePeriodData data) {
     final period = data.period;
@@ -110,7 +105,9 @@ class _AdminFeePeriodDetailState extends State<AdminFeePeriodDetail> {
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
         children: [
           _PeriodHeader(
-              period: period, onEdit: draft ? () => _editScope(data) : null),
+            period: period,
+            onEdit: draft ? () => _editScope(data) : null,
+          ),
           const SizedBox(height: 18),
           _SectionTitle(
             title: 'Khoản thu',
@@ -120,15 +117,22 @@ class _AdminFeePeriodDetailState extends State<AdminFeePeriodDetail> {
           if (items.isEmpty)
             const _EmptyLine(text: 'Chưa có khoản thu')
           else
-            ...items.map((item) => Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.receipt_outlined,
-                        color: AppColors.adminAccent),
-                    title: Text('${item['name'] ?? ''}'),
-                    subtitle: Text(item['gradeLevel'] == null
+            ...items.map(
+              (item) => Card(
+                child: ListTile(
+                  leading: const Icon(
+                    Icons.receipt_outlined,
+                    color: AppColors.adminAccent,
+                  ),
+                  title: Text('${item['name'] ?? ''}'),
+                  subtitle: Text(
+                    item['gradeLevel'] == null
                         ? 'Mọi khối'
-                        : 'Khối ${item['gradeLevel']}'),
-                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                        : 'Khối ${item['gradeLevel']}',
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       Text(_money(item['amount'])),
                       if (draft)
                         IconButton(
@@ -136,15 +140,19 @@ class _AdminFeePeriodDetailState extends State<AdminFeePeriodDetail> {
                           onPressed: _busy
                               ? null
                               : () => _run(
-                                    () => _api.deleteFeePeriodItem(
-                                        widget.periodId, '${item['id']}'),
-                                    'Đã xóa khoản thu',
+                                  () => _api.deleteFeePeriodItem(
+                                    widget.periodId,
+                                    '${item['id']}',
                                   ),
+                                  'Đã xóa khoản thu',
+                                ),
                           icon: const Icon(Icons.delete_outline_rounded),
                         ),
-                    ]),
+                    ],
                   ),
-                )),
+                ),
+              ),
+            ),
           const SizedBox(height: 18),
           _SectionTitle(
             title: 'Miễn giảm và ngoại lệ',
@@ -167,20 +175,25 @@ class _AdminFeePeriodDetailState extends State<AdminFeePeriodDetail> {
                     color: AppColors.warning,
                   ),
                   title: Text(
-                      '${student?['fullName'] ?? adjustment['studentId']}'),
-                  subtitle: Text(adjustment['type'] == 'EXCLUDE'
-                      ? 'Loại khỏi đợt thu'
-                      : 'Giảm ${_money(adjustment['amount'])}'),
+                    '${student?['fullName'] ?? adjustment['studentId']}',
+                  ),
+                  subtitle: Text(
+                    adjustment['type'] == 'EXCLUDE'
+                        ? 'Loại khỏi đợt thu'
+                        : 'Giảm ${_money(adjustment['amount'])}',
+                  ),
                   trailing: draft
                       ? IconButton(
                           tooltip: 'Xóa ngoại lệ',
                           onPressed: _busy
                               ? null
                               : () => _run(
-                                    () => _api.deleteFeePeriodAdjustment(
-                                        widget.periodId, '${adjustment['id']}'),
-                                    'Đã xóa ngoại lệ',
+                                  () => _api.deleteFeePeriodAdjustment(
+                                    widget.periodId,
+                                    '${adjustment['id']}',
                                   ),
+                                  'Đã xóa ngoại lệ',
+                                ),
                           icon: const Icon(Icons.delete_outline_rounded),
                         )
                       : null,
@@ -192,7 +205,7 @@ class _AdminFeePeriodDetailState extends State<AdminFeePeriodDetail> {
           _PreviewSummary(preview: preview),
           if (errors.isNotEmpty) ...[
             const SizedBox(height: 10),
-            ...errors.map((error) => _ErrorLine(text: '$error')),
+            ...errors.map((message) => _ErrorLine(text: message.toString())),
           ],
           const SizedBox(height: 10),
           ...recipients.map((recipient) => _RecipientRow(recipient: recipient)),
@@ -213,10 +226,9 @@ class _AdminFeePeriodDetailState extends State<AdminFeePeriodDetail> {
               const SizedBox(height: 6),
               Text(
                 'Chưa thể sinh hóa đơn. Hãy sửa phạm vi hoặc dữ liệu học sinh.',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: AppColors.error),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: AppColors.error),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -240,27 +252,33 @@ class _AdminFeePeriodDetailState extends State<AdminFeePeriodDetail> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Thêm khoản thu'),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
               controller: name,
-              decoration: const InputDecoration(labelText: 'Tên khoản thu')),
-          const SizedBox(height: 10),
-          TextField(
-            controller: amount,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'Số tiền (VND)'),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: grade,
-            decoration:
-                const InputDecoration(labelText: 'Khối riêng (không bắt buộc)'),
-          ),
-        ]),
+              decoration: const InputDecoration(labelText: 'Tên khoản thu'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: amount,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Số tiền (VND)'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: grade,
+              decoration: const InputDecoration(
+                labelText: 'Khối riêng (không bắt buộc)',
+              ),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Hủy')),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
           FilledButton(
             onPressed: () {
               final value = int.tryParse(amount.text.trim());
@@ -270,8 +288,9 @@ class _AdminFeePeriodDetailState extends State<AdminFeePeriodDetail> {
               Navigator.pop(context, {
                 'name': name.text.trim(),
                 'amount': value,
-                'gradeLevel':
-                    grade.text.trim().isEmpty ? null : grade.text.trim(),
+                'gradeLevel': grade.text.trim().isEmpty
+                    ? null
+                    : grade.text.trim(),
               });
             },
             child: const Text('Thêm'),
@@ -283,8 +302,10 @@ class _AdminFeePeriodDetailState extends State<AdminFeePeriodDetail> {
     amount.dispose();
     grade.dispose();
     if (result != null) {
-      await _run(() async => _api.addFeePeriodItem(widget.periodId, result),
-          'Đã thêm khoản thu');
+      await _run(
+        () async => _api.addFeePeriodItem(widget.periodId, result),
+        'Đã thêm khoản thu',
+      );
     }
   }
 
@@ -300,84 +321,101 @@ class _AdminFeePeriodDetailState extends State<AdminFeePeriodDetail> {
       builder: (context) => StatefulBuilder(
         builder: (context, setSheetState) => Padding(
           padding: EdgeInsets.fromLTRB(
-              16, 12, 16, MediaQuery.viewInsetsOf(context).bottom + 20),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text('Phạm vi áp dụng',
-                style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: type,
-              decoration: const InputDecoration(labelText: 'Loại phạm vi'),
-              items: const [
-                DropdownMenuItem(value: 'SCHOOL', child: Text('Toàn trường')),
-                DropdownMenuItem(value: 'GRADE', child: Text('Theo khối')),
-                DropdownMenuItem(value: 'CLASS', child: Text('Theo lớp')),
-                DropdownMenuItem(
-                    value: 'STUDENTS', child: Text('Danh sách học sinh')),
-              ],
-              onChanged: (value) =>
-                  setSheetState(() => type = value ?? 'SCHOOL'),
-            ),
-            if (type == 'GRADE') ...[
-              const SizedBox(height: 10),
-              TextFormField(
-                initialValue: grade,
-                decoration: const InputDecoration(labelText: 'Khối, ví dụ K10'),
-                onChanged: (value) => grade = value,
+            16,
+            12,
+            16,
+            MediaQuery.viewInsetsOf(context).bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Phạm vi áp dụng',
+                style: Theme.of(context).textTheme.titleLarge,
               ),
-            ],
-            if (type == 'CLASS') ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                initialValue:
-                    data.classes.any((item) => '${item['id']}' == classId)
-                        ? classId
-                        : null,
-                decoration: const InputDecoration(labelText: 'Lớp'),
-                items: data.classes
-                    .map((item) => DropdownMenuItem(
+                initialValue: type,
+                decoration: const InputDecoration(labelText: 'Loại phạm vi'),
+                items: const [
+                  DropdownMenuItem(value: 'SCHOOL', child: Text('Toàn trường')),
+                  DropdownMenuItem(value: 'GRADE', child: Text('Theo khối')),
+                  DropdownMenuItem(value: 'CLASS', child: Text('Theo lớp')),
+                  DropdownMenuItem(
+                    value: 'STUDENTS',
+                    child: Text('Danh sách học sinh'),
+                  ),
+                ],
+                onChanged: (value) =>
+                    setSheetState(() => type = value ?? 'SCHOOL'),
+              ),
+              if (type == 'GRADE') ...[
+                const SizedBox(height: 10),
+                TextFormField(
+                  initialValue: grade,
+                  decoration: const InputDecoration(
+                    labelText: 'Khối, ví dụ K10',
+                  ),
+                  onChanged: (value) => grade = value,
+                ),
+              ],
+              if (type == 'CLASS') ...[
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  initialValue:
+                      data.classes.any((item) => '${item['id']}' == classId)
+                      ? classId
+                      : null,
+                  decoration: const InputDecoration(labelText: 'Lớp'),
+                  items: data.classes
+                      .map(
+                        (item) => DropdownMenuItem(
                           value: '${item['id']}',
                           child: Text('${item['name'] ?? item['code']}'),
-                        ))
-                    .toList(),
-                onChanged: (value) => classId = value,
-              ),
-            ],
-            if (type == 'STUDENTS')
-              Flexible(
-                child: ListView(
-                  shrinkWrap: true,
-                  children: data.students.map((student) {
-                    final id = '${student['id']}';
-                    return CheckboxListTile(
-                      value: selected.contains(id),
-                      title: Text('${student['fullName']}'),
-                      subtitle:
-                          Text('${student['className'] ?? 'Chưa có lớp'}'),
-                      onChanged: (checked) => setSheetState(() {
-                        checked == true
-                            ? selected.add(id)
-                            : selected.remove(id);
-                      }),
-                    );
-                  }).toList(),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) => classId = value,
+                ),
+              ],
+              if (type == 'STUDENTS')
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: data.students.map((student) {
+                      final id = '${student['id']}';
+                      return CheckboxListTile(
+                        value: selected.contains(id),
+                        title: Text('${student['fullName']}'),
+                        subtitle: Text(
+                          '${student['className'] ?? 'Chưa có lớp'}',
+                        ),
+                        onChanged: (checked) => setSheetState(() {
+                          checked == true
+                              ? selected.add(id)
+                              : selected.remove(id);
+                        }),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(context, {
+                    'scopeType': type,
+                    'scopeGradeLevel': type == 'GRADE' ? grade.trim() : null,
+                    'scopeClassId': type == 'CLASS' ? classId : null,
+                    'studentIds': type == 'STUDENTS'
+                        ? selected.toList()
+                        : <String>[],
+                  }),
+                  child: const Text('Lưu phạm vi'),
                 ),
               ),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () => Navigator.pop(context, {
-                  'scopeType': type,
-                  'scopeGradeLevel': type == 'GRADE' ? grade.trim() : null,
-                  'scopeClassId': type == 'CLASS' ? classId : null,
-                  'studentIds':
-                      type == 'STUDENTS' ? selected.toList() : <String>[],
-                }),
-                child: const Text('Lưu phạm vi'),
-              ),
-            ),
-          ]),
+            ],
+          ),
         ),
       ),
     );
@@ -402,53 +440,65 @@ class _AdminFeePeriodDetailState extends State<AdminFeePeriodDetail> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: const Text('Thêm miễn giảm'),
-          content: Column(mainAxisSize: MainAxisSize.min, children: [
-            DropdownButtonFormField<String>(
-              initialValue: studentId,
-              decoration: const InputDecoration(labelText: 'Học sinh'),
-              items: data.recipients
-                  .map((row) => DropdownMenuItem(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                initialValue: studentId,
+                decoration: const InputDecoration(labelText: 'Học sinh'),
+                items: data.recipients
+                    .map(
+                      (row) => DropdownMenuItem(
                         value: '${row['studentId']}',
                         child: Text('${row['studentName']}'),
-                      ))
-                  .toList(),
-              onChanged: (value) => studentId = value,
-            ),
-            const SizedBox(height: 10),
-            DropdownButtonFormField<String>(
-              initialValue: type,
-              decoration: const InputDecoration(labelText: 'Loại ngoại lệ'),
-              items: const [
-                DropdownMenuItem(
-                    value: 'DISCOUNT', child: Text('Giảm số tiền')),
-                DropdownMenuItem(
-                    value: 'EXCLUDE', child: Text('Loại khỏi đợt thu')),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) => studentId = value,
+              ),
+              const SizedBox(height: 10),
+              DropdownButtonFormField<String>(
+                initialValue: type,
+                decoration: const InputDecoration(labelText: 'Loại ngoại lệ'),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'DISCOUNT',
+                    child: Text('Giảm số tiền'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'EXCLUDE',
+                    child: Text('Loại khỏi đợt thu'),
+                  ),
+                ],
+                onChanged: (value) =>
+                    setDialogState(() => type = value ?? 'DISCOUNT'),
+              ),
+              if (type == 'DISCOUNT') ...[
+                const SizedBox(height: 10),
+                TextField(
+                  controller: amount,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Số tiền giảm'),
+                ),
               ],
-              onChanged: (value) =>
-                  setDialogState(() => type = value ?? 'DISCOUNT'),
-            ),
-            if (type == 'DISCOUNT') ...[
               const SizedBox(height: 10),
               TextField(
-                controller: amount,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Số tiền giảm'),
+                controller: reason,
+                decoration: const InputDecoration(labelText: 'Lý do'),
               ),
             ],
-            const SizedBox(height: 10),
-            TextField(
-                controller: reason,
-                decoration: const InputDecoration(labelText: 'Lý do')),
-          ]),
+          ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Hủy')),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Hủy'),
+            ),
             FilledButton(
               onPressed: () {
                 if (studentId == null) return;
-                final value =
-                    type == 'DISCOUNT' ? int.tryParse(amount.text.trim()) : 0;
+                final value = type == 'DISCOUNT'
+                    ? int.tryParse(amount.text.trim())
+                    : 0;
                 if (type == 'DISCOUNT' && (value == null || value <= 0)) return;
                 Navigator.pop(context, {
                   'studentId': studentId,
@@ -467,8 +517,9 @@ class _AdminFeePeriodDetailState extends State<AdminFeePeriodDetail> {
     reason.dispose();
     if (result != null) {
       await _run(
-          () async => _api.saveFeePeriodAdjustment(widget.periodId, result),
-          'Đã lưu miễn giảm');
+        () async => _api.saveFeePeriodAdjustment(widget.periodId, result),
+        'Đã lưu miễn giảm',
+      );
     }
   }
 
@@ -479,8 +530,10 @@ class _AdminFeePeriodDetailState extends State<AdminFeePeriodDetail> {
       'Mở đợt',
     );
     if (confirmed) {
-      await _run(() async => _api.openFeePeriod(widget.periodId),
-          'Đợt thu đã được mở');
+      await _run(
+        () async => _api.openFeePeriod(widget.periodId),
+        'Đợt thu đã được mở',
+      );
     }
   }
 
@@ -499,11 +552,16 @@ class _AdminFeePeriodDetailState extends State<AdminFeePeriodDetail> {
   }
 
   Future<void> _closePeriod() async {
-    final confirmed = await _confirm('Đóng đợt thu?',
-        'Đợt thu sẽ ngừng phát hành thêm hóa đơn.', 'Đóng đợt');
+    final confirmed = await _confirm(
+      'Đóng đợt thu?',
+      'Đợt thu sẽ ngừng phát hành thêm hóa đơn.',
+      'Đóng đợt',
+    );
     if (confirmed) {
       await _run(
-          () async => _api.closeFeePeriod(widget.periodId), 'Đã đóng đợt thu');
+        () async => _api.closeFeePeriod(widget.periodId),
+        'Đã đóng đợt thu',
+      );
     }
   }
 
@@ -515,21 +573,23 @@ class _AdminFeePeriodDetailState extends State<AdminFeePeriodDetail> {
           content: Text(content),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Hủy')),
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Hủy'),
+            ),
             FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: Text(action)),
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(action),
+            ),
           ],
         ),
       ) ??
       false;
 
   String _money(Object? value) => NumberFormat.currency(
-        locale: 'vi_VN',
-        symbol: '₫',
-        decimalDigits: 0,
-      ).format(value is num ? value : num.tryParse('$value') ?? 0);
+    locale: 'vi_VN',
+    symbol: '₫',
+    decimalDigits: 0,
+  ).format(value is num ? value : num.tryParse('$value') ?? 0);
 }
 
 class _FeePeriodData {
@@ -576,23 +636,34 @@ class _PeriodHeader extends StatelessWidget {
         border: Border.all(color: AppColors.adminAccent.withValues(alpha: .25)),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          _StatusChip(status: status),
-          const Spacer(),
-          Text('${period['code'] ?? ''}'),
-          if (onEdit != null)
-            IconButton(
-                tooltip: 'Sửa phạm vi',
-                onPressed: onEdit,
-                icon: const Icon(Icons.edit_outlined)),
-        ]),
-        const SizedBox(height: 8),
-        Text('${period['name'] ?? ''}',
-            style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 4),
-        Text('$scope · Hạn ${period['dueDate'] ?? 'chưa đặt'}'),
-      ]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _StatusChip(status: status),
+              const Spacer(),
+              Text('${period['code'] ?? ''}'),
+              if (onEdit != null)
+                IconButton(
+                  tooltip: 'Sửa phạm vi',
+                  onPressed: onEdit,
+                  icon: const Icon(Icons.edit_outlined),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${period['name'] ?? ''}',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '$scope · Hạn '
+            '${formatViDate(period['dueDate'], fallback: 'chưa đặt')}',
+          ),
+        ],
+      ),
     );
   }
 }
@@ -602,25 +673,34 @@ class _PreviewSummary extends StatelessWidget {
   final Map<String, dynamic> preview;
 
   @override
-  Widget build(BuildContext context) => Row(children: [
-        Expanded(
-            child: _Metric(
-                label: 'Người nhận',
-                value: '${preview['recipientCount'] ?? 0}')),
-        const SizedBox(width: 8),
-        Expanded(
-            child: _Metric(
-                label: 'Đã có HĐ', value: '${preview['invoiceCount'] ?? 0}')),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _Metric(
-            label: 'Tổng tiền',
-            value: NumberFormat.currency(
-                    locale: 'vi_VN', symbol: '₫', decimalDigits: 0)
-                .format(preview['totalAmount'] ?? 0),
-          ),
+  Widget build(BuildContext context) => Row(
+    children: [
+      Expanded(
+        child: _Metric(
+          label: 'Người nhận',
+          value: '${preview['recipientCount'] ?? 0}',
         ),
-      ]);
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: _Metric(
+          label: 'Đã có HĐ',
+          value: '${preview['invoiceCount'] ?? 0}',
+        ),
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: _Metric(
+          label: 'Tổng tiền',
+          value: NumberFormat.currency(
+            locale: 'vi_VN',
+            symbol: '₫',
+            decimalDigits: 0,
+          ).format(preview['totalAmount'] ?? 0),
+        ),
+      ),
+    ],
+  );
 }
 
 class _Metric extends StatelessWidget {
@@ -629,19 +709,23 @@ class _Metric extends StatelessWidget {
   final String value;
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-        decoration: BoxDecoration(
-          border: Border.all(color: Theme.of(context).dividerColor),
-          borderRadius: BorderRadius.circular(8),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+    decoration: BoxDecoration(
+      border: Border.all(color: Theme.of(context).dividerColor),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Column(
+      children: [
+        Text(value, style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall,
+          textAlign: TextAlign.center,
         ),
-        child: Column(children: [
-          Text(value, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 3),
-          Text(label,
-              style: Theme.of(context).textTheme.bodySmall,
-              textAlign: TextAlign.center),
-        ]),
-      );
+      ],
+    ),
+  );
 }
 
 class _RecipientRow extends StatelessWidget {
@@ -649,24 +733,30 @@ class _RecipientRow extends StatelessWidget {
   final Map<String, dynamic> recipient;
   @override
   Widget build(BuildContext context) => ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: Icon(
-          recipient['excluded'] == true
-              ? Icons.person_off_outlined
-              : Icons.person_outline_rounded,
-          color: recipient['parentLinked'] == true
-              ? AppColors.success
-              : AppColors.error,
-        ),
-        title: Text('${recipient['studentName'] ?? ''}'),
-        subtitle: Text('${recipient['classCode'] ?? 'Chưa có lớp'} · '
-            '${recipient['parentLinked'] == true ? 'Đã liên kết PH' : 'Thiếu phụ huynh'}'),
-        trailing: recipient['excluded'] == true
-            ? const Text('Loại trừ')
-            : Text(NumberFormat.currency(
-                    locale: 'vi_VN', symbol: '₫', decimalDigits: 0)
-                .format(recipient['totalAmount'] ?? 0)),
-      );
+    contentPadding: EdgeInsets.zero,
+    leading: Icon(
+      recipient['excluded'] == true
+          ? Icons.person_off_outlined
+          : Icons.person_outline_rounded,
+      color: recipient['parentLinked'] == true
+          ? AppColors.success
+          : AppColors.error,
+    ),
+    title: Text('${recipient['studentName'] ?? ''}'),
+    subtitle: Text(
+      '${recipient['classCode'] ?? 'Chưa có lớp'} · '
+      '${recipient['parentLinked'] == true ? 'Đã liên kết PH' : 'Thiếu phụ huynh'}',
+    ),
+    trailing: recipient['excluded'] == true
+        ? const Text('Loại trừ')
+        : Text(
+            NumberFormat.currency(
+              locale: 'vi_VN',
+              symbol: '₫',
+              decimalDigits: 0,
+            ).format(recipient['totalAmount'] ?? 0),
+          ),
+  );
 }
 
 class _StatusChip extends StatelessWidget {
@@ -677,15 +767,18 @@ class _StatusChip extends StatelessWidget {
     final color = status == 'OPEN'
         ? AppColors.success
         : status == 'DRAFT'
-            ? AppColors.warning
-            : AppColors.textSecondary;
+        ? AppColors.warning
+        : AppColors.textSecondary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-          color: color.withValues(alpha: .12),
-          borderRadius: BorderRadius.circular(6)),
-      child: Text(status,
-          style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+        color: color.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(color: color, fontWeight: FontWeight.bold),
+      ),
     );
   }
 }
@@ -696,15 +789,19 @@ class _SectionTitle extends StatelessWidget {
   final VoidCallback? action;
   final String? actionLabel;
   @override
-  Widget build(BuildContext context) => Row(children: [
-        Expanded(
-            child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
-        if (action != null)
-          TextButton.icon(
-              onPressed: action,
-              icon: const Icon(Icons.add_rounded),
-              label: Text(actionLabel ?? 'Thêm')),
-      ]);
+  Widget build(BuildContext context) => Row(
+    children: [
+      Expanded(
+        child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+      ),
+      if (action != null)
+        TextButton.icon(
+          onPressed: action,
+          icon: const Icon(Icons.add_rounded),
+          label: Text(actionLabel ?? 'Thêm'),
+        ),
+    ],
+  );
 }
 
 class _EmptyLine extends StatelessWidget {
@@ -712,9 +809,9 @@ class _EmptyLine extends StatelessWidget {
   final String text;
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Text(text, style: Theme.of(context).textTheme.bodySmall),
-      );
+    padding: const EdgeInsets.symmetric(vertical: 12),
+    child: Text(text, style: Theme.of(context).textTheme.bodySmall),
+  );
 }
 
 class _ErrorLine extends StatelessWidget {
@@ -722,11 +819,10 @@ class _ErrorLine extends StatelessWidget {
   final String text;
   @override
   Widget build(BuildContext context) => ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading:
-            const Icon(Icons.error_outline_rounded, color: AppColors.error),
-        title: Text(text, style: const TextStyle(color: AppColors.error)),
-      );
+    contentPadding: EdgeInsets.zero,
+    leading: const Icon(Icons.error_outline_rounded, color: AppColors.error),
+    title: Text(text, style: const TextStyle(color: AppColors.error)),
+  );
 }
 
 class _LoadError extends StatelessWidget {
@@ -734,14 +830,18 @@ class _LoadError extends StatelessWidget {
   final Future<void> Function() onRetry;
   @override
   Widget build(BuildContext context) => Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.error_outline_rounded, size: 42),
-          const SizedBox(height: 8),
-          const Text('Không thể tải chi tiết đợt thu'),
-          TextButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Thử lại')),
-        ]),
-      );
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.error_outline_rounded, size: 42),
+        const SizedBox(height: 8),
+        const Text('Không thể tải chi tiết đợt thu'),
+        TextButton.icon(
+          onPressed: onRetry,
+          icon: const Icon(Icons.refresh_rounded),
+          label: const Text('Thử lại'),
+        ),
+      ],
+    ),
+  );
 }

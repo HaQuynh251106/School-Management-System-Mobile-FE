@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_error_message.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/section_header.dart';
@@ -90,9 +91,16 @@ class _StudentAssignmentDetailState extends State<StudentAssignmentDetail> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Không thể tải tệp: $error')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            apiErrorMessage(
+              error,
+              fallback: 'Không thể tải tệp. Vui lòng thử lại.',
+            ),
+          ),
+        ),
+      );
     }
   }
 

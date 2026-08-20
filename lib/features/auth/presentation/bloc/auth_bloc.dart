@@ -1,18 +1,17 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dio/dio.dart';
 
+import '../../../../core/auth/mobile_role_access.dart';
 import '../../data/auth_repository.dart';
 import '../../../../core/network/realtime_service.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  AuthBloc({
-    required AuthRepository repository,
-    RealtimeService? realtime,
-  })  : _repository = repository,
-        _realtime = realtime,
-        super(const AuthInitial()) {
+  AuthBloc({required AuthRepository repository, RealtimeService? realtime})
+    : _repository = repository,
+      _realtime = realtime,
+      super(const AuthInitial()) {
     on<AuthStarted>(_onStarted);
     on<AuthLoginRequested>(_onLoginRequested);
     on<AuthLogoutRequested>(_onLogoutRequested);
@@ -26,6 +25,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(const AuthLoading());
     final user = await _repository.tryRestoreSession();
     if (user != null) {
+      if (!isSupportedMobileRole(user.role)) {
+        _realtime?.disconnect();
+        await _repository.logout();
+        emit(const AuthUnauthenticated());
+        return;
+      }
       await _realtime?.restartForAuthenticatedSession();
       emit(AuthAuthenticated(user));
     } else {
@@ -43,13 +48,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         username: event.username,
         password: event.password,
       );
+      if (!isSupportedMobileRole(user.role)) {
+        _realtime?.disconnect();
+        await _repository.logout();
+        emit(const AuthLoginFailure(unsupportedMobileRoleMessage));
+        return;
+      }
       await _realtime?.restartForAuthenticatedSession();
       emit(AuthAuthenticated(user));
     } on DioException catch (e) {
       final responseData = e.response?.data;
       final msg = responseData is Map<String, dynamic>
           ? (responseData['error'] ?? responseData['message'])?.toString() ??
-              'Đăng nhập thất bại, vui lòng thử lại.'
+                'Đăng nhập thất bại, vui lòng thử lại.'
           : 'Đăng nhập thất bại, vui lòng thử lại.';
       emit(AuthLoginFailure(msg));
     } catch (_) {
@@ -73,13 +84,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(const AuthLoading());
     try {
       final result = await _repository.forgotPassword(event.email);
-      emit(AuthForgotPasswordSent(
-        emailDeliveryAvailable: result['deliveryChannel'] == 'EMAIL',
-        devResetToken: result['devResetToken']?.toString(),
-      ));
+      emit(
+        AuthForgotPasswordSent(
+          emailDeliveryAvailable: result['deliveryChannel'] == 'EMAIL',
+          devResetToken: result['devResetToken']?.toString(),
+        ),
+      );
     } catch (_) {
-      emit(const AuthForgotPasswordFailed(
-          'Không thể kết nối máy chủ. Vui lòng thử lại.'));
+      emit(
+        const AuthForgotPasswordFailed(
+          'Không thể kết nối máy chủ. Vui lòng thử lại.',
+        ),
+      );
     }
   }
 }

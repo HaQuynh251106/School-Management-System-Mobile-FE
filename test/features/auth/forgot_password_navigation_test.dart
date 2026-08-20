@@ -11,8 +11,8 @@ import 'package:sse_mobile/features/auth/presentation/bloc/auth_state.dart';
 class _FakeAuthRepository implements AuthRepository {
   @override
   Future<Map<String, dynamic>> forgotPassword(String email) async => {
-        'deliveryChannel': 'EMAIL',
-      };
+    'deliveryChannel': 'EMAIL',
+  };
 
   @override
   Future<UserModel?> tryRestoreSession() async => null;
@@ -42,14 +42,18 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(
+      find.text('Dành cho Giáo viên, Học sinh và Phụ huynh'),
+      findsOneWidget,
+    );
+    expect(find.text('Quản trị'), findsNothing);
+    expect(find.text('Đăng nhập nhanh'), findsNothing);
+
     await tester.tap(find.text('Quên mật khẩu?'));
     await tester.pumpAndSettle();
     expect(find.text('Gửi link đặt lại'), findsOneWidget);
 
-    await tester.enterText(
-      find.byType(TextFormField),
-      'user@example.com',
-    );
+    await tester.enterText(find.byType(TextFormField), 'user@example.com');
     await tester.tap(find.text('Gửi link đặt lại'));
     await tester.pumpAndSettle();
 
@@ -62,8 +66,9 @@ void main() {
     expect(find.text('Quên mật khẩu?'), findsOneWidget);
   });
 
-  testWidgets('deep link reset có token và luôn có đường về đăng nhập',
-      (tester) async {
+  testWidgets('deep link reset có token và luôn có đường về đăng nhập', (
+    tester,
+  ) async {
     final authBloc = AuthBloc(repository: _FakeAuthRepository());
     final router = AppRouter(authBloc);
     addTearDown(() async {

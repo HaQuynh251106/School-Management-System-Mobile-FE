@@ -39,12 +39,15 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       context.read<AuthBloc>().add(const AuthLogoutRequested());
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content:
-            Text('Không thể đổi mật khẩu. Vui lòng kiểm tra lại và thử lại.'),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Không thể đổi mật khẩu. Vui lòng kiểm tra lại và thử lại.',
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -70,44 +73,60 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                         const CircleAvatar(
                           radius: 30,
                           backgroundColor: AppColors.primary,
-                          child: Icon(Icons.admin_panel_settings_rounded,
-                              color: Colors.white, size: 32),
+                          child: Icon(
+                            Icons.admin_panel_settings_rounded,
+                            color: Colors.white,
+                            size: 32,
+                          ),
                         ),
                         const SizedBox(height: 18),
-                        const Text('Đổi mật khẩu',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontSize: 22, fontWeight: FontWeight.bold)),
+                        const Text(
+                          'Đổi mật khẩu',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const SizedBox(height: 8),
                         Text(
                           'Nhập mật khẩu hiện tại và đặt mật khẩu mới cho tài khoản.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                          ),
                         ),
                         const SizedBox(height: 24),
                         _passwordField(_current, 'Mật khẩu hiện tại'),
                         const SizedBox(height: 14),
-                        _passwordField(_next, 'Mật khẩu mới',
-                            validateNew: true),
+                        _passwordField(
+                          _next,
+                          'Mật khẩu mới',
+                          validateNew: true,
+                        ),
                         const SizedBox(height: 14),
-                        _passwordField(_confirmation, 'Xác nhận mật khẩu mới',
-                            validateConfirmation: true),
+                        _passwordField(
+                          _confirmation,
+                          'Xác nhận mật khẩu mới',
+                          validateConfirmation: true,
+                        ),
                         const SizedBox(height: 20),
                         FilledButton(
                           onPressed: _busy ? null : _submit,
-                          child: Text(_busy
-                              ? 'Đang cập nhật...'
-                              : 'Đổi mật khẩu và đăng nhập lại'),
+                          child: Text(
+                            _busy
+                                ? 'Đang cập nhật...'
+                                : 'Đổi mật khẩu và đăng nhập lại',
+                          ),
                         ),
                         TextButton.icon(
                           onPressed: _busy
                               ? null
-                              : () => context
-                                  .read<AuthBloc>()
-                                  .add(const AuthLogoutRequested()),
+                              : () => context.read<AuthBloc>().add(
+                                  const AuthLogoutRequested(),
+                                ),
                           icon: const Icon(Icons.logout_rounded, size: 18),
                           label: const Text('Đăng xuất'),
                         ),
@@ -123,8 +142,12 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     );
   }
 
-  Widget _passwordField(TextEditingController controller, String label,
-      {bool validateNew = false, bool validateConfirmation = false}) {
+  Widget _passwordField(
+    TextEditingController controller,
+    String label, {
+    bool validateNew = false,
+    bool validateConfirmation = false,
+  }) {
     return TextFormField(
       controller: controller,
       obscureText: _obscure,
@@ -135,9 +158,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         prefixIcon: const Icon(Icons.lock_outline_rounded),
         suffixIcon: IconButton(
           onPressed: () => setState(() => _obscure = !_obscure),
-          icon: Icon(_obscure
-              ? Icons.visibility_off_outlined
-              : Icons.visibility_outlined),
+          icon: Icon(
+            _obscure
+                ? Icons.visibility_off_outlined
+                : Icons.visibility_outlined,
+          ),
         ),
       ),
       validator: (value) {

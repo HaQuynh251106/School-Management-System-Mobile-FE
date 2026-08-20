@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/di/service_locator.dart';
+import '../../core/network/api_error_message.dart';
 import '../../core/network/api_service.dart';
 
 Future<void> openQuickCreate(
@@ -274,7 +275,7 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
             ? await api.teachingClasses()
             : await api.classes();
       }
-      if (widget.option.type == 'ASSIGNMENT') {
+      if (widget.option.type == 'USER' || widget.option.type == 'ASSIGNMENT') {
         _subjects = await api.subjects();
       }
       if (widget.option.type == 'CLASS' || widget.option.type == 'FEE') {
@@ -392,29 +393,60 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
         onChanged: (value) => setState(() => _classId = value),
       ),
       _gap,
-      _input('studentCode', 'Mã học sinh', Icons.numbers_rounded),
+      _generatedCodeNotice('Mã học sinh'),
     ],
     if (_role == 'TEACHER') ...[
       _gap,
-      _input('teacherCode', 'Mã giáo viên', Icons.numbers_rounded),
+      _objectSelect(
+        label: 'Môn giảng dạy chính',
+        value: _subjectId,
+        rows: _subjects,
+        emptyMessage:
+            'Chưa có môn học. Hãy tạo môn học trước khi tạo giáo viên.',
+        onChanged: (value) => setState(() => _subjectId = value),
+      ),
       _gap,
-      _input('mainSubject', 'Môn chuyên ngành', Icons.menu_book_rounded),
+      _generatedCodeNotice('Mã giáo viên'),
     ],
+    if (_role == 'PARENT') ...[_gap, _generatedCodeNotice('Mã phụ huynh')],
+    if (_role == 'ADMIN') ...[_gap, _generatedCodeNotice('Mã quản trị viên')],
     _gap,
     _input(
       'email',
-      'Email (không bắt buộc)',
+      'Email',
       Icons.email_outlined,
-      required: false,
+      keyboardType: TextInputType.emailAddress,
+      validate: (value) => RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value)
+          ? null
+          : 'Email không hợp lệ',
     ),
     _gap,
     _input(
       'phone',
-      'Số điện thoại (không bắt buộc)',
+      'Số điện thoại',
       Icons.phone_outlined,
-      required: false,
+      keyboardType: TextInputType.phone,
+      validate: (value) => RegExp(r'^[0-9+ .()\-]{7,30}$').hasMatch(value)
+          ? null
+          : 'Số điện thoại không hợp lệ',
     ),
   ];
+
+  Widget _generatedCodeNotice(String label) => Semantics(
+    label: '$label được tạo tự động',
+    child: Row(
+      children: [
+        Icon(Icons.verified_user_outlined, color: widget.accent, size: 20),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            '$label sẽ được hệ thống tự tạo để tránh trùng.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+      ],
+    ),
+  );
 
   List<Widget> _classFields() => [
     _input('code', 'Mã lớp, ví dụ 10A1', Icons.tag_rounded),
@@ -551,7 +583,7 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
     const SizedBox(height: 8),
     OutlinedButton.icon(
       onPressed: () async {
-            final result = await FilePicker.platform.pickFiles(
+        final result = await FilePicker.platform.pickFiles(
           withData: true,
           allowMultiple: false,
         );
@@ -660,7 +692,9 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
     int minLength = 0,
     int maxLines = 1,
     TextInputType? keyboardType,
+    String? Function(String value)? validate,
   }) => TextFormField(
+    key: ValueKey('quick-create-$key'),
     controller: field(key),
     obscureText: obscure,
     maxLines: obscure ? 1 : maxLines,
@@ -672,6 +706,9 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
       }
       if (minLength > 0 && (value?.length ?? 0) < minLength) {
         return 'Cần ít nhất $minLength ký tự';
+      }
+      if (value != null && value.trim().isNotEmpty && validate != null) {
+        return validate(value.trim());
       }
       return null;
     },
@@ -700,7 +737,9 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
     required String? value,
     required List<Map<String, dynamic>> rows,
     required ValueChanged<String?> onChanged,
+    String? emptyMessage,
   }) => DropdownButtonFormField<String>(
+    key: ValueKey('quick-create-$label'),
     initialValue: rows.any((row) => _idOf(row) == value) ? value : null,
     decoration: InputDecoration(labelText: label),
     items: rows
@@ -711,8 +750,10 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
           ),
         )
         .toList(),
-    validator: (value) =>
-        rows.isNotEmpty && value == null ? 'Vui lòng chọn $label' : null,
+    validator: (value) {
+      if (rows.isEmpty) return emptyMessage ?? 'Chưa có dữ liệu $label';
+      return value == null ? 'Vui lòng chọn $label' : null;
+    },
     onChanged: onChanged,
   );
 
@@ -775,15 +816,13 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
             'password': text('password'),
             'fullName': text('name'),
             'role': _role,
-            'email': nullable('email'),
-            'phone': nullable('phone'),
+            'email': text('email'),
+            'phone': text('phone'),
             'classId': _role == 'STUDENT' ? _classId : null,
             'className': _role == 'STUDENT'
                 ? _labelForId(_classes, _classId)
                 : null,
-            'studentCode': _role == 'STUDENT' ? nullable('studentCode') : null,
-            'teacherCode': _role == 'TEACHER' ? nullable('teacherCode') : null,
-            'mainSubject': _role == 'TEACHER' ? nullable('mainSubject') : null,
+            'mainSubjectId': _role == 'TEACHER' ? _subjectId : null,
           });
         case 'CLASS':
           await api.createClass({
@@ -859,9 +898,16 @@ class _CreateEntitySheetState extends State<_CreateEntitySheet> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Không thể lưu: $error')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            apiErrorMessage(
+              error,
+              fallback: 'Không thể lưu thông tin. Vui lòng thử lại.',
+            ),
+          ),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }

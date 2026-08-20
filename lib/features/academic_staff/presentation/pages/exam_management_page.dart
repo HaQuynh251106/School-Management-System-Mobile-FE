@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_error_message.dart';
 import '../../../../core/network/api_service.dart';
 import 'exam_auto_plan_page.dart';
 
@@ -187,7 +188,11 @@ class _PeriodDetailState extends State<_PeriodDetail> {
     } catch (error) {
       if (mounted) {
         _message(
-          'Chưa thể phát hành. Kiểm tra phòng, thí sinh và giám thị.\n$error',
+          apiErrorMessage(
+            error,
+            fallback:
+                'Chưa thể phát hành. Hãy kiểm tra phòng, thí sinh và giám thị.',
+          ),
         );
       }
     } finally {
@@ -212,7 +217,14 @@ class _PeriodDetailState extends State<_PeriodDetail> {
         _ => 'Đã xác nhận hoàn tất kỳ thi.',
       });
     } catch (error) {
-      if (mounted) _message('Không thể cập nhật trạng thái kỳ thi: $error');
+      if (mounted) {
+        _message(
+          apiErrorMessage(
+            error,
+            fallback: 'Không thể cập nhật trạng thái kỳ thi. Vui lòng thử lại.',
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _changingState = false);
     }
@@ -487,7 +499,14 @@ class _SchedulePreparationState extends State<_SchedulePreparation> {
       );
       if (mounted) _message('Đã xếp ${candidates.length} thí sinh vào phòng.');
     } catch (error) {
-      if (mounted) _message('Không thể xếp thí sinh: $error');
+      if (mounted) {
+        _message(
+          apiErrorMessage(
+            error,
+            fallback: 'Không thể xếp thí sinh. Vui lòng thử lại.',
+          ),
+        );
+      }
     }
   }
 
@@ -515,7 +534,15 @@ class _SchedulePreparationState extends State<_SchedulePreparation> {
       );
       await _reload();
     } catch (error) {
-      if (mounted) _message('Không thể phân công chấm: $error');
+      if (mounted) {
+        _message(
+          apiErrorMessage(
+            error,
+            fallback:
+                'Không thể phân công giáo viên chấm thi. Vui lòng thử lại.',
+          ),
+        );
+      }
     }
   }
 
@@ -674,9 +701,16 @@ class _RoomFormState extends State<_RoomForm> {
       if (mounted) Navigator.pop(context, true);
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Không thể thêm phòng: $error')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              apiErrorMessage(
+                error,
+                fallback: 'Không thể thêm phòng thi. Vui lòng thử lại.',
+              ),
+            ),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -822,7 +856,14 @@ class _PeriodFormState extends State<_PeriodForm> {
       );
       if (mounted) Navigator.pop(context, true);
     } catch (error) {
-      if (mounted) _message('Không thể tạo kỳ thi: $error');
+      if (mounted) {
+        _message(
+          apiErrorMessage(
+            error,
+            fallback: 'Không thể tạo kỳ thi. Vui lòng thử lại.',
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -976,7 +1017,14 @@ class _ScheduleFormState extends State<_ScheduleForm> {
       );
       if (mounted) Navigator.pop(context, true);
     } catch (error) {
-      if (mounted) _message('Không thể tạo lịch: $error');
+      if (mounted) {
+        _message(
+          apiErrorMessage(
+            error,
+            fallback: 'Không thể tạo lịch thi. Vui lòng thử lại.',
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -1131,7 +1179,10 @@ class _ErrorView extends StatelessWidget {
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('Không thể tải dữ liệu: $error', textAlign: TextAlign.center),
+        Text(
+          apiErrorMessage(error, fallback: 'Không thể tải dữ liệu kỳ thi.'),
+          textAlign: TextAlign.center,
+        ),
         const SizedBox(height: 12),
         FilledButton.tonal(onPressed: retry, child: const Text('Thử lại')),
       ],

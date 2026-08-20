@@ -1,10 +1,14 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_error_message.dart';
 import '../../../../core/network/api_service.dart';
+import '../../../../core/network/domain_realtime.dart';
+import '../../../../core/network/realtime_service.dart';
 import '../../../../core/theme/app_colors.dart';
 
 class TeacherAssignmentGrading extends StatefulWidget {
@@ -33,7 +37,27 @@ class TeacherAssignmentGrading extends StatefulWidget {
 class _TeacherAssignmentGradingState extends State<TeacherAssignmentGrading> {
   final _api = sl<ApiService>();
   late Future<List<Map<String, dynamic>>> _future = _load();
+  late final DomainRealtimeSubscription _domainEvents;
   bool _changed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _domainEvents = DomainRealtimeSubscription.listen(
+      realtime: sl<RealtimeService>(),
+      domains: const {
+        MobileDataDomain.assignments,
+        MobileDataDomain.notifications,
+      },
+      onInvalidate: _refresh,
+    );
+  }
+
+  @override
+  void dispose() {
+    unawaited(_domainEvents.dispose());
+    super.dispose();
+  }
 
   Future<List<Map<String, dynamic>>> _load() =>
       _api.assignmentSubmissions(widget.assignmentId);
@@ -76,9 +100,16 @@ class _TeacherAssignmentGradingState extends State<TeacherAssignmentGrading> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Không thể tải file: $error')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            apiErrorMessage(
+              error,
+              fallback: 'Không thể tải bài nộp. Vui lòng thử lại.',
+            ),
+          ),
+        ),
+      );
     }
   }
 
@@ -200,7 +231,13 @@ class _TeacherAssignmentGradingState extends State<TeacherAssignmentGrading> {
                               setSheetState(() => saving = false);
                               ScaffoldMessenger.of(sheetContext).showSnackBar(
                                 SnackBar(
-                                  content: Text('Không thể chấm: $error'),
+                                  content: Text(
+                                    apiErrorMessage(
+                                      error,
+                                      fallback:
+                                          'Không thể lưu điểm bài tập. Vui lòng thử lại.',
+                                    ),
+                                  ),
                                 ),
                               );
                             }
@@ -249,9 +286,16 @@ class _TeacherAssignmentGradingState extends State<TeacherAssignmentGrading> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Không thể cho nộp lại: $error')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            apiErrorMessage(
+              error,
+              fallback: 'Không thể cho phép nộp lại. Vui lòng thử lại.',
+            ),
+          ),
+        ),
+      );
     }
   }
 
@@ -274,7 +318,12 @@ class _TeacherAssignmentGradingState extends State<TeacherAssignmentGrading> {
           }
           if (snapshot.hasError) {
             return Center(
-              child: Text('Không thể tải bài nộp: ${snapshot.error}'),
+              child: Text(
+                apiErrorMessage(
+                  snapshot.error,
+                  fallback: 'Không thể tải danh sách bài nộp.',
+                ),
+              ),
             );
           }
           final submissions = snapshot.data ?? const [];

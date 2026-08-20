@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_error_message.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/utils/vi_date_format.dart';
 import '../../../../shared/widgets/adaptive_role_scaffold.dart';
 import '../../../../shared/widgets/role_page_intro.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
@@ -116,7 +118,7 @@ class _AcademicOverview extends StatelessWidget {
               'Theo dõi cơ cấu đào tạo, tiến độ xếp lịch và kỳ thi trong một nơi.',
           accent: AppColors.academicStaffAccent,
           icon: Icons.school_rounded,
-          badges: ['Dữ liệu trực tiếp', 'Theo đúng phân quyền'],
+          badges: ['Cơ cấu đào tạo', 'Kế hoạch năm học'],
         ),
         GridView.count(
           crossAxisCount: MediaQuery.sizeOf(context).width >= 620 ? 4 : 2,
@@ -212,7 +214,7 @@ class _StructurePage extends StatelessWidget {
               ),
               title: Text((year['name'] ?? year['code'] ?? '').toString()),
               subtitle: Text(
-                '${year['startDate'] ?? ''} → ${year['endDate'] ?? ''}',
+                formatViDateRange(year['startDate'], year['endDate']),
               ),
               trailing: _StatusChip((year['status'] ?? '').toString()),
             ),
@@ -318,9 +320,17 @@ Future<void> _deleteClass(
     reload();
   } catch (error) {
     if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Không thể xóa lớp: $error')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            apiErrorMessage(
+              error,
+              fallback:
+                  'Không thể xóa lớp học. Hãy kiểm tra dữ liệu liên quan.',
+            ),
+          ),
+        ),
+      );
     }
   }
 }
@@ -392,9 +402,16 @@ class _ClassEditorState extends State<_ClassEditor> {
       if (mounted) Navigator.pop(context, true);
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Không thể lưu lớp: $error')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              apiErrorMessage(
+                error,
+                fallback: 'Không thể lưu lớp học. Vui lòng thử lại.',
+              ),
+            ),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _saving = false);

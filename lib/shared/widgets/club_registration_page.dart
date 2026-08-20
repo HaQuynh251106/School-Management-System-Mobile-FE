@@ -46,8 +46,10 @@ class _ClubRegistrationPageState extends State<ClubRegistrationPage> {
     final id = club['id'].toString();
     setState(() => _busyId = id);
     try {
-      final result =
-          await sl<ApiService>().registerClub(id, studentId: widget.childId);
+      final result = await sl<ApiService>().registerClub(
+        id,
+        studentId: widget.childId,
+      );
       if (!mounted) return;
       _message(_statusMessage(result['status']?.toString()));
       _reload();
@@ -64,14 +66,17 @@ class _ClubRegistrationPageState extends State<ClubRegistrationPage> {
       builder: (context) => AlertDialog(
         title: const Text('Hủy đăng ký CLB?'),
         content: const Text(
-            'Chỗ của bạn có thể được chuyển cho học sinh trong danh sách chờ.'),
+          'Chỗ của bạn có thể được chuyển cho học sinh trong danh sách chờ.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Giữ đăng ký')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Giữ đăng ký'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Hủy đăng ký')),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Hủy đăng ký'),
+          ),
         ],
       ),
     );
@@ -94,9 +99,11 @@ class _ClubRegistrationPageState extends State<ClubRegistrationPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.childName == null
-            ? 'Câu lạc bộ'
-            : 'CLB của ${widget.childName}'),
+        title: Text(
+          widget.childName == null
+              ? 'Câu lạc bộ'
+              : 'CLB của ${widget.childName}',
+        ),
         backgroundColor: widget.accent,
       ),
       body: FutureBuilder<_ClubData>(
@@ -107,7 +114,9 @@ class _ClubRegistrationPageState extends State<ClubRegistrationPage> {
           }
           if (snapshot.hasError) {
             return _ErrorState(
-                message: _errorMessage(snapshot.error), onRetry: _reload);
+              message: _errorMessage(snapshot.error),
+              onRetry: _reload,
+            );
           }
           final data = snapshot.data!;
           final byClub = <String, Map<String, dynamic>>{
@@ -117,13 +126,18 @@ class _ClubRegistrationPageState extends State<ClubRegistrationPage> {
           if (data.clubs.isEmpty) {
             return RefreshIndicator(
               onRefresh: () async => _reload(),
-              child: ListView(children: const [
-                SizedBox(height: 180),
-                Icon(Icons.groups_outlined,
-                    size: 54, color: AppColors.textSecondary),
-                SizedBox(height: 12),
-                Center(child: Text('Chưa có câu lạc bộ đang mở')),
-              ]),
+              child: ListView(
+                children: const [
+                  SizedBox(height: 180),
+                  Icon(
+                    Icons.groups_outlined,
+                    size: 54,
+                    color: AppColors.textSecondary,
+                  ),
+                  SizedBox(height: 12),
+                  Center(child: Text('Chưa có câu lạc bộ đang mở')),
+                ],
+              ),
             );
           }
           return RefreshIndicator(
@@ -151,10 +165,12 @@ class _ClubRegistrationPageState extends State<ClubRegistrationPage> {
   }
 
   void _message(String message, {bool error = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      backgroundColor: error ? AppColors.error : null,
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: error ? AppColors.error : null,
+      ),
+    );
   }
 }
 
@@ -205,13 +221,21 @@ class _ClubCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(club['name']?.toString() ?? 'Câu lạc bộ',
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w700)),
+                      Text(
+                        club['name']?.toString() ?? 'Câu lạc bộ',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                       const SizedBox(height: 3),
-                      Text(club['schedule']?.toString() ?? '',
-                          style: const TextStyle(
-                              fontSize: 12, color: AppColors.textSecondary)),
+                      Text(
+                        club['schedule']?.toString() ?? '',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -228,23 +252,29 @@ class _ClubCard extends StatelessWidget {
               runSpacing: 8,
               children: [
                 _Info(
-                    icon: Icons.event_seat_outlined,
-                    text: '$available chỗ còn lại'),
+                  icon: Icons.event_seat_outlined,
+                  text: '$available chỗ còn lại',
+                ),
                 _Info(
-                    icon: Icons.payments_outlined,
-                    text: fee == 0 ? 'Miễn phí' : '${_money(fee)} đ'),
+                  icon: Icons.payments_outlined,
+                  text: fee == 0 ? 'Miễn phí' : '${_money(fee)} đ',
+                ),
                 if (club['approvalRequired'] == true)
                   const _Info(
-                      icon: Icons.verified_user_outlined,
-                      text: 'Cần xét duyệt'),
+                    icon: Icons.verified_user_outlined,
+                    text: 'Cần xét duyệt',
+                  ),
               ],
             ),
             if (status == 'WAITLIST') ...[
               const SizedBox(height: 8),
               Text(
-                  'Vị trí danh sách chờ: ${registration?['waitlistPosition'] ?? '—'}',
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary)),
+                'Vị trí danh sách chờ: ${registration?['waitlistPosition'] ?? '—'}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
+              ),
             ],
             const SizedBox(height: 14),
             SizedBox(
@@ -255,7 +285,8 @@ class _ClubCard extends StatelessWidget {
                       icon: busy
                           ? const SizedBox.square(
                               dimension: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2))
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
                           : const Icon(Icons.close_rounded),
                       label: const Text('Hủy đăng ký'),
                     )
@@ -264,10 +295,12 @@ class _ClubCard extends StatelessWidget {
                       icon: busy
                           ? const SizedBox.square(
                               dimension: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2))
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
                           : const Icon(Icons.add_rounded),
                       label: Text(
-                          available == 0 ? 'Vào danh sách chờ' : 'Đăng ký'),
+                        available == 0 ? 'Vào danh sách chờ' : 'Đăng ký',
+                      ),
                     ),
             ),
           ],
@@ -284,13 +317,13 @@ class _Info extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: AppColors.textSecondary),
-          const SizedBox(width: 5),
-          Text(text, style: const TextStyle(fontSize: 12)),
-        ],
-      );
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(icon, size: 16, color: AppColors.textSecondary),
+      const SizedBox(width: 5),
+      Text(text, style: const TextStyle(fontSize: 12)),
+    ],
+  );
 }
 
 class _StatusBadge extends StatelessWidget {
@@ -313,9 +346,14 @@ class _StatusBadge extends StatelessWidget {
         color: color.withValues(alpha: .1),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(label,
-          style: TextStyle(
-              color: color, fontSize: 11, fontWeight: FontWeight.w700)),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     );
   }
 }
@@ -327,23 +365,24 @@ class _ErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline_rounded, size: 44),
-              const SizedBox(height: 10),
-              Text(message, textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                  onPressed: onRetry,
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('Thử lại')),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.error_outline_rounded, size: 44),
+          const SizedBox(height: 10),
+          Text(message, textAlign: TextAlign.center),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Thử lại'),
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 }
 
 class _ClubData {
@@ -353,11 +392,11 @@ class _ClubData {
 }
 
 String _statusMessage(String? status) => switch (status) {
-      'APPROVED' => 'Đăng ký thành công',
-      'PENDING' => 'Đã gửi đăng ký, đang chờ duyệt',
-      'WAITLIST' => 'CLB đã đủ chỗ, bạn đã vào danh sách chờ',
-      _ => 'Đã cập nhật đăng ký',
-    };
+  'APPROVED' => 'Đăng ký thành công',
+  'PENDING' => 'Đã gửi đăng ký, đang chờ duyệt',
+  'WAITLIST' => 'CLB đã đủ chỗ, bạn đã vào danh sách chờ',
+  _ => 'Đã cập nhật đăng ký',
+};
 
 String _errorMessage(Object? error) {
   if (error is DioException && error.response?.data is Map) {

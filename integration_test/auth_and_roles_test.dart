@@ -12,11 +12,6 @@ import 'package:sse_mobile/core/storage/token_storage.dart';
 import 'package:sse_mobile/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:sse_mobile/features/auth/presentation/bloc/auth_event.dart';
 
-const _adminPassword = String.fromEnvironment('E2E_ADMIN_PASSWORD');
-const _academicStaffPassword = String.fromEnvironment(
-  'E2E_ACADEMIC_STAFF_PASSWORD',
-);
-const _accountantPassword = String.fromEnvironment('E2E_ACCOUNTANT_PASSWORD');
 const _teacherPassword = String.fromEnvironment('E2E_TEACHER_PASSWORD');
 const _studentPassword = String.fromEnvironment('E2E_STUDENT_PASSWORD');
 const _parentPassword = String.fromEnvironment('E2E_PARENT_PASSWORD');
@@ -25,13 +20,12 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   const runLive = bool.fromEnvironment('RUN_LIVE_INTEGRATION');
 
-  testWidgets('API đăng nhập trả đúng đủ sáu vai trò', (tester) async {
+  testWidgets('API đăng nhập trả đúng ba vai trò sử dụng Mobile', (
+    tester,
+  ) async {
     final dio = Dio(BaseOptions(baseUrl: Env.baseUrl));
     expect(
       [
-        _adminPassword,
-        _academicStaffPassword,
-        _accountantPassword,
         _teacherPassword,
         _studentPassword,
         _parentPassword,
@@ -40,9 +34,6 @@ void main() {
       reason: 'Thiếu biến E2E_*_PASSWORD',
     );
     final accounts = <(String, String, String)>[
-      ('admin', _adminPassword, 'ADMIN'),
-      ('giaovu', _academicStaffPassword, 'ACADEMIC_STAFF'),
-      ('ketoan', _accountantPassword, 'ACCOUNTANT'),
       ('gv.nguyenminh', _teacherPassword, 'TEACHER'),
       ('hs.nguyenminhan', _studentPassword, 'STUDENT'),
       ('ph.nguyenvanhung', _parentPassword, 'PARENT'),

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:file_picker/file_picker.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_error_message.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../shared/widgets/invoice_state_indicator.dart';
 import '../../../../shared/widgets/section_header.dart';
+import '../../../../shared/utils/vi_date_format.dart';
 
 class InvoiceLineItem {
   const InvoiceLineItem(this.name, this.amount);
@@ -92,12 +93,15 @@ class InvoiceDetailPage extends StatelessWidget {
     return '${buf.toString()} ₫';
   }
 
-  String _formatTime(String value) {
-    final parsed = DateTime.tryParse(value)?.toLocal();
-    return parsed == null
-        ? value
-        : DateFormat('dd/MM/yyyy HH:mm').format(parsed);
-  }
+  String _formatTime(String value) => formatViDateTime(value);
+
+  String _paymentMethodLabel(String? method) => switch (method) {
+    'CASH' => 'Tiền mặt',
+    'VNPAY' => 'VNPAY',
+    'MOMO' => 'MoMo',
+    'MB_BANK_TRANSFER' => 'Chuyển khoản ngân hàng',
+    _ => 'Thanh toán điện tử',
+  };
 
   Color get _statusColor => switch (status) {
     'PAID' => AppColors.success,
@@ -277,7 +281,7 @@ class InvoiceDetailPage extends StatelessWidget {
                                 [
                                   payment.method == 'CASH'
                                       ? 'Tiền mặt'
-                                      : 'VietQR',
+                                      : _paymentMethodLabel(payment.method),
                                   _formatTime(payment.paidAt),
                                   if (payment.payerName?.isNotEmpty == true)
                                     'Người nộp: ${payment.payerName}',
@@ -307,13 +311,13 @@ class InvoiceDetailPage extends StatelessWidget {
                         _InfoRow(
                           icon: Icons.event_available_rounded,
                           label: 'Ngày thanh toán',
-                          value: paidAt!,
+                          value: _formatTime(paidAt!),
                         ),
                         const Divider(height: 0),
                         _InfoRow(
                           icon: Icons.payment_rounded,
                           label: 'Phương thức',
-                          value: paidMethod == 'CASH' ? 'Tiền mặt' : 'VietQR',
+                          value: _paymentMethodLabel(paidMethod),
                         ),
                         const Divider(height: 0),
                         _InfoRow(
@@ -338,7 +342,7 @@ class InvoiceDetailPage extends StatelessWidget {
                               title: Text(_formatVnd(refund.amount)),
                               subtitle: Text(refund.reason),
                               trailing: Text(
-                                refund.createdAt,
+                                _formatTime(refund.createdAt),
                                 style: const TextStyle(fontSize: 11),
                               ),
                             ),
@@ -370,7 +374,7 @@ class InvoiceDetailPage extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     icon: const Icon(Icons.payment_rounded),
-                    label: Text('Tạo mã VietQR ${_formatVnd(_remaining)}'),
+                    label: Text('Thanh toán ${_formatVnd(_remaining)}'),
                   ),
                 ),
               ),
@@ -449,8 +453,9 @@ class InvoiceDetailPage extends StatelessWidget {
                       'PARTIALLY_REFUNDED',
                       'REFUNDED',
                     }.contains(status)
-                    ? 'Đã thanh toán ngày $paidAt'
-                    : 'Hạn thanh toán: $dueDate',
+                    ? 'Đã thanh toán ngày ${formatViDate(paidAt)}'
+                    : 'Hạn thanh toán: '
+                          '${formatViDate(dueDate, fallback: 'Chưa đặt')}',
                 style: const TextStyle(
                   fontSize: 12,
                   color: AppColors.textSecondary,
@@ -482,20 +487,11 @@ class InvoiceDetailPage extends StatelessWidget {
             const SizedBox(height: 16),
             _PaymentMethodTile(
               icon: Icons.qr_code_rounded,
-              name: 'VietQR - Techcombank',
+              name: 'Chuyển khoản ngân hàng',
               subtitle:
                   'Quét mã bằng ứng dụng ngân hàng và chờ Kế toán đối soát',
               color: AppColors.accountantAccent,
               onTap: () => _processPayment(context),
-            ),
-            const SizedBox(height: 10),
-            _PaymentMethodTile(
-              icon: Icons.open_in_browser_rounded,
-              name: 'Thanh toán trực tuyến thử nghiệm',
-              subtitle:
-                  'Mở cổng sandbox và tự động cập nhật sau khi IPN hợp lệ',
-              color: AppColors.parentAccent,
-              onTap: () => _processSandboxPayment(context),
             ),
           ],
         ),
@@ -520,13 +516,19 @@ class InvoiceDetailPage extends StatelessWidget {
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
     try {
-      final result = await sl<ApiService>().pay(invoiceId!, method: 'VIETQR');
+      final result = await sl<ApiService>().pay(
+        invoiceId!,
+        method: 'MB_BANK_TRANSFER',
+      );
       if (!context.mounted) return;
       Navigator.pop(context); // close loader
       final payment = result['payment'] is Map
           ? (result['payment'] as Map).cast<String, dynamic>()
           : <String, dynamic>{};
       final paymentId = (payment['id'] ?? result['paymentId'] ?? '').toString();
+      final bankTransfer = result['bankTransfer'] is Map
+          ? (result['bankTransfer'] as Map).cast<String, dynamic>()
+          : <String, dynamic>{};
       await showDialog<void>(
         context: context,
         barrierDismissible: false,
@@ -535,18 +537,18 @@ class InvoiceDetailPage extends StatelessWidget {
             children: [
               Icon(Icons.qr_code_2_rounded),
               SizedBox(width: 8),
-              Text('Quét mã VietQR'),
+              Text('Thông tin chuyển khoản'),
             ],
           ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if ((result['qrImageUrl'] ?? '').toString().isNotEmpty)
+                if ((bankTransfer['qrImageUrl'] ?? '').toString().isNotEmpty)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(14),
                     child: Image.network(
-                      (result['qrImageUrl']).toString(),
+                      (bankTransfer['qrImageUrl']).toString(),
                       width: 260,
                       height: 260,
                       fit: BoxFit.contain,
@@ -555,16 +557,20 @@ class InvoiceDetailPage extends StatelessWidget {
                 const SizedBox(height: 12),
                 _QrLine(
                   'Ngân hàng',
-                  (result['bankId'] ?? 'Techcombank').toString(),
+                  (bankTransfer['bankName'] ?? bankTransfer['bankId'] ?? '')
+                      .toString(),
                 ),
-                _QrLine('Số tài khoản', (result['accountNo'] ?? '').toString()),
+                _QrLine(
+                  'Số tài khoản',
+                  (bankTransfer['accountNumber'] ?? '').toString(),
+                ),
                 _QrLine(
                   'Chủ tài khoản',
-                  (result['accountName'] ?? '').toString(),
+                  (bankTransfer['accountName'] ?? '').toString(),
                 ),
                 _QrLine(
                   'Nội dung',
-                  (result['transferContent'] ?? '').toString(),
+                  (bankTransfer['transferContent'] ?? '').toString(),
                 ),
                 const SizedBox(height: 10),
                 const Text(
@@ -587,22 +593,61 @@ class InvoiceDetailPage extends StatelessWidget {
               onPressed: paymentId.isEmpty
                   ? null
                   : () async {
-                      await sl<ApiService>().markVietQrSubmitted(paymentId);
-                      if (dialogContext.mounted) Navigator.pop(dialogContext);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Đã gửi thông tin chuyển khoản, vui lòng chờ Kế toán đối soát.',
+                      try {
+                        final picked = await FilePicker.platform.pickFiles(
+                          type: FileType.custom,
+                          allowedExtensions: const ['jpg', 'jpeg', 'png'],
+                          withData: true,
+                        );
+                        final file = picked?.files.singleOrNull;
+                        if (file == null) return;
+                        if (file.bytes == null || file.size <= 0) {
+                          throw StateError(
+                            'Không đọc được ảnh biên lai đã chọn',
+                          );
+                        }
+                        if (file.size > 5 * 1024 * 1024) {
+                          throw StateError(
+                            'Ảnh biên lai không được vượt quá 5MB',
+                          );
+                        }
+                        await sl<ApiService>().submitPaymentProof(
+                          paymentId: paymentId,
+                          bytes: file.bytes!,
+                          fileName: file.name,
+                        );
+                        if (dialogContext.mounted) {
+                          Navigator.pop(dialogContext);
+                        }
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Đã gửi biên lai, vui lòng chờ nhà trường đối chiếu.',
+                              ),
+                              backgroundColor: AppColors.success,
                             ),
-                            backgroundColor: AppColors.success,
+                          );
+                          Navigator.pop(context);
+                        }
+                      } catch (error) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              apiErrorMessage(
+                                error,
+                                fallback:
+                                    'Không thể gửi xác nhận chuyển khoản. Vui lòng thử lại.',
+                              ),
+                            ),
+                            backgroundColor: AppColors.error,
                           ),
                         );
-                        Navigator.pop(context);
                       }
                     },
               icon: const Icon(Icons.check_circle_outline),
-              label: const Text('Tôi đã chuyển khoản'),
+              label: const Text('Gửi ảnh biên lai'),
             ),
           ],
         ),
@@ -612,95 +657,13 @@ class InvoiceDetailPage extends StatelessWidget {
       Navigator.pop(context); // close loader
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Không thể tạo VietQR: $error'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-    }
-  }
-
-  Future<void> _processSandboxPayment(BuildContext context) async {
-    Navigator.pop(context);
-    if (invoiceId == null || invoiceId!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Hóa đơn chưa có mã thanh toán.'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-      return;
-    }
-    var loaderVisible = true;
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-    try {
-      final result = await sl<ApiService>().createSandboxPayment(
-        invoiceId!,
-        'mobile-${invoiceId!}-${DateTime.now().millisecondsSinceEpoch}',
-      );
-      if (!context.mounted) return;
-      Navigator.pop(context);
-      loaderVisible = false;
-      final payment = result['payment'] is Map
-          ? (result['payment'] as Map).cast<String, dynamic>()
-          : <String, dynamic>{};
-      final paymentId = (payment['id'] ?? '').toString();
-      final paymentUrl = Uri.tryParse((result['paymentUrl'] ?? '').toString());
-      if (paymentId.isEmpty ||
-          paymentUrl == null ||
-          !await launchUrl(paymentUrl, mode: LaunchMode.externalApplication)) {
-        throw StateError('Không thể mở cổng thanh toán');
-      }
-      if (!context.mounted) return;
-      final check = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Đang chờ kết quả thanh toán'),
-          content: const Text(
-            'Hoàn tất thao tác tại cổng thanh toán rồi quay lại ứng dụng. '
-            'Ứng dụng chỉ cập nhật khi backend đã nhận IPN hợp lệ.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Kiểm tra sau'),
-            ),
-            FilledButton.icon(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Kiểm tra kết quả'),
-            ),
-          ],
-        ),
-      );
-      if (check != true) return;
-      final status = await sl<ApiService>().sandboxPaymentStatus(paymentId);
-      final updatedPayment = status['payment'] is Map
-          ? (status['payment'] as Map).cast<String, dynamic>()
-          : <String, dynamic>{};
-      if (!context.mounted) return;
-      final success = updatedPayment['status'] == 'SUCCESS';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
           content: Text(
-            success
-                ? 'Thanh toán thành công. Hóa đơn đã được cập nhật.'
-                : 'Giao dịch chưa hoàn tất. Bạn có thể kiểm tra lại sau.',
+            apiErrorMessage(
+              error,
+              fallback:
+                  'Không thể tạo giao dịch chuyển khoản. Vui lòng thử lại.',
+            ),
           ),
-          backgroundColor: success ? AppColors.success : null,
-        ),
-      );
-      if (success) Navigator.pop(context);
-    } catch (error) {
-      if (!context.mounted) return;
-      if (loaderVisible) Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Không thể thanh toán trực tuyến: $error'),
           backgroundColor: AppColors.error,
         ),
       );

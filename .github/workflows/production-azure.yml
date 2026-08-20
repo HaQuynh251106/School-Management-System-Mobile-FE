@@ -1,0 +1,67 @@
+name: Deploy Mobile Web to Azure Production
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: mobile-azure-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+
+      - name: Test and build Mobile Web
+        env:
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+        run: |
+          set -Eeuo pipefail
+          flutter pub get
+          dart format --output=none --set-exit-if-changed lib test integration_test test_driver
+          flutter analyze
+          flutter test
+          flutter build web --release \
+            --dart-define="API_BASE_URL=$API_BASE_URL" \
+            --dart-define=SHOW_DEMO_ACCOUNTS=false
+
+      - name: Sign in to Azure with OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Upload static Mobile Web build
+        env:
+          STORAGE_ACCOUNT: ${{ vars.AZURE_STORAGE_ACCOUNT }}
+        run: |
+          set -Eeuo pipefail
+          account_key="$(az storage account keys list --account-name "$STORAGE_ACCOUNT" --query '[0].value' -o tsv)"
+          az storage blob upload-batch \
+            --account-name "$STORAGE_ACCOUNT" \
+            --account-key "$account_key" \
+            --destination '$web' \
+            --source build/web \
+            --overwrite true \
+            --output none
+
+      - name: Verify production Mobile Web
+        env:
+          MOBILE_URL: ${{ vars.PRODUCTION_MOBILE_URL }}
+        run: curl --fail --silent --show-error "$MOBILE_URL" >/dev/null

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_error_message.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../core/theme/app_colors.dart';
 
@@ -65,11 +66,16 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
   @override
   Widget build(BuildContext context) {
     final planned = _assignments.fold<int>(
-        0, (sum, item) => sum + _int(item['weeklyPeriods']));
+      0,
+      (sum, item) => sum + _int(item['weeklyPeriods']),
+    );
     final scheduled = _assignments.fold<int>(
-        0, (sum, item) => sum + _int(item['scheduledPeriods']));
-    final completed =
-        _assignments.where((item) => item['fullyScheduled'] == true).length;
+      0,
+      (sum, item) => sum + _int(item['scheduledPeriods']),
+    );
+    final completed = _assignments
+        .where((item) => item['fullyScheduled'] == true)
+        .length;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Phân công giáo viên bộ môn'),
@@ -98,18 +104,17 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _assignments.isEmpty
-                    ? const _EmptyAssignments()
-                    : RefreshIndicator(
-                        onRefresh: _load,
-                        child: ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(12, 4, 12, 96),
-                          itemCount: _assignments.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 10),
-                          itemBuilder: (_, index) =>
-                              _assignmentCard(_assignments[index]),
-                        ),
-                      ),
+                ? const _EmptyAssignments()
+                : RefreshIndicator(
+                    onRefresh: _load,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 96),
+                      itemCount: _assignments.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      itemBuilder: (_, index) =>
+                          _assignmentCard(_assignments[index]),
+                    ),
+                  ),
           ),
         ],
       ),
@@ -117,188 +122,210 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
   }
 
   Widget _summary(int planned, int scheduled, int completed) => Container(
-        color: AppColors.adminAccent.withValues(alpha: 0.07),
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            _summaryItem(
-                'Phân công', '${_assignments.length}', Icons.school_outlined),
-            _summaryItem(
-                'Tiến độ', '$scheduled/$planned', Icons.schedule_rounded),
-            _summaryItem(
-                'Đã đủ', '$completed', Icons.check_circle_outline_rounded),
-          ],
+    color: AppColors.adminAccent.withValues(alpha: 0.07),
+    padding: const EdgeInsets.all(12),
+    child: Row(
+      children: [
+        _summaryItem(
+          'Phân công',
+          '${_assignments.length}',
+          Icons.school_outlined,
         ),
-      );
+        _summaryItem('Tiến độ', '$scheduled/$planned', Icons.schedule_rounded),
+        _summaryItem('Đã đủ', '$completed', Icons.check_circle_outline_rounded),
+      ],
+    ),
+  );
 
   Widget _teacherOverview(BuildContext context) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-        color: Theme.of(context).colorScheme.surface,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Giáo viên và lớp đang phụ trách',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 3),
-            Text('Chạm vào giáo viên để phân công thêm lớp.',
-                style: TextStyle(
-                    fontSize: 11,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
-            const SizedBox(height: 9),
-            SizedBox(
-              height: 112,
-              child: _workloads.isEmpty
-                  ? const Center(child: Text('Chưa có hồ sơ giáo viên'))
-                  : ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _workloads.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 9),
-                      itemBuilder: (_, index) {
-                        final item = _workloads[index];
-                        final classCodes = (item['classCodes'] as List? ?? [])
-                            .map((value) => value.toString())
-                            .toList();
-                        return InkWell(
-                          borderRadius: BorderRadius.circular(14),
-                          onTap: () => _openEditor(
-                            null,
-                            item['teacherId']?.toString(),
-                          ),
-                          child: Container(
-                            width: 235,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .outlineVariant,
-                              ),
-                              borderRadius: BorderRadius.circular(14),
-                              color: AppColors.adminAccent
-                                  .withValues(alpha: 0.045),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(item['teacherName']?.toString() ?? '',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 3),
-                                Text(
-                                  item['mainSubject']?.toString() ??
-                                      'Chưa cập nhật chuyên môn',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                      fontSize: 11,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant),
-                                ),
-                                const Spacer(),
-                                Text(
-                                  classCodes.isEmpty
-                                      ? 'Chưa phụ trách lớp'
-                                      : 'Lớp: ${classCodes.join(', ')}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.adminAccent),
-                                ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  '${_int(item['scheduledPeriods'])}/${_int(item['weeklyPeriods'])} tiết/tuần',
-                                  style: TextStyle(
-                                      fontSize: 11,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ],
+    width: double.infinity,
+    padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+    color: Theme.of(context).colorScheme.surface,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Giáo viên và lớp đang phụ trách',
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
-      );
+        const SizedBox(height: 3),
+        Text(
+          'Chạm vào giáo viên để phân công thêm lớp.',
+          style: TextStyle(
+            fontSize: 11,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 9),
+        SizedBox(
+          height: 112,
+          child: _workloads.isEmpty
+              ? const Center(child: Text('Chưa có hồ sơ giáo viên'))
+              : ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _workloads.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 9),
+                  itemBuilder: (_, index) {
+                    final item = _workloads[index];
+                    final classCodes = (item['classCodes'] as List? ?? [])
+                        .map((value) => value.toString())
+                        .toList();
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () =>
+                          _openEditor(null, item['teacherId']?.toString()),
+                      child: Container(
+                        width: 235,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.outlineVariant,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          color: AppColors.adminAccent.withValues(alpha: 0.045),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item['teacherName']?.toString() ?? '',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              item['mainSubject']?.toString() ??
+                                  'Chưa cập nhật chuyên môn',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              classCodes.isEmpty
+                                  ? 'Chưa phụ trách lớp'
+                                  : 'Lớp: ${classCodes.join(', ')}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.adminAccent,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              '${_int(item['scheduledPeriods'])}/${_int(item['weeklyPeriods'])} tiết/tuần',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    ),
+  );
 
   Widget _summaryItem(String label, String value, IconData icon) => Expanded(
-        child: Row(
+    child: Row(
+      children: [
+        Icon(icon, size: 19, color: AppColors.adminAccent),
+        const SizedBox(width: 7),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, size: 19, color: AppColors.adminAccent),
-            const SizedBox(width: 7),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style: TextStyle(
-                        fontSize: 10,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                Text(value,
-                    style: const TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.bold)),
-              ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
             ),
           ],
         ),
-      );
+      ],
+    ),
+  );
 
   Widget _filters() => Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            Expanded(
-              child: DropdownButtonFormField<String?>(
-                key: ValueKey('class-$_classFilter'),
-                initialValue: _classFilter,
-                isExpanded: true,
-                decoration:
-                    const InputDecoration(labelText: 'Lớp', isDense: true),
-                items: [
-                  const DropdownMenuItem<String?>(
-                      value: null, child: Text('Tất cả lớp')),
-                  ..._classes.map((item) => DropdownMenuItem<String?>(
-                      value: item['id']?.toString(),
-                      child: Text(item['code']?.toString() ?? ''))),
-                ],
-                onChanged: (value) async {
-                  _classFilter = value;
-                  await _load();
-                },
+    padding: const EdgeInsets.all(12),
+    child: Row(
+      children: [
+        Expanded(
+          child: DropdownButtonFormField<String?>(
+            key: ValueKey('class-$_classFilter'),
+            initialValue: _classFilter,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Lớp', isDense: true),
+            items: [
+              const DropdownMenuItem<String?>(
+                value: null,
+                child: Text('Tất cả lớp'),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: DropdownButtonFormField<String?>(
-                key: ValueKey('semester-$_semesterFilter'),
-                initialValue: _semesterFilter,
-                isExpanded: true,
-                decoration:
-                    const InputDecoration(labelText: 'Học kỳ', isDense: true),
-                items: [
-                  const DropdownMenuItem<String?>(
-                      value: null, child: Text('Tất cả học kỳ')),
-                  ..._semesters.map((item) => DropdownMenuItem<String?>(
-                      value: item['id']?.toString(),
-                      child: Text(item['name']?.toString() ?? ''))),
-                ],
-                onChanged: (value) async {
-                  _semesterFilter = value;
-                  await _load();
-                },
+              ..._classes.map(
+                (item) => DropdownMenuItem<String?>(
+                  value: item['id']?.toString(),
+                  child: Text(item['code']?.toString() ?? ''),
+                ),
               ),
-            ),
-          ],
+            ],
+            onChanged: (value) async {
+              _classFilter = value;
+              await _load();
+            },
+          ),
         ),
-      );
+        const SizedBox(width: 10),
+        Expanded(
+          child: DropdownButtonFormField<String?>(
+            key: ValueKey('semester-$_semesterFilter'),
+            initialValue: _semesterFilter,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Học kỳ',
+              isDense: true,
+            ),
+            items: [
+              const DropdownMenuItem<String?>(
+                value: null,
+                child: Text('Tất cả học kỳ'),
+              ),
+              ..._semesters.map(
+                (item) => DropdownMenuItem<String?>(
+                  value: item['id']?.toString(),
+                  child: Text(item['name']?.toString() ?? ''),
+                ),
+              ),
+            ],
+            onChanged: (value) async {
+              _semesterFilter = value;
+              await _load();
+            },
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _assignmentCard(Map<String, dynamic> item) {
     final planned = _int(item['weeklyPeriods']);
@@ -315,22 +342,31 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
             Row(
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.adminAccent.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(item['classCode']?.toString() ?? '',
-                      style: const TextStyle(
-                          color: AppColors.adminAccent,
-                          fontWeight: FontWeight.bold)),
+                  child: Text(
+                    item['classCode']?.toString() ?? '',
+                    style: const TextStyle(
+                      color: AppColors.adminAccent,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 9),
                 Expanded(
-                  child: Text(item['subjectName']?.toString() ?? '',
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.bold)),
+                  child: Text(
+                    item['subjectName']?.toString() ?? '',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
                 PopupMenuButton<String>(
                   onSelected: (action) {
@@ -340,7 +376,9 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
                   itemBuilder: (_) => const [
                     PopupMenuItem(value: 'edit', child: Text('Chỉnh sửa')),
                     PopupMenuItem(
-                        value: 'delete', child: Text('Xóa phân công')),
+                      value: 'delete',
+                      child: Text('Xóa phân công'),
+                    ),
                   ],
                 ),
               ],
@@ -348,14 +386,18 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
             const SizedBox(height: 9),
             Row(
               children: [
-                Icon(Icons.person_outline_rounded,
-                    size: 17,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+                Icon(
+                  Icons.person_outline_rounded,
+                  size: 17,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
                 const SizedBox(width: 6),
                 Expanded(child: Text(item['teacherName']?.toString() ?? '')),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: complete
                         ? AppColors.success.withValues(alpha: 0.1)
@@ -369,8 +411,9 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color:
-                          complete ? AppColors.success : AppColors.adminAccent,
+                      color: complete
+                          ? AppColors.success
+                          : AppColors.adminAccent,
                     ),
                   ),
                 ),
@@ -385,17 +428,21 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
               color: complete ? AppColors.success : AppColors.adminAccent,
             ),
             const SizedBox(height: 5),
-            Text('$scheduled/$planned tiết mỗi tuần',
-                style: TextStyle(
-                    fontSize: 11,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            Text(
+              '$scheduled/$planned tiết mỗi tuần',
+              style: TextStyle(
+                fontSize: 11,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
             const SizedBox(height: 3),
             Text(
               'Giáo viên đang phụ trách ${_int(item['teacherClassCount'])} lớp · '
               '${_int(item['teacherScheduledPeriods'])}/${_int(item['teacherWeeklyPeriods'])} tiết/tuần',
               style: TextStyle(
-                  fontSize: 11,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+                fontSize: 11,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -403,8 +450,10 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
     );
   }
 
-  Future<void> _openEditor(
-      [Map<String, dynamic>? current, String? initialTeacherId]) async {
+  Future<void> _openEditor([
+    Map<String, dynamic>? current,
+    String? initialTeacherId,
+  ]) async {
     String? classId = current?['classId']?.toString() ?? _classFilter;
     String? semesterId = current?['semesterId']?.toString() ?? _semesterFilter;
     String? subjectId = current?['subjectId']?.toString();
@@ -421,40 +470,52 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
           final selectedSubject = _subjects
               .where((item) => item['id']?.toString() == subjectId)
               .firstOrNull;
-          final selectable = _teachers
-              .where((teacher) => teacher['status'] == 'ACTIVE')
-              .toList()
-            ..sort((left, right) {
-              final specialtyOrder =
-                  (_matchesSpecialty(right, selectedSubject) ? 1 : 0) -
+          final selectable =
+              _teachers
+                  .where((teacher) => teacher['status'] == 'ACTIVE')
+                  .toList()
+                ..sort((left, right) {
+                  final specialtyOrder =
+                      (_matchesSpecialty(right, selectedSubject) ? 1 : 0) -
                       (_matchesSpecialty(left, selectedSubject) ? 1 : 0);
-              if (specialtyOrder != 0) return specialtyOrder;
-              return (left['fullName']?.toString() ?? '')
-                  .compareTo(right['fullName']?.toString() ?? '');
-            });
+                  if (specialtyOrder != 0) return specialtyOrder;
+                  return (left['fullName']?.toString() ?? '').compareTo(
+                    right['fullName']?.toString() ?? '',
+                  );
+                });
           final selectedWorkload = _workloads
               .where((item) => item['teacherId']?.toString() == teacherId)
               .firstOrNull;
           return Padding(
             padding: EdgeInsets.fromLTRB(
-                20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+              20,
+              20,
+              20,
+              MediaQuery.of(context).viewInsets.bottom + 24,
+            ),
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                      current == null ? 'Thêm phân công' : 'Cập nhật phân công',
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
+                    current == null ? 'Thêm phân công' : 'Cập nhật phân công',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
                     initialValue: classId,
                     decoration: const InputDecoration(labelText: 'Lớp học'),
                     items: _classes
-                        .map((item) => DropdownMenuItem(
+                        .map(
+                          (item) => DropdownMenuItem(
                             value: item['id']?.toString(),
-                            child: Text(item['code']?.toString() ?? '')))
+                            child: Text(item['code']?.toString() ?? ''),
+                          ),
+                        )
                         .toList(),
                     onChanged: (value) => update(() => classId = value),
                   ),
@@ -463,9 +524,12 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
                     initialValue: semesterId,
                     decoration: const InputDecoration(labelText: 'Học kỳ'),
                     items: _semesters
-                        .map((item) => DropdownMenuItem(
+                        .map(
+                          (item) => DropdownMenuItem(
                             value: item['id']?.toString(),
-                            child: Text(item['name']?.toString() ?? '')))
+                            child: Text(item['name']?.toString() ?? ''),
+                          ),
+                        )
                         .toList(),
                     onChanged: (value) => update(() => semesterId = value),
                   ),
@@ -474,9 +538,12 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
                     initialValue: subjectId,
                     decoration: const InputDecoration(labelText: 'Môn học'),
                     items: _subjects
-                        .map((item) => DropdownMenuItem(
+                        .map(
+                          (item) => DropdownMenuItem(
                             value: item['id']?.toString(),
-                            child: Text(item['name']?.toString() ?? '')))
+                            child: Text(item['name']?.toString() ?? ''),
+                          ),
+                        )
                         .toList(),
                     onChanged: (value) => update(() {
                       subjectId = value;
@@ -484,19 +551,25 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    initialValue: selectable
-                            .any((item) => item['id']?.toString() == teacherId)
+                    initialValue:
+                        selectable.any(
+                          (item) => item['id']?.toString() == teacherId,
+                        )
                         ? teacherId
                         : null,
-                    decoration:
-                        const InputDecoration(labelText: 'Giáo viên bộ môn'),
+                    decoration: const InputDecoration(
+                      labelText: 'Giáo viên bộ môn',
+                    ),
                     items: selectable
-                        .map((item) => DropdownMenuItem(
+                        .map(
+                          (item) => DropdownMenuItem(
                             value: item['id']?.toString(),
                             child: Text(
                               '${item['fullName'] ?? ''} · ${item['mainSubject'] ?? 'Chưa cập nhật'}${_matchesSpecialty(item, selectedSubject) ? ' · Phù hợp' : ''}',
                               overflow: TextOverflow.ellipsis,
-                            )))
+                            ),
+                          ),
+                        )
                         .toList(),
                     onChanged: (value) => update(() => teacherId = value),
                   ),
@@ -505,9 +578,9 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
                     child: Text(
                       'Giáo viên phù hợp chuyên môn được ưu tiên; phân công quyết định lớp và môn thực tế phụ trách.',
                       style: TextStyle(
-                          fontSize: 11,
-                          color:
-                              Theme.of(context).colorScheme.onSurfaceVariant),
+                        fontSize: 11,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
                   if (selectedWorkload != null)
@@ -527,16 +600,19 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
                   TextFormField(
                     initialValue: weeklyPeriods.toString(),
                     keyboardType: TextInputType.number,
-                    decoration:
-                        const InputDecoration(labelText: 'Số tiết mỗi tuần'),
+                    decoration: const InputDecoration(
+                      labelText: 'Số tiết mỗi tuần',
+                    ),
                     onChanged: (value) =>
                         weeklyPeriods = int.tryParse(value) ?? 0,
                   ),
                   if (formError != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 10),
-                      child: Text(formError!,
-                          style: const TextStyle(color: AppColors.error)),
+                      child: Text(
+                        formError!,
+                        style: const TextStyle(color: AppColors.error),
+                      ),
                     ),
                   const SizedBox(height: 18),
                   FilledButton(
@@ -546,8 +622,10 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
                           subjectId == null ||
                           teacherId == null ||
                           weeklyPeriods < 1) {
-                        update(() => formError =
-                            'Vui lòng nhập đầy đủ thông tin phân công.');
+                        update(
+                          () => formError =
+                              'Vui lòng nhập đầy đủ thông tin phân công.',
+                        );
                         return;
                       }
                       try {
@@ -562,13 +640,21 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
                           await _api.createTeachingAssignment(data);
                         } else {
                           await _api.updateTeachingAssignment(
-                              current['id'].toString(), data);
+                            current['id'].toString(),
+                            data,
+                          );
                         }
                         if (sheetContext.mounted) {
                           Navigator.pop(sheetContext, true);
                         }
                       } catch (error) {
-                        update(() => formError = error.toString());
+                        update(
+                          () => formError = apiErrorMessage(
+                            error,
+                            fallback:
+                                'Không thể lưu phân công. Vui lòng thử lại.',
+                          ),
+                        );
                       }
                     },
                     child: const Text('Lưu phân công'),
@@ -589,14 +675,17 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
       builder: (context) => AlertDialog(
         title: const Text('Xóa phân công?'),
         content: Text(
-            '${item['subjectName']} · lớp ${item['classCode']}\nPhải xóa thời khóa biểu liên quan trước.'),
+          '${item['subjectName']} · lớp ${item['classCode']}\nPhải xóa thời khóa biểu liên quan trước.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Hủy')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Xóa')),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Xóa'),
+          ),
         ],
       ),
     );
@@ -613,7 +702,9 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
       value is num ? value.toInt() : int.tryParse('$value') ?? 0;
 
   bool _matchesSpecialty(
-      Map<String, dynamic> teacher, Map<String, dynamic>? subject) {
+    Map<String, dynamic> teacher,
+    Map<String, dynamic>? subject,
+  ) {
     if (subject == null) return false;
     final specialty =
         teacher['mainSubject']?.toString().trim().toLowerCase() ?? '';
@@ -628,11 +719,13 @@ class _TeachingAssignmentsPageState extends State<TeachingAssignmentsPage> {
 
   void _showError(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      backgroundColor: AppColors.error,
-      behavior: SnackBarBehavior.floating,
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 }
 
@@ -641,25 +734,32 @@ class _EmptyAssignments extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.person_add_alt_1_rounded,
-                  size: 42,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant),
-              const SizedBox(height: 12),
-              const Text('Chưa có phân công giáo viên bộ môn',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 5),
-              Text('Thêm phân công trước khi xếp thời khóa biểu.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.all(28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.person_add_alt_1_rounded,
+            size: 42,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
-        ),
-      );
+          const SizedBox(height: 12),
+          const Text(
+            'Chưa có phân công giáo viên bộ môn',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            'Thêm phân công trước khi xếp thời khóa biểu.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }

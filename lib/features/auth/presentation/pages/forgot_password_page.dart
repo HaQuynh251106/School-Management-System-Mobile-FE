@@ -40,19 +40,24 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               context: context,
               barrierDismissible: false,
               builder: (dialogContext) => AlertDialog(
-                title: Text(state.emailDeliveryAvailable
-                    ? 'Đã tiếp nhận yêu cầu'
-                    : 'Chưa thể gửi email'),
-                content: Text(state.emailDeliveryAvailable
-                    ? 'Nếu tài khoản hợp lệ, bạn sẽ nhận được email đặt lại mật khẩu. Hãy kiểm tra cả thư rác.'
-                    : 'Máy chủ hiện chưa cấu hình kênh email. Vui lòng liên hệ quản trị viên để được hỗ trợ.'),
+                title: Text(
+                  state.emailDeliveryAvailable
+                      ? 'Đã tiếp nhận yêu cầu'
+                      : 'Chưa thể gửi email',
+                ),
+                content: Text(
+                  state.emailDeliveryAvailable
+                      ? 'Nếu tài khoản hợp lệ, bạn sẽ nhận được email đặt lại mật khẩu. Hãy kiểm tra cả thư rác.'
+                      : 'Máy chủ hiện chưa cấu hình kênh email. Vui lòng liên hệ quản trị viên để được hỗ trợ.',
+                ),
                 actions: [
                   if (state.devResetToken?.isNotEmpty == true)
                     TextButton(
                       onPressed: () {
                         Navigator.of(dialogContext).pop(false);
                         context.go(
-                            '/reset-password?token=${Uri.encodeQueryComponent(state.devResetToken!)}');
+                          '/reset-password?token=${Uri.encodeQueryComponent(state.devResetToken!)}',
+                        );
                       },
                       child: const Text('Tiếp tục trên máy local'),
                     ),
@@ -67,10 +72,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               context.go('/login');
             }
           } else if (state is AuthForgotPasswordFailed) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text(state.message),
-              behavior: SnackBarBehavior.floating,
-            ));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
           }
         },
         child: Padding(
@@ -80,14 +87,18 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Icon(Icons.lock_reset_rounded,
-                    size: 56, color: AppColors.primary),
+                const Icon(
+                  Icons.lock_reset_rounded,
+                  size: 56,
+                  color: AppColors.primary,
+                ),
                 const SizedBox(height: 20),
                 Text(
                   'Nhập email đã đăng ký, chúng tôi sẽ gửi link đặt lại mật khẩu.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(height: 32),
                 TextFormField(
@@ -113,10 +124,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                             : () {
                                 if (_formKey.currentState!.validate()) {
                                   context.read<AuthBloc>().add(
-                                        AuthForgotPasswordRequested(
-                                          email: _emailCtrl.text.trim(),
-                                        ),
-                                      );
+                                    AuthForgotPasswordRequested(
+                                      email: _emailCtrl.text.trim(),
+                                    ),
+                                  );
                                 }
                               },
                         child: loading

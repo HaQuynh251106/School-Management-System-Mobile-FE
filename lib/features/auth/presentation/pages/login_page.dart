@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -16,10 +15,6 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  static const _showDemoAccounts = bool.fromEnvironment(
-    'SHOW_DEMO_ACCOUNTS',
-    defaultValue: !kReleaseMode,
-  );
   final _formKey = GlobalKey<FormState>();
   final _usernameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
@@ -89,11 +84,7 @@ class _LoginPageState extends State<LoginPage> {
                     child: Container(
                       height: 390,
                       decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Color(0xFF1647B9), AppColors.primary],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                        color: AppColors.primary,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -128,7 +119,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Đăng nhập để tiếp tục công việc trong ngày.',
+                'Dành cho Giáo viên, Học sinh và Phụ huynh.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -140,8 +131,6 @@ class _LoginPageState extends State<LoginPage> {
             _buildLoginButton(),
             const SizedBox(height: 8),
             _buildForgotPassword(),
-            const SizedBox(height: 22),
-            _buildDemoAccounts(),
           ],
         ),
       ),
@@ -153,11 +142,7 @@ class _LoginPageState extends State<LoginPage> {
       margin: const EdgeInsets.all(18),
       padding: const EdgeInsets.all(56),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF123B9A), Color(0xFF2764E7), Color(0xFF2397C7)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: AppColors.primary,
         borderRadius: BorderRadius.circular(32),
       ),
       child: Column(
@@ -231,7 +216,7 @@ class _LoginPageState extends State<LoginPage> {
         ),
         const SizedBox(height: 6),
         Text(
-          'Đăng nhập để tiếp tục',
+          'Dành cho Giáo viên, Học sinh và Phụ huynh',
           style: TextStyle(
             fontSize: 14,
             color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -314,101 +299,6 @@ class _LoginPageState extends State<LoginPage> {
         onPressed: () => context.push('/forgot-password'),
         child: const Text('Quên mật khẩu?'),
       ),
-    );
-  }
-
-  Widget _buildDemoAccounts() {
-    if (!_showDemoAccounts) return const SizedBox.shrink();
-    const accounts = [
-      (
-        'Quản trị',
-        String.fromEnvironment('DEMO_ADMIN_USERNAME', defaultValue: 'admin'),
-        String.fromEnvironment(
-          'DEMO_ADMIN_PASSWORD',
-          defaultValue: 'admin@123',
-        ),
-        AppColors.adminAccent,
-      ),
-      (
-        'Giáo viên',
-        String.fromEnvironment('DEMO_TEACHER_USERNAME', defaultValue: 'gv.hoa'),
-        String.fromEnvironment(
-          'DEMO_TEACHER_PASSWORD',
-          defaultValue: 'teacher@123',
-        ),
-        AppColors.teacherAccent,
-      ),
-      (
-        'Học sinh',
-        String.fromEnvironment('DEMO_STUDENT_USERNAME', defaultValue: 'hs.an'),
-        String.fromEnvironment(
-          'DEMO_STUDENT_PASSWORD',
-          defaultValue: 'student@123',
-        ),
-        AppColors.studentAccent,
-      ),
-      (
-        'Phụ huynh',
-        String.fromEnvironment('DEMO_PARENT_USERNAME', defaultValue: 'ph.pham'),
-        String.fromEnvironment(
-          'DEMO_PARENT_PASSWORD',
-          defaultValue: 'parent@123',
-        ),
-        AppColors.parentAccent,
-      ),
-    ];
-    final configured = accounts
-        .where((account) => account.$2.isNotEmpty && account.$3.isNotEmpty)
-        .toList();
-    if (configured.isEmpty) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Divider(),
-        const SizedBox(height: 12),
-        const Text(
-          'Đăng nhập nhanh',
-          style: TextStyle(
-            fontSize: 12,
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: configured.map((a) {
-            final (label, user, pass, color) = a;
-            return ActionChip(
-              backgroundColor: Colors.white,
-              side: const BorderSide(color: AppColors.divider),
-              label: Text(
-                label,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              avatar: CircleAvatar(
-                backgroundColor: color,
-                radius: 8,
-                child: Text(
-                  label[0],
-                  style: const TextStyle(color: Colors.white, fontSize: 8),
-                ),
-              ),
-              onPressed: () {
-                _usernameCtrl.text = user;
-                _passwordCtrl.text = pass;
-                _submit();
-              },
-            );
-          }).toList(),
-        ),
-      ],
     );
   }
 }

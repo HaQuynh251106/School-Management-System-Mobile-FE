@@ -13,12 +13,10 @@ Name | Type | Description | Notes
 **password** | **String** |  |
 **fullName** | **String** |  |
 **role** | **String** |  |
-**email** | **String** |  | [optional]
-**phone** | **String** |  | [optional]
+**email** | **String** |  |
+**phone** | **String** |  |
 **avatarUrl** | **String** |  | [optional]
-**teacherCode** | **String** |  | [optional]
-**mainSubject** | **String** |  | [optional]
-**studentCode** | **String** |  | [optional]
+**mainSubjectId** | **String** | Bắt buộc khi role là TEACHER; phải là id môn học tồn tại trong danh mục /subjects. | [optional]
 **classId** | **String** |  | [optional]
 **className** | **String** |  | [optional]
 **dateOfBirth** | [**DateTime**](DateTime.md) |  | [optional]

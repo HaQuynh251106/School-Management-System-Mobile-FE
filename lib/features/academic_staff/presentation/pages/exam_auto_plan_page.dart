@@ -43,8 +43,8 @@ class _ExamAutoPlanPageState extends State<ExamAutoPlanPage> {
 
   Map<String, dynamic> _period(Map<String, dynamic> item) =>
       item['period'] is Map
-          ? Map<String, dynamic>.from(item['period'] as Map)
-          : item;
+      ? Map<String, dynamic>.from(item['period'] as Map)
+      : item;
 
   Map<String, dynamic>? get _selectedPeriod {
     for (final item in _periods) {
@@ -82,19 +82,23 @@ class _ExamAutoPlanPageState extends State<ExamAutoPlanPage> {
     setState(() => _loading = true);
     try {
       _periods = await _api.examPeriods();
-      _periodId ??=
-          _periods.isEmpty ? null : '${_period(_periods.first)['id']}';
+      _periodId ??= _periods.isEmpty
+          ? null
+          : '${_period(_periods.first)['id']}';
       await _loadPlannedExamSubjects();
-      _schedules =
-          _periodId == null ? [] : await _api.examSchedules(_periodId!);
+      _schedules = _periodId == null
+          ? []
+          : await _api.examSchedules(_periodId!);
       final roomBatches = await Future.wait(
         _schedules.map((schedule) => _api.examRooms('${schedule['id']}')),
       );
       final candidateBatches = _periodId == null
           ? <List<Map<String, dynamic>>>[]
           : await Future.wait(
-              _schedules.map((schedule) =>
-                  _api.examCandidates(_periodId!, '${schedule['id']}')),
+              _schedules.map(
+                (schedule) =>
+                    _api.examCandidates(_periodId!, '${schedule['id']}'),
+              ),
             );
       _savedRooms = {
         for (var i = 0; i < _schedules.length; i++)
@@ -132,10 +136,12 @@ class _ExamAutoPlanPageState extends State<ExamAutoPlanPage> {
       if ('${requirement['gradeLevel'] ?? ''}'.trim().toUpperCase() != grade) {
         return false;
       }
-      final examStart =
-          DateTime.tryParse('${requirement['examWindowStart'] ?? ''}');
-      final examEnd =
-          DateTime.tryParse('${requirement['examWindowEnd'] ?? ''}');
+      final examStart = DateTime.tryParse(
+        '${requirement['examWindowStart'] ?? ''}',
+      );
+      final examEnd = DateTime.tryParse(
+        '${requirement['examWindowEnd'] ?? ''}',
+      );
       if (examStart == null || examEnd == null) return false;
       return !periodStart.isBefore(examStart) && !periodEnd.isAfter(examEnd);
     }).toList();
@@ -153,23 +159,30 @@ class _ExamAutoPlanPageState extends State<ExamAutoPlanPage> {
     String yearId = '${_years.first['id']}';
     String semesterId = '${_semesters.first['id']}';
     String grade = '10';
-    final ok = await showDialog<bool>(
+    final ok =
+        await showDialog<bool>(
           context: context,
           builder: (context) => StatefulBuilder(
             builder: (context, setDialogState) => AlertDialog(
               title: const Text('Tạo kỳ thi'),
               content: SizedBox(
-                  width: 540,
-                  child: SingleChildScrollView(
-                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                width: 540,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       _field(code, 'Mã kỳ thi', hint: 'HK1-2026'),
                       _field(name, 'Tên kỳ thi', hint: 'Thi học kỳ I'),
                       DropdownButtonFormField<String>(
                         initialValue: yearId,
                         decoration: const InputDecoration(labelText: 'Năm học'),
                         items: _years
-                            .map((e) => DropdownMenuItem(
-                                value: '${e['id']}', child: Text(_name(e))))
+                            .map(
+                              (e) => DropdownMenuItem(
+                                value: '${e['id']}',
+                                child: Text(_name(e)),
+                              ),
+                            )
                             .toList(),
                         onChanged: (v) => setDialogState(() => yearId = v!),
                       ),
@@ -178,8 +191,12 @@ class _ExamAutoPlanPageState extends State<ExamAutoPlanPage> {
                         initialValue: semesterId,
                         decoration: const InputDecoration(labelText: 'Học kỳ'),
                         items: _semesters
-                            .map((e) => DropdownMenuItem(
-                                value: '${e['id']}', child: Text(_name(e))))
+                            .map(
+                              (e) => DropdownMenuItem(
+                                value: '${e['id']}',
+                                child: Text(_name(e)),
+                              ),
+                            )
                             .toList(),
                         onChanged: (v) => setDialogState(() => semesterId = v!),
                       ),
@@ -188,29 +205,40 @@ class _ExamAutoPlanPageState extends State<ExamAutoPlanPage> {
                         initialValue: grade,
                         decoration: const InputDecoration(labelText: 'Khối'),
                         items: ['6', '7', '8', '9', '10', '11', '12']
-                            .map((v) => DropdownMenuItem(
-                                value: v, child: Text('Khối $v')))
+                            .map(
+                              (v) => DropdownMenuItem(
+                                value: v,
+                                child: Text('Khối $v'),
+                              ),
+                            )
                             .toList(),
                         onChanged: (v) => setDialogState(() => grade = v!),
                       ),
                       const SizedBox(height: 10),
-                      Row(children: [
-                        Expanded(
-                            child:
-                                _field(start, 'Từ ngày', hint: 'YYYY-MM-DD')),
-                        const SizedBox(width: 10),
-                        Expanded(
-                            child: _field(end, 'Đến ngày', hint: 'YYYY-MM-DD')),
-                      ]),
-                    ]),
-                  )),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _field(start, 'Từ ngày', hint: 'YYYY-MM-DD'),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _field(end, 'Đến ngày', hint: 'YYYY-MM-DD'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               actions: [
                 TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('Hủy')),
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Hủy'),
+                ),
                 FilledButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text('Tạo')),
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Tạo'),
+                ),
               ],
             ),
           ),
@@ -230,19 +258,24 @@ class _ExamAutoPlanPageState extends State<ExamAutoPlanPage> {
       _periodId = '${created['id']}';
       await _reload();
     } catch (error) {
-      _show('Không thể tạo kỳ thi. Vui lòng kiểm tra thông tin và thử lại.',
-          error: true);
+      _show(
+        'Không thể tạo kỳ thi. Vui lòng kiểm tra thông tin và thử lại.',
+        error: true,
+      );
     }
   }
 
-  Widget _field(TextEditingController controller, String label,
-          {String? hint}) =>
-      Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: TextField(
-            controller: controller,
-            decoration: InputDecoration(labelText: label, hintText: hint),
-          ));
+  Widget _field(
+    TextEditingController controller,
+    String label, {
+    String? hint,
+  }) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: TextField(
+      controller: controller,
+      decoration: InputDecoration(labelText: label, hintText: hint),
+    ),
+  );
 
   Future<void> _buildProposal() async {
     if (_selectedPeriod == null || _periodId == null) return;
@@ -274,13 +307,15 @@ class _ExamAutoPlanPageState extends State<ExamAutoPlanPage> {
         _show(blockers.join('\n'), error: true);
       } else {
         _show(
-            'Backend đã kiểm tra ngày nghỉ, cửa sổ thi, phòng, sức chứa, giám thị và người chấm cho ${schedules.length} môn.');
+          'Đã kiểm tra ngày nghỉ, thời gian thi, phòng, sức chứa, giám thị và người chấm cho ${schedules.length} môn.',
+        );
       }
     } catch (error) {
       if (mounted) setState(() => _loading = false);
       _show(
-          'Backend không thể lập phương án. Vui lòng kiểm tra kế hoạch đào tạo.',
-          error: true);
+        'Không thể lập phương án. Vui lòng kiểm tra lại kế hoạch đào tạo.',
+        error: true,
+      );
     }
   }
 
@@ -303,8 +338,10 @@ class _ExamAutoPlanPageState extends State<ExamAutoPlanPage> {
       await _reload();
     } catch (error) {
       if (mounted) setState(() => _loading = false);
-      _show('Không thể lưu phương án; Backend đã rollback toàn bộ thay đổi.',
-          error: true);
+      _show(
+        'Không thể lưu phương án. Không có thay đổi nào được áp dụng.',
+        error: true,
+      );
     }
   }
 
@@ -331,23 +368,31 @@ class _ExamAutoPlanPageState extends State<ExamAutoPlanPage> {
     String roomId = '${_rooms.first['id']}';
     String proctorOne =
         '${eligibleTeachers.first['teacherId'] ?? eligibleTeachers.first['id']}';
-    final classIds =
-        (schedule['classIds'] as List? ?? const []).map((e) => '$e').toList();
+    final classIds = (schedule['classIds'] as List? ?? const [])
+        .map((e) => '$e')
+        .toList();
     String? classId = classIds.isEmpty ? null : classIds.first;
-    final ok = await showDialog<bool>(
+    final ok =
+        await showDialog<bool>(
           context: context,
           builder: (context) => StatefulBuilder(
             builder: (context, setDialogState) => AlertDialog(
               title: Text('Phòng & giám thị · ${schedule['subjectName']}'),
               content: SizedBox(
-                  width: 520,
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                width: 520,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     DropdownButtonFormField<String>(
                       initialValue: roomId,
                       decoration: const InputDecoration(labelText: 'Phòng thi'),
                       items: _rooms
-                          .map((e) => DropdownMenuItem(
-                              value: '${e['id']}', child: Text(_name(e))))
+                          .map(
+                            (e) => DropdownMenuItem(
+                              value: '${e['id']}',
+                              child: Text(_name(e)),
+                            ),
+                          )
                           .toList(),
                       onChanged: (v) => setDialogState(() => roomId = v!),
                     ),
@@ -355,13 +400,18 @@ class _ExamAutoPlanPageState extends State<ExamAutoPlanPage> {
                     DropdownButtonFormField<String>(
                       initialValue: proctorOne,
                       isExpanded: true,
-                      decoration:
-                          const InputDecoration(labelText: 'Giám thị 1'),
+                      decoration: const InputDecoration(
+                        labelText: 'Giám thị 1',
+                      ),
                       items: eligibleTeachers
-                          .map((e) => DropdownMenuItem(
+                          .map(
+                            (e) => DropdownMenuItem(
                               value: '${e['teacherId'] ?? e['id']}',
                               child: Text(
-                                  '${e['teacherName'] ?? e['fullName'] ?? e['teacherId']}')))
+                                '${e['teacherName'] ?? e['fullName'] ?? e['teacherId']}',
+                              ),
+                            ),
+                          )
                           .toList(),
                       onChanged: (v) => setDialogState(() => proctorOne = v!),
                     ),
@@ -370,26 +420,34 @@ class _ExamAutoPlanPageState extends State<ExamAutoPlanPage> {
                       DropdownButtonFormField<String>(
                         initialValue: classId,
                         decoration: const InputDecoration(
-                            labelText: 'Xếp thí sinh lớp'),
+                          labelText: 'Xếp thí sinh lớp',
+                        ),
                         items: classIds.map((id) {
-                          final found =
-                              _classes.where((c) => '${c['id']}' == id);
+                          final found = _classes.where(
+                            (c) => '${c['id']}' == id,
+                          );
                           return DropdownMenuItem(
-                              value: id,
-                              child: Text(
-                                  found.isEmpty ? id : _name(found.first)));
+                            value: id,
+                            child: Text(
+                              found.isEmpty ? id : _name(found.first),
+                            ),
+                          );
                         }).toList(),
                         onChanged: (v) => setDialogState(() => classId = v),
                       ),
                     ],
-                  ])),
+                  ],
+                ),
+              ),
               actions: [
                 TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('Hủy')),
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Hủy'),
+                ),
                 FilledButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text('Lưu')),
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Lưu'),
+                ),
               ],
             ),
           ),
@@ -443,8 +501,10 @@ class _ExamAutoPlanPageState extends State<ExamAutoPlanPage> {
       _show('Đã khóa và công bố kết quả thi cho học sinh, phụ huynh');
       await _reload();
     } catch (_) {
-      _show('Chưa thể khóa điểm. Hãy bảo đảm mọi thí sinh đã có điểm.',
-          error: true);
+      _show(
+        'Chưa thể khóa điểm. Hãy bảo đảm mọi thí sinh đã có điểm.',
+        error: true,
+      );
     }
   }
 
@@ -463,9 +523,12 @@ class _ExamAutoPlanPageState extends State<ExamAutoPlanPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
+      ..showSnackBar(
+        SnackBar(
           content: Text(text),
-          backgroundColor: error ? AppColors.error : null));
+          backgroundColor: error ? AppColors.error : null,
+        ),
+      );
   }
 
   String _newPlanKey() =>
@@ -473,101 +536,118 @@ class _ExamAutoPlanPageState extends State<ExamAutoPlanPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Tự xếp lịch thi')),
-        body: ListView(padding: const EdgeInsets.all(16), children: [
-          const RolePageIntro(
-            title: 'Lập phương án lịch thi',
-            subtitle:
-                'Hệ thống tự rải môn, xếp phòng, giám thị, thí sinh và người chấm. Bạn chỉ kiểm tra, điều chỉnh ngoại lệ rồi công bố.',
-            accent: AppColors.academicStaffAccent,
-            icon: Icons.event_available_rounded,
-          ),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('5 bước người dùng cần làm',
-                      style: Theme.of(context).textTheme.titleSmall),
-                  const SizedBox(height: 8),
-                  const Text('1. Chọn hoặc tạo kỳ thi và khoảng ngày thi.'),
-                  const Text('2. Kiểm tra danh sách môn thi cố định.'),
-                  const Text('3. Chọn Xem phương án để hệ thống tự xếp.'),
-                  const Text('4. Chỉ sửa phòng/giám thị khi có ngoại lệ.'),
-                  const Text('5. Bấm Công bố để gửi lịch cho các vai trò.'),
-                ],
-              ),
+    appBar: AppBar(title: const Text('Tự xếp lịch thi')),
+    body: ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const RolePageIntro(
+          title: 'Lập phương án lịch thi',
+          subtitle:
+              'Hệ thống tự rải môn, xếp phòng, giám thị, thí sinh và người chấm. Bạn chỉ kiểm tra, điều chỉnh ngoại lệ rồi công bố.',
+          accent: AppColors.academicStaffAccent,
+          icon: Icons.event_available_rounded,
+        ),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '5 bước người dùng cần làm',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                const Text('1. Chọn hoặc tạo kỳ thi và khoảng ngày thi.'),
+                const Text('2. Kiểm tra danh sách môn thi cố định.'),
+                const Text('3. Chọn Xem phương án để hệ thống tự xếp.'),
+                const Text('4. Chỉ sửa phòng/giám thị khi có ngoại lệ.'),
+                const Text('5. Bấm Công bố để gửi lịch cho các vai trò.'),
+              ],
             ),
           ),
-          const SizedBox(height: 12),
-          Row(children: [
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
             Expanded(
-                child: DropdownButtonFormField<String>(
-              initialValue: _periodId,
-              decoration: const InputDecoration(labelText: 'Kỳ thi'),
-              items: _periods.map((e) {
-                final p = _period(e);
-                return DropdownMenuItem(
-                    value: '${p['id']}', child: Text(_name(p)));
-              }).toList(),
-              onChanged: (v) {
-                setState(() {
-                  _periodId = v;
-                  _proposal = [];
-                });
-                _reload();
-              },
-            )),
+              child: DropdownButtonFormField<String>(
+                initialValue: _periodId,
+                decoration: const InputDecoration(labelText: 'Kỳ thi'),
+                items: _periods.map((e) {
+                  final p = _period(e);
+                  return DropdownMenuItem(
+                    value: '${p['id']}',
+                    child: Text(_name(p)),
+                  );
+                }).toList(),
+                onChanged: (v) {
+                  setState(() {
+                    _periodId = v;
+                    _proposal = [];
+                  });
+                  _reload();
+                },
+              ),
+            ),
             const SizedBox(width: 10),
             IconButton.filledTonal(
-                onPressed: _createPeriod,
-                tooltip: 'Tạo kỳ thi',
-                icon: const Icon(Icons.add_rounded)),
-          ]),
-          if (_loading)
-            const Padding(
-                padding: EdgeInsets.only(top: 12),
-                child: LinearProgressIndicator()),
-          const SizedBox(height: 12),
-          Text('Môn thi cố định',
-              style: Theme.of(context).textTheme.titleMedium),
-          const Text(
-            'Danh sách lấy từ cửa sổ thi trong Kế hoạch đào tạo. Muốn đổi môn, '
-            'hãy cập nhật kế hoạch trước khi xếp lịch.',
-          ),
-          const SizedBox(height: 7),
-          if (_plannedExamSubjects.isEmpty)
-            const Card(
-              child: ListTile(
-                leading:
-                    Icon(Icons.info_outline_rounded, color: AppColors.warning),
-                title: Text('Chưa có môn thi hợp lệ'),
-                subtitle: Text(
-                    'Hãy khai báo cửa sổ thi cho môn và khối trong Kế hoạch đào tạo.'),
-              ),
-            )
-          else
-            Wrap(
-              spacing: 7,
-              runSpacing: 7,
-              children: _plannedExamSubjects.map((requirement) {
-                final subjectId = '${requirement['subjectId']}';
-                final subject =
-                    _subjects.cast<Map<String, dynamic>?>().firstWhere(
-                          (item) => '${item?['id']}' == subjectId,
-                          orElse: () => null,
-                        );
-                return Chip(
-                  avatar: const Icon(Icons.lock_outline_rounded, size: 17),
-                  label: Text(subject == null
-                      ? '${requirement['subjectName'] ?? subjectId}'
-                      : _name(subject)),
-                );
-              }).toList(),
+              onPressed: _createPeriod,
+              tooltip: 'Tạo kỳ thi',
+              icon: const Icon(Icons.add_rounded),
             ),
-          const SizedBox(height: 12),
-          Row(children: [
+          ],
+        ),
+        if (_loading)
+          const Padding(
+            padding: EdgeInsets.only(top: 12),
+            child: LinearProgressIndicator(),
+          ),
+        const SizedBox(height: 12),
+        Text('Môn thi cố định', style: Theme.of(context).textTheme.titleMedium),
+        const Text(
+          'Danh sách lấy từ cửa sổ thi trong Kế hoạch đào tạo. Muốn đổi môn, '
+          'hãy cập nhật kế hoạch trước khi xếp lịch.',
+        ),
+        const SizedBox(height: 7),
+        if (_plannedExamSubjects.isEmpty)
+          const Card(
+            child: ListTile(
+              leading: Icon(
+                Icons.info_outline_rounded,
+                color: AppColors.warning,
+              ),
+              title: Text('Chưa có môn thi hợp lệ'),
+              subtitle: Text(
+                'Hãy khai báo cửa sổ thi cho môn và khối trong Kế hoạch đào tạo.',
+              ),
+            ),
+          )
+        else
+          Wrap(
+            spacing: 7,
+            runSpacing: 7,
+            children: _plannedExamSubjects.map((requirement) {
+              final subjectId = '${requirement['subjectId']}';
+              final subject = _subjects
+                  .cast<Map<String, dynamic>?>()
+                  .firstWhere(
+                    (item) => '${item?['id']}' == subjectId,
+                    orElse: () => null,
+                  );
+              return Chip(
+                avatar: const Icon(Icons.lock_outline_rounded, size: 17),
+                label: Text(
+                  subject == null
+                      ? '${requirement['subjectName'] ?? subjectId}'
+                      : _name(subject),
+                ),
+              );
+            }).toList(),
+          ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: () async {
@@ -598,10 +678,12 @@ class _ExamAutoPlanPageState extends State<ExamAutoPlanPage> {
                 initialValue: _durationMinutes,
                 decoration: const InputDecoration(labelText: 'Thời lượng'),
                 items: const [45, 60, 90, 120, 150, 180]
-                    .map((minutes) => DropdownMenuItem(
-                          value: minutes,
-                          child: Text('$minutes phút'),
-                        ))
+                    .map(
+                      (minutes) => DropdownMenuItem(
+                        value: minutes,
+                        child: Text('$minutes phút'),
+                      ),
+                    )
                     .toList(),
                 onChanged: (value) => setState(() {
                   _durationMinutes = value ?? 90;
@@ -610,58 +692,80 @@ class _ExamAutoPlanPageState extends State<ExamAutoPlanPage> {
                 }),
               ),
             ),
-          ]),
-          const SizedBox(height: 12),
-          Row(children: [
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
             Expanded(
-                child: OutlinedButton.icon(
-                    onPressed: _periodId == null ? null : _buildProposal,
-                    icon: const Icon(Icons.auto_fix_high_rounded),
-                    label: const Text('Xem phương án'))),
+              child: OutlinedButton.icon(
+                onPressed: _periodId == null ? null : _buildProposal,
+                icon: const Icon(Icons.auto_fix_high_rounded),
+                label: const Text('Xem phương án'),
+              ),
+            ),
             const SizedBox(width: 10),
             Expanded(
-                child: FilledButton.icon(
-                    onPressed: _proposal.isEmpty ? null : _applyProposal,
-                    icon: const Icon(Icons.done_all_rounded),
-                    label: const Text('Lưu phương án'))),
-          ]),
-          if (_proposal.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            ..._proposal.map((e) {
-              final allocations = (e['allocations'] as List? ?? const [])
-                  .map((value) => Map<String, dynamic>.from(value as Map))
-                  .toList();
-              return Card(
-                  child: Padding(
+              child: FilledButton.icon(
+                onPressed: _proposal.isEmpty ? null : _applyProposal,
+                icon: const Icon(Icons.done_all_rounded),
+                label: const Text('Lưu phương án'),
+              ),
+            ),
+          ],
+        ),
+        if (_proposal.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          ..._proposal.map((e) {
+            final allocations = (e['allocations'] as List? ?? const [])
+                .map((value) => Map<String, dynamic>.from(value as Map))
+                .toList();
+            return Card(
+              child: Padding(
                 padding: const EdgeInsets.all(14),
                 child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${e['subjectName']}',
-                          style: Theme.of(context).textTheme.titleSmall),
-                      Text(
-                          '${e['examDate']} · ${e['startTime']} · ${e['durationMinutes']} phút'),
-                      const SizedBox(height: 6),
-                      ...allocations.map((a) => Text(
-                          '${a['classCode']} → ${a['roomCode']} · ${a['proctorName']} · ${a['studentCount']} HS')),
-                    ]),
-              ));
-            }),
-          ],
-          const Divider(height: 32),
-          Row(children: [
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${e['subjectName']}',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    Text(
+                      '${e['examDate']} · ${e['startTime']} · ${e['durationMinutes']} phút',
+                    ),
+                    const SizedBox(height: 6),
+                    ...allocations.map(
+                      (a) => Text(
+                        '${a['classCode']} → ${a['roomCode']} · ${a['proctorName']} · ${a['studentCount']} HS',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+        const Divider(height: 32),
+        Row(
+          children: [
             Expanded(
-                child: Text('Lịch đã lưu (${_schedules.length})',
-                    style: Theme.of(context).textTheme.titleMedium)),
+              child: Text(
+                'Lịch đã lưu (${_schedules.length})',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
             FilledButton.tonalIcon(
-                onPressed: _schedules.isEmpty ? null : _publish,
-                icon: const Icon(Icons.publish_rounded),
-                label: const Text('Công bố')),
-          ]),
-          if (_selectedPeriod != null &&
-              _selectedPeriod!['schedulePublished'] == true) ...[
-            const SizedBox(height: 10),
-            Row(children: [
+              onPressed: _schedules.isEmpty ? null : _publish,
+              icon: const Icon(Icons.publish_rounded),
+              label: const Text('Công bố'),
+            ),
+          ],
+        ),
+        if (_selectedPeriod != null &&
+            _selectedPeriod!['schedulePublished'] == true) ...[
+          const SizedBox(height: 10),
+          Row(
+            children: [
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: _selectedPeriod!['scoreEntryLocked'] == true
@@ -674,7 +778,8 @@ class _ExamAutoPlanPageState extends State<ExamAutoPlanPage> {
               const SizedBox(width: 10),
               Expanded(
                 child: FilledButton.tonalIcon(
-                  onPressed: _selectedPeriod!['scoreEntryLocked'] == true &&
+                  onPressed:
+                      _selectedPeriod!['scoreEntryLocked'] == true &&
                           '${_selectedPeriod!['status']}' != 'CONFIRMED'
                       ? _confirmPeriod
                       : null,
@@ -682,36 +787,45 @@ class _ExamAutoPlanPageState extends State<ExamAutoPlanPage> {
                   label: const Text('Xác nhận kỳ thi'),
                 ),
               ),
-            ]),
-          ],
-          ..._schedules.map((schedule) {
-            final rooms = _savedRooms['${schedule['id']}'] ?? const [];
-            final roomSummary = rooms.isEmpty
-                ? 'Chưa phân phòng'
-                : rooms
-                    .map((room) =>
-                        '${room['roomCode']} · ${room['proctorOneName'] ?? 'chưa có giám thị'}')
+            ],
+          ),
+        ],
+        ..._schedules.map((schedule) {
+          final rooms = _savedRooms['${schedule['id']}'] ?? const [];
+          final roomSummary = rooms.isEmpty
+              ? 'Chưa phân phòng'
+              : rooms
+                    .map(
+                      (room) =>
+                          '${room['roomCode']} · ${room['proctorOneName'] ?? 'chưa có giám thị'}',
+                    )
                     .join('\n');
-            return Card(
-                child: ListTile(
-              leading:
-                  const CircleAvatar(child: Icon(Icons.event_note_rounded)),
+          return Card(
+            child: ListTile(
+              leading: const CircleAvatar(
+                child: Icon(Icons.event_note_rounded),
+              ),
               title: Text('${schedule['subjectName']}'),
               subtitle: Text(
-                  '${schedule['examDate']} · ${schedule['startTime']} · '
-                  '${schedule['durationMinutes']} phút · ${(schedule['classIds'] as List? ?? const []).length} lớp\n$roomSummary'),
+                '${schedule['examDate']} · ${schedule['startTime']} · '
+                '${schedule['durationMinutes']} phút · ${(schedule['classIds'] as List? ?? const []).length} lớp\n$roomSummary',
+              ),
               isThreeLine: true,
               trailing: IconButton(
-                  tooltip: 'Phòng và giám thị',
-                  onPressed: () => _configureRoom(schedule),
-                  icon: const Icon(Icons.meeting_room_outlined)),
-            ));
-          }),
-        ]),
-      );
+                tooltip: 'Phòng và giám thị',
+                onPressed: () => _configureRoom(schedule),
+                icon: const Icon(Icons.meeting_room_outlined),
+              ),
+            ),
+          );
+        }),
+      ],
+    ),
+  );
 }
 
 String _name(Map<String, dynamic> item) =>
     '${item['name'] ?? item['fullName'] ?? item['code'] ?? 'Chưa đặt tên'}';
-String _iso(DateTime date) => '${date.year.toString().padLeft(4, '0')}-'
+String _iso(DateTime date) =>
+    '${date.year.toString().padLeft(4, '0')}-'
     '${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';

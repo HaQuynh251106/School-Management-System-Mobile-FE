@@ -56,9 +56,10 @@ class ParentSubjectDetail extends StatelessWidget {
                   child: Text(
                     average?.toStringAsFixed(1) ?? '—',
                     style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold),
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -66,17 +67,28 @@ class ParentSubjectDetail extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(subject,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold)),
-                      Text(childName,
-                          style: const TextStyle(
-                              color: Colors.white70, fontSize: 13)),
-                      Text(semester,
-                          style: const TextStyle(
-                              color: Colors.white70, fontSize: 12)),
+                      Text(
+                        subject,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        childName,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 13,
+                        ),
+                      ),
+                      Text(
+                        semester,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -95,22 +107,27 @@ class ParentSubjectDetail extends StatelessWidget {
                   children: [
                     ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: (score == null
+                        backgroundColor:
+                            (score == null
+                                    ? Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant
+                                    : _scoreColor(score))
+                                .withValues(alpha: 0.12),
+                        child: Text(
+                          score?.toStringAsFixed(1) ?? '—',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: score == null
                                 ? Theme.of(context).colorScheme.onSurfaceVariant
-                                : _scoreColor(score))
-                            .withValues(alpha: 0.12),
-                        child: Text(score?.toStringAsFixed(1) ?? '—',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: score == null
-                                    ? Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant
-                                    : _scoreColor(score))),
+                                : _scoreColor(score),
+                          ),
+                        ),
                       ),
                       title: Text(column.label),
-                      subtitle:
-                          Text('Hệ số ${column.weight.toStringAsFixed(0)}'),
+                      subtitle: Text(
+                        'Hệ số ${column.weight.toStringAsFixed(0)}',
+                      ),
                     ),
                     if (index < columns.length - 1) const Divider(height: 0),
                   ],

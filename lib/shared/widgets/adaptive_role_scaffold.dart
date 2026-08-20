@@ -34,7 +34,18 @@ class AdaptiveRoleScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    assert(
+      destinations.length <= 5,
+      'Điều hướng mobile chỉ hỗ trợ tối đa 5 mục chính.',
+    );
+    assert(
+      pages.length == destinations.length,
+      'Số trang phải khớp số mục điều hướng.',
+    );
     final stack = IndexedStack(index: index, children: pages);
+    final effectiveAccent = Theme.of(context).brightness == Brightness.dark
+        ? Theme.of(context).colorScheme.primary
+        : accent;
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth >= 760) {
@@ -60,19 +71,16 @@ class AdaptiveRoleScaffold extends StatelessWidget {
                         padding: const EdgeInsets.only(bottom: 24),
                         child: DecoratedBox(
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                accent,
-                                Color.lerp(accent, Colors.black, .2)!
-                              ],
-                            ),
+                            color: effectiveAccent,
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: const SizedBox(
                             width: 48,
                             height: 48,
-                            child:
-                                Icon(Icons.school_rounded, color: Colors.white),
+                            child: Icon(
+                              Icons.school_rounded,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ),
@@ -80,8 +88,10 @@ class AdaptiveRoleScaffold extends StatelessWidget {
                           .map(
                             (item) => NavigationRailDestination(
                               icon: Icon(item.icon),
-                              selectedIcon:
-                                  Icon(item.selectedIcon, color: accent),
+                              selectedIcon: Icon(
+                                item.selectedIcon,
+                                color: effectiveAccent,
+                              ),
                               label: Text(item.label),
                             ),
                           )
@@ -104,7 +114,7 @@ class AdaptiveRoleScaffold extends StatelessWidget {
               index: index,
               onSelected: onSelected,
               destinations: destinations,
-              accent: accent,
+              accent: effectiveAccent,
             ),
           ),
         );
@@ -113,8 +123,8 @@ class AdaptiveRoleScaffold extends StatelessWidget {
   }
 }
 
-/// Một số role có 6 chức năng chính. Thanh điều hướng vẫn giữ toàn bộ mục trong
-/// tầm nhìn, đồng thời thu gọn icon/nhãn vừa đủ trên màn hình điện thoại.
+/// Thanh điều hướng điện thoại chỉ giữ tối đa năm đích chính. Nghiệp vụ phụ được
+/// đặt trong màn hình chi tiết để nhãn luôn đủ lớn và vùng chạm không bị chật.
 class _MobileRoleNavigation extends StatelessWidget {
   const _MobileRoleNavigation({
     required this.index,
@@ -130,23 +140,8 @@ class _MobileRoleNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final compact = destinations.length > 5;
     return NavigationBarTheme(
-      data: Theme.of(context).navigationBarTheme.copyWith(
-            labelTextStyle: compact
-                ? WidgetStateProperty.resolveWith(
-                    (states) => TextStyle(
-                      fontSize: 10,
-                      fontWeight: states.contains(WidgetState.selected)
-                          ? FontWeight.w700
-                          : FontWeight.w600,
-                      color: states.contains(WidgetState.selected)
-                          ? accent
-                          : Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  )
-                : null,
-          ),
+      data: Theme.of(context).navigationBarTheme,
       child: NavigationBar(
         selectedIndex: index,
         onDestinationSelected: onSelected,
@@ -154,12 +149,8 @@ class _MobileRoleNavigation extends StatelessWidget {
         destinations: destinations
             .map(
               (item) => NavigationDestination(
-                icon: Icon(item.icon, size: compact ? 21 : null),
-                selectedIcon: Icon(
-                  item.selectedIcon,
-                  color: accent,
-                  size: compact ? 21 : null,
-                ),
+                icon: Icon(item.icon),
+                selectedIcon: Icon(item.selectedIcon, color: accent),
                 label: item.label,
               ),
             )

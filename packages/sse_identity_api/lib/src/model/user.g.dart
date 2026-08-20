@@ -51,6 +51,8 @@ abstract class _$UserCWProxy {
 
   User teacherCode(String? teacherCode);
 
+  User mainSubjectId(String? mainSubjectId);
+
   User mainSubject(String? mainSubject);
 
   User childrenIds(List<String>? childrenIds);
@@ -94,6 +96,7 @@ abstract class _$UserCWProxy {
     String? guardianName,
     String? guardianPhone,
     String? teacherCode,
+    String? mainSubjectId,
     String? mainSubject,
     List<String>? childrenIds,
     String? cohortId,
@@ -180,6 +183,10 @@ class _$UserCWProxyImpl implements _$UserCWProxy {
   User teacherCode(String? teacherCode) => this(teacherCode: teacherCode);
 
   @override
+  User mainSubjectId(String? mainSubjectId) =>
+      this(mainSubjectId: mainSubjectId);
+
+  @override
   User mainSubject(String? mainSubject) => this(mainSubject: mainSubject);
 
   @override
@@ -233,6 +240,7 @@ class _$UserCWProxyImpl implements _$UserCWProxy {
     Object? guardianName = const $CopyWithPlaceholder(),
     Object? guardianPhone = const $CopyWithPlaceholder(),
     Object? teacherCode = const $CopyWithPlaceholder(),
+    Object? mainSubjectId = const $CopyWithPlaceholder(),
     Object? mainSubject = const $CopyWithPlaceholder(),
     Object? childrenIds = const $CopyWithPlaceholder(),
     Object? cohortId = const $CopyWithPlaceholder(),
@@ -331,6 +339,10 @@ class _$UserCWProxyImpl implements _$UserCWProxy {
           ? _value.teacherCode
           // ignore: cast_nullable_to_non_nullable
           : teacherCode as String?,
+      mainSubjectId: mainSubjectId == const $CopyWithPlaceholder()
+          ? _value.mainSubjectId
+          // ignore: cast_nullable_to_non_nullable
+          : mainSubjectId as String?,
       mainSubject: mainSubject == const $CopyWithPlaceholder()
           ? _value.mainSubject
           // ignore: cast_nullable_to_non_nullable
@@ -423,6 +435,7 @@ User _$UserFromJson(Map<String, dynamic> json) => $checkedCreate('User', json, (
     guardianName: $checkedConvert('guardianName', (v) => v as String?),
     guardianPhone: $checkedConvert('guardianPhone', (v) => v as String?),
     teacherCode: $checkedConvert('teacherCode', (v) => v as String?),
+    mainSubjectId: $checkedConvert('mainSubjectId', (v) => v as String?),
     mainSubject: $checkedConvert('mainSubject', (v) => v as String?),
     childrenIds: $checkedConvert(
       'childrenIds',
@@ -469,6 +482,7 @@ Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{
   'guardianName': ?instance.guardianName,
   'guardianPhone': ?instance.guardianPhone,
   'teacherCode': ?instance.teacherCode,
+  'mainSubjectId': ?instance.mainSubjectId,
   'mainSubject': ?instance.mainSubject,
   'childrenIds': ?instance.childrenIds,
   'cohortId': ?instance.cohortId,
@@ -480,8 +494,6 @@ Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{
 
 const _$UserRoleEnumEnumMap = {
   UserRoleEnum.ADMIN: 'ADMIN',
-  UserRoleEnum.ACADEMIC_STAFF: 'ACADEMIC_STAFF',
-  UserRoleEnum.ACCOUNTANT: 'ACCOUNTANT',
   UserRoleEnum.TEACHER: 'TEACHER',
   UserRoleEnum.STUDENT: 'STUDENT',
   UserRoleEnum.PARENT: 'PARENT',

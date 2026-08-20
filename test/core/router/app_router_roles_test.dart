@@ -12,13 +12,13 @@ void main() {
     passwordChangeRequired: false,
   );
 
-  test('điều hướng đúng sáu vai trò của ứng dụng mobile', () {
-    expect(AppRouter.homeForRole(user('ADMIN')), '/admin');
-    expect(AppRouter.homeForRole(user('ACADEMIC_STAFF')), '/academic-staff');
-    expect(AppRouter.homeForRole(user('ACCOUNTANT')), '/accountant');
+  test('mobile chỉ điều hướng ba vai trò giáo viên, học sinh, phụ huynh', () {
     expect(AppRouter.homeForRole(user('TEACHER')), '/teacher');
     expect(AppRouter.homeForRole(user('STUDENT')), '/student');
     expect(AppRouter.homeForRole(user('PARENT')), '/parent');
+    expect(AppRouter.homeForRole(user('ADMIN')), '/unsupported-role');
+    expect(AppRouter.homeForRole(user('ACADEMIC_STAFF')), '/unsupported-role');
+    expect(AppRouter.homeForRole(user('ACCOUNTANT')), '/unsupported-role');
     expect(AppRouter.homeForRole(user('UNKNOWN')), '/unsupported-role');
   });
 }

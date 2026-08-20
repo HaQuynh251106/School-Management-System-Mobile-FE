@@ -37,10 +37,12 @@ class _YearEndPageState extends State<YearEndPage> {
       _load(_yearId);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Không thể lưu hạnh kiểm. Vui lòng thử lại.'),
-        backgroundColor: AppColors.error,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không thể lưu hạnh kiểm. Vui lòng thử lại.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
     }
   }
 
@@ -51,14 +53,17 @@ class _YearEndPageState extends State<YearEndPage> {
       builder: (context) => AlertDialog(
         title: const Text('Chốt năm học?'),
         content: const Text(
-            'Hệ thống sẽ khóa kết quả và tự động xét lên lớp cho học sinh đủ điều kiện.'),
+          'Hệ thống sẽ khóa kết quả và tự động xét lên lớp cho học sinh đủ điều kiện.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Hủy')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Chốt năm học')),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Chốt năm học'),
+          ),
         ],
       ),
     );
@@ -67,39 +72,44 @@ class _YearEndPageState extends State<YearEndPage> {
     try {
       await _api.finalizeYear(_yearId!);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Đã hoàn tất tổng kết năm học'),
-        backgroundColor: AppColors.success,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đã hoàn tất tổng kết năm học'),
+          backgroundColor: AppColors.success,
+        ),
+      );
       _load(_yearId);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content:
-            Text('Chưa thể chốt năm học. Vui lòng kiểm tra dữ liệu còn thiếu.'),
-        backgroundColor: AppColors.error,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Chưa thể chốt năm học. Vui lòng kiểm tra dữ liệu còn thiếu.',
+          ),
+          backgroundColor: AppColors.error,
+        ),
+      );
     } finally {
       if (mounted) setState(() => _finalizing = false);
     }
   }
 
   String _status(String value) => switch (value) {
-        'READY' => 'Sẵn sàng',
-        'INCOMPLETE' => 'Thiếu dữ liệu',
-        'PROMOTED' => 'Lên lớp',
-        'PROMOTED_PENDING_CLASS' => 'Chờ xếp lớp',
-        'GRADUATED' => 'Tốt nghiệp',
-        'RETAINED' => 'Lưu ban',
-        _ => 'Chưa xác định',
-      };
+    'READY' => 'Sẵn sàng',
+    'INCOMPLETE' => 'Thiếu dữ liệu',
+    'PROMOTED' => 'Lên lớp',
+    'PROMOTED_PENDING_CLASS' => 'Chờ xếp lớp',
+    'GRADUATED' => 'Tốt nghiệp',
+    'RETAINED' => 'Lưu ban',
+    _ => 'Chưa xác định',
+  };
 
   String _yearStatus(Object? value) => switch ('$value'.toUpperCase()) {
-        'ACTIVE' => 'Đang áp dụng',
-        'PLANNED' => 'Sắp tới',
-        'COMPLETED' => 'Đã kết thúc',
-        _ => 'Chưa xác định',
-      };
+    'ACTIVE' => 'Đang áp dụng',
+    'PLANNED' => 'Sắp tới',
+    'COMPLETED' => 'Đã kết thúc',
+    _ => 'Chưa xác định',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -114,7 +124,8 @@ class _YearEndPageState extends State<YearEndPage> {
             icon: _finalizing
                 ? const SizedBox.square(
                     dimension: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2))
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Icon(Icons.task_alt_rounded),
           ),
         ],
@@ -128,14 +139,18 @@ class _YearEndPageState extends State<YearEndPage> {
               builder: (context, snap) => DropdownButtonFormField<String>(
                 initialValue: _yearId,
                 decoration: const InputDecoration(
-                    labelText: 'Năm học',
-                    prefixIcon: Icon(Icons.calendar_month_rounded)),
+                  labelText: 'Năm học',
+                  prefixIcon: Icon(Icons.calendar_month_rounded),
+                ),
                 items: (snap.data ?? const [])
-                    .map((year) => DropdownMenuItem<String>(
-                          value: year['id']?.toString(),
-                          child: Text(
-                              '${year['code']} · ${_yearStatus(year['status'])}'),
-                        ))
+                    .map(
+                      (year) => DropdownMenuItem<String>(
+                        value: year['id']?.toString(),
+                        child: Text(
+                          '${year['code']} · ${_yearStatus(year['status'])}',
+                        ),
+                      ),
+                    )
                     .toList(),
                 onChanged: _load,
               ),
@@ -144,7 +159,8 @@ class _YearEndPageState extends State<YearEndPage> {
           Expanded(
             child: _rows == null
                 ? const Center(
-                    child: Text('Chọn năm học để kiểm tra dữ liệu tổng kết'))
+                    child: Text('Chọn năm học để kiểm tra dữ liệu tổng kết'),
+                  )
                 : FutureBuilder<List<Map<String, dynamic>>>(
                     future: _rows,
                     builder: (context, snap) {
@@ -153,12 +169,14 @@ class _YearEndPageState extends State<YearEndPage> {
                       }
                       if (snap.hasError) {
                         return const Center(
-                            child: Text('Không thể tải dữ liệu tổng kết.'));
+                          child: Text('Không thể tải dữ liệu tổng kết.'),
+                        );
                       }
                       final rows = snap.data ?? const [];
                       if (rows.isEmpty) {
                         return const Center(
-                            child: Text('Năm học chưa có học sinh'));
+                          child: Text('Năm học chưa có học sinh'),
+                        );
                       }
                       return RefreshIndicator(
                         onRefresh: () async => _load(_yearId),
@@ -169,62 +187,83 @@ class _YearEndPageState extends State<YearEndPage> {
                               const SizedBox(height: 8),
                           itemBuilder: (context, index) {
                             final row = rows[index];
-                            final missing =
-                                row['missingRequirements']?.toString();
+                            final missing = row['missingRequirements']
+                                ?.toString();
                             return Card(
                               child: Padding(
                                 padding: const EdgeInsets.all(14),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Row(children: [
-                                      Expanded(
+                                    Row(
+                                      children: [
+                                        Expanded(
                                           child: Text(
-                                              row['studentName']?.toString() ??
-                                                  '',
-                                              style: const TextStyle(
-                                                  fontWeight:
-                                                      FontWeight.w700))),
-                                      Chip(
-                                          label: Text(_status(
+                                            row['studentName']?.toString() ??
+                                                '',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                        Chip(
+                                          label: Text(
+                                            _status(
                                               row['promotionStatus']
                                                       ?.toString() ??
-                                                  ''))),
-                                    ]),
+                                                  '',
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                     Text(
-                                        'Điểm trung bình: ${row['averageScore'] ?? '—'}'),
+                                      'Điểm trung bình: ${row['averageScore'] ?? '—'}',
+                                    ),
                                     if (missing != null &&
                                         missing.isNotEmpty) ...[
                                       const SizedBox(height: 6),
-                                      Text(missing,
-                                          style: const TextStyle(
-                                              color: AppColors.warning,
-                                              fontSize: 12)),
+                                      Text(
+                                        missing,
+                                        style: const TextStyle(
+                                          color: AppColors.warning,
+                                          fontSize: 12,
+                                        ),
+                                      ),
                                     ],
                                     const SizedBox(height: 10),
                                     DropdownButtonFormField<String>(
-                                      initialValue:
-                                          row['conductGrade']?.toString(),
+                                      initialValue: row['conductGrade']
+                                          ?.toString(),
                                       decoration: const InputDecoration(
-                                          labelText: 'Hạnh kiểm',
-                                          isDense: true),
+                                        labelText: 'Hạnh kiểm',
+                                        isDense: true,
+                                      ),
                                       items: const [
                                         DropdownMenuItem(
-                                            value: 'GOOD', child: Text('Tốt')),
+                                          value: 'GOOD',
+                                          child: Text('Tốt'),
+                                        ),
                                         DropdownMenuItem(
-                                            value: 'FAIR', child: Text('Khá')),
+                                          value: 'FAIR',
+                                          child: Text('Khá'),
+                                        ),
                                         DropdownMenuItem(
-                                            value: 'AVERAGE',
-                                            child: Text('Trung bình')),
+                                          value: 'AVERAGE',
+                                          child: Text('Trung bình'),
+                                        ),
                                         DropdownMenuItem(
-                                            value: 'WEAK', child: Text('Yếu')),
+                                          value: 'WEAK',
+                                          child: Text('Yếu'),
+                                        ),
                                       ],
                                       onChanged: row['finalizedAt'] == null
                                           ? (value) {
                                               if (value != null) {
                                                 _setConduct(
-                                                    row['studentId'].toString(),
-                                                    value);
+                                                  row['studentId'].toString(),
+                                                  value,
+                                                );
                                               }
                                             }
                                           : null,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/di/service_locator.dart';
+import '../../core/network/api_error_message.dart';
 import '../../core/network/api_service.dart';
 import '../../core/theme/app_colors.dart';
 
@@ -77,7 +78,10 @@ class _YearlySummaryPageState extends State<YearlySummaryPage> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    '$snapshot.error',
+                    apiErrorMessage(
+                      snapshot.error,
+                      fallback: 'Không thể tải kết quả tổng kết lúc này.',
+                    ),
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: AppColors.textSecondary),
                   ),

@@ -2,15 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/theme_controller.dart';
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_error_message.dart';
 import '../../../../core/network/api_service.dart';
+import '../../../../shared/widgets/accent_tab_bar.dart';
 import '../../../../shared/widgets/notification_center.dart';
 import '../../../../shared/widgets/section_header.dart';
 import '../../../../shared/widgets/adaptive_role_scaffold.dart';
-import '../../../../shared/widgets/mobile_workspace_page.dart';
 import '../../../../shared/widgets/quick_create.dart';
 import '../../../../shared/widgets/real_dashboard_panel.dart';
+import '../../../../shared/widgets/theme_mode_tile.dart';
+import '../../../../shared/utils/vi_date_format.dart';
+import '../../../accountant/presentation/pages/accountant_home.dart';
+import '../../../academic_staff/presentation/pages/academic_plan_progress_page.dart';
+import '../../../academic_staff/presentation/pages/academic_structure_workflow_page.dart';
+import '../../../academic_staff/presentation/pages/exam_management_page.dart';
+import '../../../academic_staff/presentation/pages/timetable_operations_page.dart';
+import '../../../academic_staff/presentation/pages/year_end_management_page.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_event.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
@@ -23,7 +31,6 @@ import 'notification_templates_page.dart';
 import 'teaching_assignments_page.dart';
 import 'timetable_scheduling.dart';
 import 'user_import_page.dart';
-import 'year_end_page.dart';
 import 'user_detail.dart';
 
 class AdminHome extends StatefulWidget {
@@ -96,14 +103,12 @@ class _DashboardTab extends StatelessWidget {
           title: const Text('Tổng quan hệ thống'),
           backgroundColor: AppColors.adminAccent,
           actions: const [_AdminNotiAction()],
-          bottom: const TabBar(
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white60,
-            indicatorColor: Colors.white,
+          bottom: const AccentTabBar(
+            accent: AppColors.adminAccent,
             tabs: [
               Tab(text: 'Tổng quan'),
               Tab(text: 'Báo cáo'),
-              Tab(text: 'Audit'),
+              Tab(text: 'Nhật ký'),
             ],
           ),
         ),
@@ -155,7 +160,7 @@ class _OverviewViewState extends State<_OverviewView> {
                 const Icon(Icons.error_outline_rounded, size: 44),
                 const SizedBox(height: 12),
                 const Text(
-                  'Không thể tải dashboard dữ liệu thật',
+                  'Không thể tải tổng quan hệ thống',
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
@@ -176,7 +181,31 @@ class _OverviewViewState extends State<_OverviewView> {
                 onRetry: _refresh,
                 onShortcut: (shortcut) {
                   final target = '${shortcut['target'] ?? ''}';
-                  widget.onNavigate(target == 'users' ? 1 : 2);
+                  switch (target) {
+                    case 'users':
+                      widget.onNavigate(1);
+                    case 'finance':
+                    case 'reconciliation':
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const FinanceOperationsPage(),
+                        ),
+                      );
+                    case 'timetable':
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const TimetableOperationsPage(),
+                        ),
+                      );
+                    case 'exams':
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const ExamManagementPage(),
+                        ),
+                      );
+                    default:
+                      widget.onNavigate(2);
+                  }
                 },
               ),
               const SizedBox(height: 80),
@@ -188,382 +217,27 @@ class _OverviewViewState extends State<_OverviewView> {
   }
 }
 
-class _AlertCard extends StatelessWidget {
-  const _AlertCard({
-    required this.color,
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-  final Color color;
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                ),
-                Text(subtitle, style: TextStyle(fontSize: 11, color: color)),
-              ],
-            ),
-          ),
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: AppColors.textSecondary,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActivityRow extends StatelessWidget {
-  const _ActivityRow({
-    required this.icon,
-    required this.title,
-    required this.time,
-    required this.color,
-  });
-  final IconData icon;
-  final String title;
-  final String time;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: color.withValues(alpha: 0.12),
-          child: Icon(icon, color: color, size: 20),
-        ),
-        title: Text(title, style: const TextStyle(fontSize: 13)),
-        subtitle: Text(
-          time,
-          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-        ),
-      ),
-    );
-  }
-}
-
-class _ReportsView extends StatelessWidget {
-  const _ReportsView();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        const SectionHeader(title: 'Phổ điểm toàn trường — HK1'),
-        const SizedBox(height: 10),
-        const Card(
-          child: Padding(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _HistRow(
-                  label: 'Yếu (<5)',
-                  count: 45,
-                  total: 1248,
-                  color: AppColors.error,
-                ),
-                SizedBox(height: 8),
-                _HistRow(
-                  label: 'TB (5–6.5)',
-                  count: 215,
-                  total: 1248,
-                  color: AppColors.late,
-                ),
-                SizedBox(height: 8),
-                _HistRow(
-                  label: 'Khá (6.5–8)',
-                  count: 489,
-                  total: 1248,
-                  color: AppColors.warning,
-                ),
-                SizedBox(height: 8),
-                _HistRow(
-                  label: 'Giỏi (≥8)',
-                  count: 499,
-                  total: 1248,
-                  color: AppColors.success,
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 20),
-        const SectionHeader(title: 'Chuyên cần theo khối'),
-        const SizedBox(height: 10),
-        const Card(
-          child: Column(
-            children: [
-              _AttRow(grade: 'Khối 10', rate: 0.96),
-              Divider(height: 0),
-              _AttRow(grade: 'Khối 11', rate: 0.92),
-              Divider(height: 0),
-              _AttRow(grade: 'Khối 12', rate: 0.98),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
-        const SectionHeader(title: 'Doanh thu hóa đơn HK2 (đến nay)'),
-        const SizedBox(height: 10),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Đã thu',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const Text(
-                  '4.419.000.000 ₫',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.success,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  '/ 5.616.000.000 ₫ tổng',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: const LinearProgressIndicator(
-                    value: 4419 / 5616,
-                    color: AppColors.success,
-                    backgroundColor: AppColors.divider,
-                    minHeight: 10,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  '78,7% — Còn 266 HS chưa thanh toán',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 20),
-        const SectionHeader(title: 'Xuất báo cáo'),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => _exportSnack(context, 'Excel'),
-                icon: const Icon(Icons.table_chart_outlined),
-                label: const Text('Excel'),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => _exportSnack(context, 'PDF'),
-                icon: const Icon(Icons.picture_as_pdf_outlined),
-                label: const Text('PDF'),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  void _exportSnack(BuildContext context, String fmt) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Đang chuẩn bị file $fmt...'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-}
-
-class _HistRow extends StatelessWidget {
-  const _HistRow({
-    required this.label,
-    required this.count,
-    required this.total,
-    required this.color,
-  });
-  final String label;
-  final int count;
-  final int total;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final pct = count / total;
-    return Row(
-      children: [
-        SizedBox(
-          width: 80,
-          child: Text(label, style: const TextStyle(fontSize: 12)),
-        ),
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: pct,
-              color: color,
-              backgroundColor: color.withValues(alpha: 0.12),
-              minHeight: 16,
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        SizedBox(
-          width: 60,
-          child: Text(
-            '$count (${(pct * 100).toStringAsFixed(0)}%)',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-            textAlign: TextAlign.right,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _AttRow extends StatelessWidget {
-  const _AttRow({required this.grade, required this.rate});
-  final String grade;
-  final double rate;
-
-  Color get _color {
-    if (rate >= 0.95) return AppColors.success;
-    if (rate >= 0.85) return AppColors.warning;
-    return AppColors.error;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      title: Text(grade, style: const TextStyle(fontWeight: FontWeight.w500)),
-      trailing: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: _color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          '${(rate * 100).toStringAsFixed(0)}%',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: _color,
-            fontSize: 13,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AuditLogView extends StatelessWidget {
+class _AuditLogView extends StatefulWidget {
   const _AuditLogView();
 
-  static const _entries = [
-    (
-      'admin',
-      'LOGIN',
-      'identity',
-      'Đăng nhập thành công',
-      '22/05 09:15',
-      AppColors.success,
-    ),
-    (
-      'admin',
-      'CREATE',
-      'identity.user',
-      'Tạo user gv.tuyet (TEACHER)',
-      '22/05 08:50',
-      AppColors.primary,
-    ),
-    (
-      'gv.hoa',
-      'UPDATE',
-      'academic.grade',
-      'Sửa điểm GK Toán cho HS u-student-3 (8.5 → 9.0)',
-      '21/05 14:32',
-      AppColors.warning,
-    ),
-    (
-      'admin',
-      'EXPORT',
-      'reports',
-      'Xuất báo cáo phổ điểm HK1 (PDF)',
-      '21/05 10:05',
-      AppColors.adminAccent,
-    ),
-    (
-      'gv.minh',
-      'DELETE',
-      'academic.assignment',
-      'Xóa Assignment a-77',
-      '20/05 16:18',
-      AppColors.error,
-    ),
-    (
-      'system',
-      'PAYMENT',
-      'finance.payment',
-      'MoMo callback OK — Hóa đơn HD-2025-HK2-0042',
-      '20/05 09:30',
-      AppColors.success,
-    ),
-    (
-      'admin',
-      'LOGIN_FAILED',
-      'identity',
-      'Đăng nhập sai mật khẩu (IP 113.161.x.x)',
-      '19/05 22:11',
-      AppColors.error,
-    ),
-  ];
+  @override
+  State<_AuditLogView> createState() => _AuditLogViewState();
+}
+
+class _AuditLogViewState extends State<_AuditLogView> {
+  final _search = TextEditingController();
+  late Future<Map<String, dynamic>> _future = _load();
+
+  Future<Map<String, dynamic>> _load() =>
+      sl<ApiService>().auditLogsPage(query: _search.text, size: 100);
+
+  void _reload() => setState(() => _future = _load());
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -576,8 +250,11 @@ class _AuditLogView extends StatelessWidget {
             children: [
               Expanded(
                 child: TextField(
+                  controller: _search,
+                  textInputAction: TextInputAction.search,
+                  onSubmitted: (_) => _reload(),
                   decoration: InputDecoration(
-                    hintText: 'Tìm theo actor, entity...',
+                    hintText: 'Tìm người thực hiện hoặc nội dung',
                     prefixIcon: const Icon(Icons.search, size: 18),
                     isDense: true,
                     border: OutlineInputBorder(
@@ -589,44 +266,78 @@ class _AuditLogView extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               IconButton(
-                icon: const Icon(Icons.filter_list_rounded),
-                onPressed: () {},
+                icon: const Icon(Icons.refresh_rounded),
+                tooltip: 'Làm mới',
+                onPressed: _reload,
               ),
             ],
           ),
         ),
         Expanded(
-          child: ListView.separated(
-            itemCount: _entries.length,
-            separatorBuilder: (_, __) => const Divider(height: 0),
-            itemBuilder: (_, i) {
-              final (actor, action, module, msg, time, color) = _entries[i];
-              return ListTile(
-                leading: CircleAvatar(
-                  radius: 16,
-                  backgroundColor: color.withValues(alpha: 0.12),
-                  child: Icon(_actionIcon(action), color: color, size: 16),
-                ),
-                title: Text(
-                  msg,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
+          child: FutureBuilder<Map<String, dynamic>>(
+            future: _future,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(
+                  child: FilledButton.icon(
+                    onPressed: _reload,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Tải lại lịch sử'),
                   ),
-                ),
-                subtitle: Text(
-                  '@$actor • $module • $action',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                trailing: Text(
-                  time,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
-                  ),
+                );
+              }
+              final rows = (snapshot.data?['items'] as List? ?? const [])
+                  .whereType<Map>()
+                  .map((item) => item.cast<String, dynamic>())
+                  .toList();
+              if (rows.isEmpty) {
+                return const Center(
+                  child: Text('Chưa có thay đổi quan trọng phù hợp'),
+                );
+              }
+              return RefreshIndicator(
+                onRefresh: () async => _reload(),
+                child: ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  itemCount: rows.length,
+                  separatorBuilder: (_, __) => const Divider(height: 0),
+                  itemBuilder: (_, i) {
+                    final row = rows[i];
+                    final action = '${row['action'] ?? ''}';
+                    final color = _actionColor(action);
+                    final actor = '${row['actorName'] ?? 'Hệ thống'}';
+                    final detail = '${row['detail'] ?? ''}'.trim();
+                    final entity = '${row['entityType'] ?? ''}'.trim();
+                    return ListTile(
+                      leading: CircleAvatar(
+                        radius: 18,
+                        backgroundColor: color.withValues(alpha: 0.12),
+                        child: Icon(
+                          _actionIcon(action),
+                          color: color,
+                          size: 18,
+                        ),
+                      ),
+                      title: Text(
+                        detail.isEmpty ? _actionLabel(action) : detail,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text(
+                        [actor, if (entity.isNotEmpty) entity].join(' · '),
+                      ),
+                      trailing: Text(
+                        formatViDateTime(row['createdAt']),
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               );
             },
@@ -636,14 +347,58 @@ class _AuditLogView extends StatelessWidget {
     );
   }
 
-  IconData _actionIcon(String action) => switch (action) {
-    'LOGIN' || 'LOGIN_FAILED' => Icons.login_rounded,
-    'CREATE' => Icons.add_circle_outline_rounded,
-    'UPDATE' => Icons.edit_outlined,
-    'DELETE' => Icons.delete_outline,
-    'EXPORT' => Icons.file_download_outlined,
-    'PAYMENT' => Icons.payment_rounded,
-    _ => Icons.history_rounded,
+  IconData _actionIcon(String action) {
+    if (action.startsWith('GRADE_')) return Icons.grade_rounded;
+    if (action.startsWith('PAYMENT')) return Icons.receipt_long_rounded;
+    if (action == 'ATTENDANCE_CHANGE') return Icons.fact_check_rounded;
+    if (action == 'TIMETABLE_CHANGE') return Icons.calendar_month_rounded;
+    if (action == 'EXAM_CHANGE') return Icons.quiz_rounded;
+    if (action.startsWith('USER_')) return Icons.manage_accounts_rounded;
+    if (action == 'DELETE') return Icons.delete_outline;
+    if (action == 'EXPORT') return Icons.file_download_outlined;
+    return Icons.history_rounded;
+  }
+
+  Color _actionColor(String action) {
+    if (action == 'PAYMENT_CONFIRMED' || action == 'GRADE_CREATE') {
+      return AppColors.success;
+    }
+    if (action == 'PAYMENT_REJECTED' ||
+        action == 'DELETE' ||
+        action == 'USER_SECURITY') {
+      return AppColors.error;
+    }
+    if (action == 'PAYMENT_REFUND' || action == 'GRADE_UPDATE') {
+      return AppColors.warning;
+    }
+    return AppColors.adminAccent;
+  }
+
+  String _actionLabel(String action) => switch (action) {
+    'GRADE_CREATE' => 'Thêm điểm',
+    'GRADE_UPDATE' => 'Sửa điểm',
+    'PAYMENT_CONFIRMED' => 'Xác nhận thanh toán',
+    'PAYMENT_REJECTED' => 'Từ chối thanh toán',
+    'PAYMENT_REFUND' => 'Hoàn tiền',
+    'FINANCE_CHANGE' => 'Thay đổi khoản thu',
+    'ATTENDANCE_CHANGE' => 'Sửa điểm danh',
+    'TIMETABLE_CHANGE' => 'Thay đổi thời khóa biểu',
+    'ACADEMIC_PLAN' => 'Thay đổi kế hoạch đào tạo',
+    'ACADEMIC_STRUCTURE' => 'Thay đổi cơ cấu năm học',
+    'YEAR_END' => 'Tổng kết năm học',
+    'EXAM_CHANGE' => 'Thay đổi kỳ thi',
+    'USER_CHANGE' => 'Thay đổi người dùng',
+    'USER_SECURITY' => 'Thay đổi bảo mật',
+    'ASSIGNMENT_CHANGE' => 'Thay đổi bài tập',
+    'LEAVE_CHANGE' => 'Xử lý đơn nghỉ',
+    'CLUB_CHANGE' => 'Thay đổi câu lạc bộ',
+    'ANNOUNCEMENT' => 'Phát hành thông báo',
+    'CREATE' => 'Tạo dữ liệu mới',
+    'UPDATE' => 'Cập nhật dữ liệu',
+    'DELETE' => 'Xóa dữ liệu',
+    'PAYMENT' => 'Cập nhật thanh toán',
+    'EXPORT' => 'Xuất báo cáo',
+    _ => 'Thay đổi quan trọng',
   };
 }
 
@@ -658,6 +413,14 @@ class _UsersTab extends StatefulWidget {
 
 class _UsersTabState extends State<_UsersTab> {
   late Future<List<Map<String, dynamic>>> _future = sl<ApiService>().users();
+  final _search = TextEditingController();
+  bool _searching = false;
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
 
   void _refresh() {
     setState(() {
@@ -671,10 +434,30 @@ class _UsersTabState extends State<_UsersTab> {
       length: 4,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Quản lý người dùng'),
+          title: _searching
+              ? TextField(
+                  controller: _search,
+                  autofocus: true,
+                  style: const TextStyle(color: Colors.white),
+                  cursorColor: Colors.white,
+                  decoration: const InputDecoration(
+                    hintText: 'Tìm tên, tài khoản hoặc mã',
+                    hintStyle: TextStyle(color: Colors.white70),
+                    border: InputBorder.none,
+                  ),
+                  onChanged: (_) => setState(() {}),
+                )
+              : const Text('Quản lý người dùng'),
           backgroundColor: AppColors.adminAccent,
           actions: [
-            IconButton(icon: const Icon(Icons.search), onPressed: () {}),
+            IconButton(
+              icon: Icon(_searching ? Icons.close_rounded : Icons.search),
+              tooltip: _searching ? 'Đóng tìm kiếm' : 'Tìm người dùng',
+              onPressed: () => setState(() {
+                _searching = !_searching;
+                if (!_searching) _search.clear();
+              }),
+            ),
             IconButton(
               icon: const Icon(Icons.upload_file_outlined),
               tooltip: 'Import Excel',
@@ -687,11 +470,9 @@ class _UsersTabState extends State<_UsersTab> {
             ),
             const _AdminNotiAction(),
           ],
-          bottom: const TabBar(
+          bottom: const AccentTabBar(
+            accent: AppColors.adminAccent,
             isScrollable: true,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white60,
-            indicatorColor: Colors.white,
             tabs: [
               Tab(text: 'Tất cả'),
               Tab(text: 'Giáo viên'),
@@ -711,6 +492,7 @@ class _UsersTabState extends State<_UsersTab> {
           icon: const Icon(Icons.person_add_rounded),
           label: const Text('Thêm'),
           backgroundColor: AppColors.adminAccent,
+          foregroundColor: Colors.white,
         ),
         body: FutureBuilder<List<Map<String, dynamic>>>(
           future: _future,
@@ -721,12 +503,28 @@ class _UsersTabState extends State<_UsersTab> {
             if (snap.hasError) {
               return Center(
                 child: Text(
-                  'Lỗi tải người dùng: ${snap.error}',
+                  apiErrorMessage(
+                    snap.error,
+                    fallback: 'Không thể tải danh sách người dùng.',
+                  ),
                   style: const TextStyle(color: AppColors.textSecondary),
                 ),
               );
             }
-            final all = snap.data ?? const [];
+            final query = _search.text.trim().toLowerCase();
+            final source = snap.data ?? const <Map<String, dynamic>>[];
+            final all = query.isEmpty
+                ? source
+                : source.where((user) {
+                    final haystack = [
+                      user['fullName'],
+                      user['username'],
+                      user['userCode'],
+                      user['studentCode'],
+                      user['teacherCode'],
+                    ].whereType<Object>().join(' ').toLowerCase();
+                    return haystack.contains(query);
+                  }).toList();
             return TabBarView(
               children: [
                 _UserList(users: all, onChanged: _refresh),
@@ -771,10 +569,15 @@ class _UserList extends StatelessWidget {
         ),
       );
       onChanged?.call();
-    } catch (e) {
+    } catch (error) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Lỗi: $e'),
+          content: Text(
+            apiErrorMessage(
+              error,
+              fallback: 'Không thể cập nhật tài khoản. Vui lòng thử lại.',
+            ),
+          ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -787,7 +590,7 @@ class _UserList extends StatelessWidget {
     if (users.isEmpty) {
       return const Center(
         child: Text(
-          'Không có user',
+          'Không có người dùng phù hợp',
           style: TextStyle(color: AppColors.textSecondary),
         ),
       );
@@ -804,7 +607,8 @@ class _UserList extends StatelessWidget {
         final code = (u['studentCode'] ?? u['teacherCode'] ?? '').toString();
         final status = (u['status'] ?? '').toString().toUpperCase();
         final locked = status == 'LOCKED' || status == 'DISABLED';
-        final color = _roleColor(role);
+        final color = _roleColor(context, role);
+        final colors = Theme.of(context).colorScheme;
         return ListTile(
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(
@@ -841,10 +645,7 @@ class _UserList extends StatelessWidget {
           ),
           subtitle: Text(
             '@$username${code.isEmpty ? '' : ' • $code'}',
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
           ),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
@@ -870,9 +671,9 @@ class _UserList extends StatelessWidget {
               ),
               if (id.isNotEmpty)
                 PopupMenuButton<String>(
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.more_vert,
-                    color: AppColors.textSecondary,
+                    color: colors.onSurfaceVariant,
                     size: 18,
                   ),
                   onSelected: (_) => _toggleLock(context, id, locked),
@@ -900,9 +701,9 @@ class _UserList extends StatelessWidget {
                   ],
                 )
               else
-                const Icon(
+                Icon(
                   Icons.chevron_right_rounded,
-                  color: AppColors.textSecondary,
+                  color: colors.onSurfaceVariant,
                   size: 18,
                 ),
             ],
@@ -912,12 +713,13 @@ class _UserList extends StatelessWidget {
     );
   }
 
-  Color _roleColor(String role) => switch (role) {
-    'TEACHER' => AppColors.teacherAccent,
-    'STUDENT' => AppColors.studentAccent,
-    'PARENT' => AppColors.parentAccent,
-    _ => AppColors.adminAccent,
-  };
+  Color _roleColor(BuildContext context, String role) =>
+      AppColors.adaptiveAccent(context, switch (role) {
+        'TEACHER' => AppColors.teacherAccent,
+        'STUDENT' => AppColors.studentAccent,
+        'PARENT' => AppColors.parentAccent,
+        _ => AppColors.adminAccent,
+      });
 
   String _roleLabel(String role) => switch (role) {
     'TEACHER' => 'GV',
@@ -941,11 +743,9 @@ class _StructureTab extends StatelessWidget {
           title: const Text('Cơ cấu đào tạo'),
           backgroundColor: AppColors.adminAccent,
           actions: const [_AdminNotiAction()],
-          bottom: const TabBar(
+          bottom: const AccentTabBar(
+            accent: AppColors.adminAccent,
             isScrollable: true,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white60,
-            indicatorColor: Colors.white,
             tabs: [
               Tab(text: 'Năm học'),
               Tab(text: 'Lớp'),
@@ -980,17 +780,8 @@ class _AcademicYearViewState extends State<_AcademicYearView> {
   late final Future<List<List<Map<String, dynamic>>>> _future = Future.wait([
     sl<ApiService>().academicYears(),
     sl<ApiService>().semesters(),
+    sl<ApiService>().announcements(),
   ]);
-
-  /// Format an ISO date string into 'dd/MM/yyyy'; returns raw/empty as-is.
-  String _date(Object? raw) {
-    final s = (raw ?? '').toString();
-    if (s.isEmpty) return '';
-    final dt = DateTime.tryParse(s);
-    if (dt == null) return s;
-    String two(int n) => n.toString().padLeft(2, '0');
-    return '${two(dt.day)}/${two(dt.month)}/${dt.year}';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1003,7 +794,10 @@ class _AcademicYearViewState extends State<_AcademicYearView> {
         if (snap.hasError) {
           return Center(
             child: Text(
-              'Lỗi tải năm học: ${snap.error}',
+              apiErrorMessage(
+                snap.error,
+                fallback: 'Không thể tải dữ liệu năm học.',
+              ),
               style: const TextStyle(color: AppColors.textSecondary),
             ),
           );
@@ -1015,6 +809,9 @@ class _AcademicYearViewState extends State<_AcademicYearView> {
         final semesters = data.length > 1
             ? data[1]
             : const <Map<String, dynamic>>[];
+        final holidays = data.length > 2
+            ? data[2].where((item) => item['category'] == 'HOLIDAY').toList()
+            : const <Map<String, dynamic>>[];
 
         // Năm học đang hoạt động: ưu tiên status ACTIVE, fallback phần tử đầu.
         final active = years.cast<Map<String, dynamic>?>().firstWhere(
@@ -1022,6 +819,19 @@ class _AcademicYearViewState extends State<_AcademicYearView> {
           orElse: () => years.isNotEmpty ? years.first : null,
         );
         final others = years.where((y) => !identical(y, active)).toList();
+        final activeSemesters =
+            active == null
+                  ? const <Map<String, dynamic>>[]
+                  : semesters
+                        .where(
+                          (semester) =>
+                              semester['academicYearId'] == active['id'],
+                        )
+                        .toList()
+              ..sort(
+                (first, second) => ((first['sequence'] as num?)?.toInt() ?? 0)
+                    .compareTo((second['sequence'] as num?)?.toInt() ?? 0),
+              );
 
         const semColors = [AppColors.success, AppColors.warning];
 
@@ -1071,7 +881,10 @@ class _AcademicYearViewState extends State<_AcademicYearView> {
                           ),
                           const Spacer(),
                           Text(
-                            '${_date(active['startDate'])} – ${_date(active['endDate'])}',
+                            formatViDateRange(
+                              active['startDate'],
+                              active['endDate'],
+                            ),
                             style: const TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 12,
@@ -1087,19 +900,19 @@ class _AcademicYearViewState extends State<_AcademicYearView> {
                           fontSize: 15,
                         ),
                       ),
-                      if (semesters.isNotEmpty) ...[
+                      if (activeSemesters.isNotEmpty) ...[
                         const SizedBox(height: 12),
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            for (var i = 0; i < semesters.length; i++)
+                            for (var i = 0; i < activeSemesters.length; i++)
                               _SemChip(
-                                (semesters[i]['code'] ??
-                                        semesters[i]['name'] ??
+                                (activeSemesters[i]['code'] ??
+                                        activeSemesters[i]['name'] ??
                                         '')
                                     .toString(),
-                                (semesters[i]['name'] ?? '').toString(),
+                                (activeSemesters[i]['name'] ?? '').toString(),
                                 semColors[i % semColors.length],
                               ),
                           ],
@@ -1110,37 +923,40 @@ class _AcademicYearViewState extends State<_AcademicYearView> {
                 ),
               ),
             const SizedBox(height: 20),
-            const SectionHeader(title: 'Ngày nghỉ trong năm', action: 'Thêm'),
+            const SectionHeader(title: 'Ngày nghỉ đã công bố'),
             const SizedBox(height: 10),
-            const Card(
-              child: Column(
-                children: [
-                  ListTile(
-                    leading: Icon(
-                      Icons.celebration_rounded,
-                      color: AppColors.warning,
-                    ),
-                    title: Text('Nghỉ Tết Nguyên Đán'),
-                    subtitle: Text('25/01 – 04/02/2026 (11 ngày)'),
-                  ),
-                  Divider(height: 0),
-                  ListTile(
-                    leading: Icon(Icons.flag_rounded, color: AppColors.warning),
-                    title: Text('Giỗ tổ Hùng Vương'),
-                    subtitle: Text('18/04/2026'),
-                  ),
-                  Divider(height: 0),
-                  ListTile(
-                    leading: Icon(
-                      Icons.beach_access_rounded,
-                      color: AppColors.warning,
-                    ),
-                    title: Text('Nghỉ lễ 30/4 – 1/5'),
-                    subtitle: Text('30/04 – 03/05/2026'),
-                  ),
-                ],
+            if (holidays.isEmpty)
+              const Card(
+                child: ListTile(
+                  leading: Icon(Icons.event_available_outlined),
+                  title: Text('Chưa có ngày nghỉ được công bố'),
+                ),
+              )
+            else
+              Card(
+                child: Column(
+                  children: [
+                    for (var i = 0; i < holidays.length; i++) ...[
+                      ListTile(
+                        leading: const Icon(
+                          Icons.celebration_rounded,
+                          color: AppColors.warning,
+                        ),
+                        title: Text(
+                          (holidays[i]['title'] ?? 'Ngày nghỉ').toString(),
+                        ),
+                        subtitle: Text(
+                          formatViDateRange(
+                            holidays[i]['holidayStartDate'],
+                            holidays[i]['holidayEndDate'],
+                          ),
+                        ),
+                      ),
+                      if (i < holidays.length - 1) const Divider(height: 0),
+                    ],
+                  ],
+                ),
               ),
-            ),
             const SizedBox(height: 20),
             const SectionHeader(title: 'Lịch sử năm học'),
             const SizedBox(height: 10),
@@ -1415,7 +1231,12 @@ class _ClassesViewState extends State<_ClassesView> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Không thể lưu lớp: $error'),
+          content: Text(
+            apiErrorMessage(
+              error,
+              fallback: 'Không thể lưu lớp học. Vui lòng thử lại.',
+            ),
+          ),
           backgroundColor: AppColors.error,
         ),
       );
@@ -1429,7 +1250,7 @@ class _ClassesViewState extends State<_ClassesView> {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Xóa lớp học?'),
         content: Text(
-          'Bạn sắp xóa lớp $code. Lớp đang có học sinh, lịch học hoặc dữ liệu liên quan sẽ được backend từ chối xóa.',
+          'Bạn sắp xóa lớp $code. Chỉ có thể xóa lớp chưa có học sinh, lịch học hoặc dữ liệu liên quan.',
         ),
         actions: [
           TextButton(
@@ -1457,7 +1278,13 @@ class _ClassesViewState extends State<_ClassesView> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Không thể xóa lớp: $error'),
+          content: Text(
+            apiErrorMessage(
+              error,
+              fallback:
+                  'Không thể xóa lớp học. Hãy kiểm tra dữ liệu liên quan.',
+            ),
+          ),
           backgroundColor: AppColors.error,
         ),
       );
@@ -1545,7 +1372,13 @@ class _ClassesViewState extends State<_ClassesView> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Không thể cập nhật: $error'),
+          content: Text(
+            apiErrorMessage(
+              error,
+              fallback:
+                  'Không thể cập nhật giáo viên chủ nhiệm. Vui lòng thử lại.',
+            ),
+          ),
           backgroundColor: AppColors.error,
         ),
       );
@@ -1569,7 +1402,10 @@ class _ClassesViewState extends State<_ClassesView> {
         if (snap.hasError) {
           return Center(
             child: Text(
-              'Lỗi tải lớp: ${snap.error}',
+              apiErrorMessage(
+                snap.error,
+                fallback: 'Không thể tải danh sách lớp.',
+              ),
               style: const TextStyle(color: AppColors.textSecondary),
             ),
           );
@@ -1769,7 +1605,10 @@ class _SubjectsRoomsViewState extends State<_SubjectsRoomsView> {
         if (snap.hasError) {
           return Center(
             child: Text(
-              'Lỗi tải dữ liệu: ${snap.error}',
+              apiErrorMessage(
+                snap.error,
+                fallback: 'Không thể tải danh mục môn và phòng học.',
+              ),
               style: const TextStyle(color: AppColors.textSecondary),
             ),
           );
@@ -1954,11 +1793,16 @@ class _FinanceViewState extends State<_FinanceView> {
           behavior: SnackBarBehavior.floating,
         ),
       );
-    } catch (e) {
+    } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Lỗi phát hành hóa đơn: $e'),
+          content: Text(
+            apiErrorMessage(
+              error,
+              fallback: 'Không thể phát hành hóa đơn. Vui lòng thử lại.',
+            ),
+          ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -1977,7 +1821,10 @@ class _FinanceViewState extends State<_FinanceView> {
         if (snap.hasError) {
           return Center(
             child: Text(
-              'Lỗi tải đợt thu: ${snap.error}',
+              apiErrorMessage(
+                snap.error,
+                fallback: 'Không thể tải danh sách đợt thu.',
+              ),
               style: const TextStyle(color: AppColors.textSecondary),
             ),
           );
@@ -2106,6 +1953,7 @@ class _SettingsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = (context.read<AuthBloc>().state as AuthAuthenticated).user;
+    final colors = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Cài đặt'),
@@ -2116,7 +1964,7 @@ class _SettingsTab extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(20),
-            color: AppColors.surface,
+            color: colors.surface,
             child: Row(
               children: [
                 const CircleAvatar(
@@ -2134,16 +1982,19 @@ class _SettingsTab extends StatelessWidget {
                     children: [
                       Text(
                         user.fullName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 15,
+                          color: colors.onSurface,
                         ),
                       ),
                       Text(
                         user.email ?? user.username,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.textSecondary,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? colors.onSurface.withValues(alpha: .76)
+                              : colors.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -2154,24 +2005,15 @@ class _SettingsTab extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           _AdminSettingsGroup(
-            title: 'Quản trị hệ thống',
+            title: 'Vận hành nhà trường',
             children: [
+              const ThemeModeTile(accent: AppColors.adminAccent),
               _AdminSettingsTile(
-                icon: Icons.contrast_rounded,
-                label: 'Chuyển giao diện sáng / tối',
-                onTap: () => sl<ThemeController>().toggle(
-                  MediaQuery.platformBrightnessOf(context),
-                ),
-              ),
-              _AdminSettingsTile(
-                icon: Icons.auto_awesome_rounded,
-                label: 'Trung tâm công việc',
+                icon: Icons.account_tree_rounded,
+                label: 'Tổ chức năm học và phân lớp',
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => const MobileWorkspacePage(
-                      role: 'ADMIN',
-                      accent: AppColors.adminAccent,
-                    ),
+                    builder: (_) => const AcademicStructureWorkflowPage(),
                   ),
                 ),
               ),
@@ -2185,27 +2027,54 @@ class _SettingsTab extends StatelessWidget {
                 ),
               ),
               _AdminSettingsTile(
-                icon: Icons.schedule_rounded,
-                label: 'Xếp Thời khóa biểu (A3)',
+                icon: Icons.insights_rounded,
+                label: 'Kế hoạch và tiến độ đào tạo',
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => const TimetableSchedulingPage(),
+                    builder: (_) => const AcademicPlanProgressPage(),
                   ),
                 ),
               ),
               _AdminSettingsTile(
-                icon: Icons.assignment_outlined,
-                label: 'Cấu hình Khảo thí (A4)',
+                icon: Icons.auto_awesome_motion_rounded,
+                label: 'Xếp và công bố thời khóa biểu',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const TimetableOperationsPage(),
+                  ),
+                ),
+              ),
+              _AdminSettingsTile(
+                icon: Icons.event_note_rounded,
+                label: 'Kỳ thi và lịch coi thi',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ExamManagementPage()),
+                ),
+              ),
+              _AdminSettingsTile(
+                icon: Icons.rule_folder_rounded,
+                label: 'Loại điểm và hệ số',
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const ExamCategoriesPage()),
                 ),
               ),
               _AdminSettingsTile(
                 icon: Icons.school_rounded,
-                label: 'Tổng kết và xét lên lớp',
-                onTap: () => Navigator.of(
-                  context,
-                ).push(MaterialPageRoute(builder: (_) => const YearEndPage())),
+                label: 'Tổng kết năm học',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const YearEndManagementPage(),
+                  ),
+                ),
+              ),
+              _AdminSettingsTile(
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'Tài chính và đối soát',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const FinanceOperationsPage(),
+                  ),
+                ),
               ),
               _AdminSettingsTile(
                 icon: Icons.groups_rounded,
@@ -2216,62 +2085,25 @@ class _SettingsTab extends StatelessWidget {
               ),
               _AdminSettingsTile(
                 icon: Icons.notifications_active_outlined,
-                label: 'Template thông báo',
+                label: 'Mẫu thông báo',
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => const NotificationTemplatesPage(),
                   ),
                 ),
               ),
-              _AdminSettingsTile(
-                icon: Icons.account_balance_wallet_outlined,
-                label: 'Thanh toán MoMo',
-                onTap: () => _unsupportedSnack(context, 'Cấu hình MoMo'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const _SettingsSection(
-            title: 'Bảo mật',
-            items: [
-              _SettingsItem(
-                icon: Icons.security_outlined,
-                label: 'Phân quyền RBAC',
-              ),
-              _SettingsItem(
-                icon: Icons.vpn_key_outlined,
-                label: 'JWT — Cấu hình token',
-              ),
-              _SettingsItem(
-                icon: Icons.shield_outlined,
-                label: 'Chính sách mật khẩu',
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const _SettingsSection(
-            title: 'Tài khoản',
-            items: [
-              _SettingsItem(
-                icon: Icons.person_outline_rounded,
-                label: 'Thông tin tài khoản',
-              ),
-              _SettingsItem(
-                icon: Icons.lock_outline_rounded,
-                label: 'Đổi mật khẩu',
-              ),
             ],
           ),
           const SizedBox(height: 8),
-          const ListTile(
+          ListTile(
             leading: Icon(
               Icons.info_outline_rounded,
-              color: AppColors.textSecondary,
+              color: colors.onSurfaceVariant,
             ),
-            title: Text('Phiên bản'),
+            title: const Text('Phiên bản'),
             trailing: Text(
               '0.1.0',
-              style: TextStyle(color: AppColors.textSecondary),
+              style: TextStyle(color: colors.onSurfaceVariant),
             ),
           ),
           ListTile(
@@ -2284,15 +2116,6 @@ class _SettingsTab extends StatelessWidget {
           ),
           const SizedBox(height: 32),
         ],
-      ),
-    );
-  }
-
-  void _unsupportedSnack(BuildContext context, String label) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$label chưa được máy chủ hỗ trợ'),
-        behavior: SnackBarBehavior.floating,
       ),
     );
   }
@@ -2324,57 +2147,6 @@ class _SettingsTab extends StatelessWidget {
   }
 }
 
-class _SettingsSection extends StatelessWidget {
-  const _SettingsSection({required this.title, required this.items});
-  final String title;
-  final List<_SettingsItem> items;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textSecondary,
-              letterSpacing: 0.8,
-            ),
-          ),
-        ),
-        ...items.expand(
-          (item) => [
-            ListTile(
-              leading: Icon(item.icon, color: AppColors.adminAccent),
-              title: Text(item.label),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('${item.label} chưa được máy chủ hỗ trợ'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
-            ),
-            const Divider(height: 0, indent: 56),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _SettingsItem {
-  const _SettingsItem({required this.icon, required this.label});
-  final IconData icon;
-  final String label;
-}
-
 // =================== TIMETABLE HUB (Cơ cấu sub-tab) ===================
 
 class _TimetableHubView extends StatelessWidget {
@@ -2385,121 +2157,43 @@ class _TimetableHubView extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.adminAccent, Color(0xFF3949AB)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'TKB HK2 2025-2026',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Đã hoàn tất xếp 28/32 lớp — 4 lớp chưa xếp',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.85),
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const TimetableSchedulingPage(),
-                    ),
-                  ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppColors.adminAccent,
-                  ),
-                  icon: const Icon(Icons.edit_calendar_rounded),
-                  label: const Text('Mở trình xếp TKB'),
-                ),
-              ),
-            ],
+        Text(
+          'Thời khóa biểu',
+          style: Theme.of(
+            context,
+          ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Phân công giáo viên trước, xem phương án tự động rồi mới phát hành lịch chính thức.',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
         const SizedBox(height: 20),
-        const SectionHeader(title: 'Trạng thái xếp TKB'),
-        const SizedBox(height: 10),
-        const Card(
-          child: Column(
-            children: [
-              _StatusRow(
-                label: 'Khối 10',
-                done: 6,
-                total: 6,
-                color: AppColors.success,
-              ),
-              Divider(height: 0),
-              _StatusRow(
-                label: 'Khối 11',
-                done: 6,
-                total: 7,
-                color: AppColors.warning,
-              ),
-              Divider(height: 0),
-              _StatusRow(
-                label: 'Khối 12',
-                done: 8,
-                total: 8,
-                color: AppColors.success,
-              ),
-              Divider(height: 0),
-              _StatusRow(
-                label: 'Khối 6–9',
-                done: 8,
-                total: 11,
-                color: AppColors.warning,
-              ),
-            ],
+        _TimetableActionCard(
+          icon: Icons.person_add_alt_1_rounded,
+          title: '1. Phân công giảng dạy',
+          subtitle: 'Chọn giáo viên, môn, lớp và số tiết trong học kỳ.',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const TeachingAssignmentsPage()),
           ),
         ),
-        const SizedBox(height: 16),
-        const SectionHeader(title: 'Xung đột chờ giải quyết'),
-        const SizedBox(height: 8),
-        const Card(
-          child: Column(
-            children: [
-              ListTile(
-                leading: Icon(
-                  Icons.warning_amber_rounded,
-                  color: AppColors.error,
-                ),
-                title: Text('GV Trần Thị Hoa — trùng tiết 3 T2'),
-                subtitle: Text(
-                  '10A1 vs 8A1 — cần đổi GV hoặc tiết',
-                  style: TextStyle(fontSize: 11),
-                ),
-              ),
-              Divider(height: 0),
-              ListTile(
-                leading: Icon(
-                  Icons.warning_amber_rounded,
-                  color: AppColors.error,
-                ),
-                title: Text('Phòng Lab 1 — trùng tiết 2 T4'),
-                subtitle: Text(
-                  '11B1 (Vật lý) vs 12A1 (Sinh)',
-                  style: TextStyle(fontSize: 11),
-                ),
-              ),
-            ],
+        _TimetableActionCard(
+          icon: Icons.auto_awesome_motion_rounded,
+          title: '2. Tự xếp và công bố',
+          subtitle:
+              'Kiểm tra đầu vào, xem trước xung đột, tạo bản nháp và phát hành.',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const TimetableOperationsPage()),
+          ),
+        ),
+        _TimetableActionCard(
+          icon: Icons.tune_rounded,
+          title: '3. Điều chỉnh thủ công',
+          subtitle: 'Chỉ dùng khi cần sửa từng tiết sau khi xem phương án.',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const TimetableSchedulingPage()),
           ),
         ),
       ],
@@ -2507,45 +2201,40 @@ class _TimetableHubView extends StatelessWidget {
   }
 }
 
-class _StatusRow extends StatelessWidget {
-  const _StatusRow({
-    required this.label,
-    required this.done,
-    required this.total,
-    required this.color,
+class _TimetableActionCard extends StatelessWidget {
+  const _TimetableActionCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
   });
-  final String label;
-  final int done;
-  final int total;
-  final Color color;
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      title: Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
-      subtitle: LinearProgressIndicator(
-        value: done / total,
-        color: color,
-        backgroundColor: AppColors.divider,
-        minHeight: 5,
-      ),
-      trailing: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          '$done/$total',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: color,
-            fontSize: 13,
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Card(
+      child: ListTile(
+        leading: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: AppColors.adminAccent.withValues(alpha: .1),
+            borderRadius: BorderRadius.circular(12),
           ),
+          child: Icon(icon, color: AppColors.adminAccent),
         ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: Text(subtitle),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: onTap,
       ),
-    );
-  }
+    ),
+  );
 }
 
 // =================== SETTINGS HELPERS ===================
@@ -2553,7 +2242,7 @@ class _StatusRow extends StatelessWidget {
 class _AdminSettingsGroup extends StatelessWidget {
   const _AdminSettingsGroup({required this.title, required this.children});
   final String title;
-  final List<_AdminSettingsTile> children;
+  final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
@@ -2564,10 +2253,10 @@ class _AdminSettingsGroup extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.bold,
-              color: AppColors.textSecondary,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               letterSpacing: 0.8,
             ),
           ),
@@ -2590,10 +2279,15 @@ class _AdminSettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final iconColor = AppColors.adaptiveAccent(context, AppColors.adminAccent);
     return ListTile(
-      leading: Icon(icon, color: AppColors.adminAccent),
+      leading: Icon(icon, color: iconColor),
       title: Text(label),
-      trailing: const Icon(Icons.chevron_right_rounded),
+      trailing: Icon(
+        Icons.chevron_right_rounded,
+        color: colors.onSurfaceVariant,
+      ),
       onTap: onTap,
     );
   }

@@ -4,23 +4,18 @@ import 'package:integration_test/integration_test.dart';
 import 'package:sse_mobile/core/config/env.dart';
 
 const _adminPassword = String.fromEnvironment('E2E_ADMIN_PASSWORD');
-const _accountantPassword = String.fromEnvironment('E2E_ACCOUNTANT_PASSWORD');
 const _parentPassword = String.fromEnvironment('E2E_PARENT_PASSWORD');
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
-    'F17 Parent VietQR -> Accountant reconcile is idempotent',
+    'F17 Parent VietQR -> Admin reconcile is idempotent',
     (tester) async {
       expect(
-        [
-          _adminPassword,
-          _accountantPassword,
-          _parentPassword,
-        ].every((value) => value.isNotEmpty),
+        [_adminPassword, _parentPassword].every((value) => value.isNotEmpty),
         isTrue,
-        reason: 'Thiếu biến E2E_ADMIN/ACCOUNTANT/PARENT_PASSWORD',
+        reason: 'Thiếu biến E2E_ADMIN_PASSWORD hoặc E2E_PARENT_PASSWORD',
       );
 
       final dio = Dio(
@@ -32,7 +27,6 @@ void main() {
       );
       final admin = await _login(dio, 'admin', _adminPassword);
       final parent = await _login(dio, 'ph.nguyenvanhung', _parentPassword);
-      final accountant = await _login(dio, 'ketoan', _accountantPassword);
       final suffix = DateTime.now().millisecondsSinceEpoch;
 
       final years = await dio.get<List<dynamic>>(
@@ -109,7 +103,7 @@ void main() {
 
       final pending = await dio.get<List<dynamic>>(
         '/payments/vietqr/pending',
-        options: _auth(accountant),
+        options: _auth(admin),
       );
       expect(
         pending.data!.cast<Map>().any(
@@ -122,7 +116,7 @@ void main() {
       final confirmed = await dio.post<Map<String, dynamic>>(
         '/payments/$paymentId/confirm-vietqr',
         data: {'bankTransactionRef': bankReference},
-        options: _auth(accountant),
+        options: _auth(admin),
       );
       final firstPayment = (confirmed.data!['payment'] as Map)
           .cast<String, dynamic>();
@@ -136,7 +130,7 @@ void main() {
       final confirmedAgain = await dio.post<Map<String, dynamic>>(
         '/payments/$paymentId/confirm-vietqr',
         data: {'bankTransactionRef': bankReference},
-        options: _auth(accountant),
+        options: _auth(admin),
       );
       final repeatedPayment = (confirmedAgain.data!['payment'] as Map)
           .cast<String, dynamic>();
@@ -148,7 +142,7 @@ void main() {
 
       final pendingAfter = await dio.get<List<dynamic>>(
         '/payments/vietqr/pending',
-        options: _auth(accountant),
+        options: _auth(admin),
       );
       expect(
         pendingAfter.data!.cast<Map>().any(
@@ -173,12 +167,9 @@ void main() {
     'S01 cash and refund follow every invoice state on Android',
     (tester) async {
       expect(
-        [
-          _adminPassword,
-          _accountantPassword,
-        ].every((value) => value.isNotEmpty),
-        isTrue,
-        reason: 'Thiếu biến E2E_ADMIN_PASSWORD hoặc E2E_ACCOUNTANT_PASSWORD',
+        _adminPassword,
+        isNotEmpty,
+        reason: 'Thiếu biến E2E_ADMIN_PASSWORD',
       );
 
       final dio = Dio(
@@ -190,7 +181,6 @@ void main() {
         ),
       );
       final admin = await _login(dio, 'admin', _adminPassword);
-      final accountant = await _login(dio, 'ketoan', _accountantPassword);
       final suffix = DateTime.now().millisecondsSinceEpoch;
       final invoice = await _createStateMachineInvoice(dio, admin, suffix);
       final invoiceId = invoice['id'].toString();
@@ -200,7 +190,7 @@ void main() {
 
       final partial = await _recordCash(
         dio,
-        accountant,
+        admin,
         invoiceId,
         amount: 250000,
         note: 'S01 Android E2E partial $suffix',
@@ -211,7 +201,7 @@ void main() {
 
       final paid = await _recordCash(
         dio,
-        accountant,
+        admin,
         invoiceId,
         amount: 750000,
         note: 'S01 Android E2E paid $suffix',
@@ -222,7 +212,7 @@ void main() {
 
       final collectAfterPaid = await _recordCash(
         dio,
-        accountant,
+        admin,
         invoiceId,
         amount: 1,
         note: 'S01 Android E2E must be blocked',
@@ -231,7 +221,7 @@ void main() {
 
       final partialRefund = await _refund(
         dio,
-        accountant,
+        admin,
         invoiceId,
         amount: 300000,
         reason: 'S01 Android E2E partial refund $suffix',
@@ -242,7 +232,7 @@ void main() {
 
       final fullRefund = await _refund(
         dio,
-        accountant,
+        admin,
         invoiceId,
         amount: 700000,
         reason: 'S01 Android E2E full refund $suffix',
@@ -253,7 +243,7 @@ void main() {
 
       final refundAfterTerminal = await _refund(
         dio,
-        accountant,
+        admin,
         invoiceId,
         amount: 1,
         reason: 'S01 Android E2E must be blocked',
@@ -262,7 +252,7 @@ void main() {
 
       final detail = await dio.get<Map<String, dynamic>>(
         '/invoices/$invoiceId',
-        options: _auth(accountant),
+        options: _auth(admin),
       );
       expect(detail.statusCode, 200);
       final persisted = (detail.data!['invoice'] as Map)

@@ -211,12 +211,8 @@ class _ClassHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.adminAccent, Color(0xFF3949AB)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(8),
+        color: AppColors.adminAccent,
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
         children: [

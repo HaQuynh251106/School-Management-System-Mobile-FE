@@ -33,7 +33,8 @@ class ThemeController extends ChangeNotifier {
   }
 
   Future<void> toggle(Brightness platformBrightness) {
-    final currentlyDark = _mode == ThemeMode.dark ||
+    final currentlyDark =
+        _mode == ThemeMode.dark ||
         (_mode == ThemeMode.system && platformBrightness == Brightness.dark);
     return setMode(currentlyDark ? ThemeMode.light : ThemeMode.dark);
   }

@@ -3,8 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sse_mobile/shared/widgets/real_dashboard_panel.dart';
 
 void main() {
-  testWidgets('renders real snapshot metadata, metrics, errors and shortcut',
-      (tester) async {
+  testWidgets('renders real snapshot metadata, metrics, errors and shortcut', (
+    tester,
+  ) async {
     Map<String, dynamic>? selected;
     var retried = false;
     final dashboard = <String, dynamic>{
@@ -21,10 +22,7 @@ void main() {
           'value': 2,
           'format': 'NUMBER',
           'hint': 'Dữ liệu thật',
-          'trend': {
-            'direction': 'NONE',
-            'label': 'Chưa đủ dữ liệu kỳ trước',
-          },
+          'trend': {'direction': 'NONE', 'label': 'Chưa đủ dữ liệu kỳ trước'},
         },
       ],
       'charts': const [],
@@ -45,23 +43,26 @@ void main() {
       ],
     };
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: SingleChildScrollView(
-          child: RealDashboardPanel(
-            dashboard: dashboard,
-            accent: Colors.blue,
-            onRetry: () => retried = true,
-            onShortcut: (value) => selected = value,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: RealDashboardPanel(
+              dashboard: dashboard,
+              accent: Colors.blue,
+              onRetry: () => retried = true,
+              onShortcut: (value) => selected = value,
+            ),
           ),
         ),
       ),
-    ));
+    );
 
     expect(find.text('Bài tập cần nộp'), findsOneWidget);
     expect(find.text('Bài tập sắp đến hạn'), findsOneWidget);
     expect(find.text('Không tải được dữ liệu khảo thí'), findsOneWidget);
-    expect(find.textContaining('Phạm vi 1 hồ sơ'), findsOneWidget);
+    expect(find.textContaining('Cập nhật'), findsOneWidget);
+    expect(find.textContaining('Phạm vi'), findsNothing);
 
     await tester.tap(find.text('Bài tập sắp đến hạn'));
     expect(selected?['target'], 'assignments');

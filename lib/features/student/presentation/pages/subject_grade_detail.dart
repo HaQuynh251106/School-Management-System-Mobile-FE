@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_error_message.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/section_header.dart';
 import '../../../grades/data/grade_record.dart';
 
 class _ExamScore {
-  const _ExamScore(this.category, this.label, this.assessmentIndex, this.score,
-      this.weight, this.date);
+  const _ExamScore(
+    this.category,
+    this.label,
+    this.assessmentIndex,
+    this.score,
+    this.weight,
+    this.date,
+  );
   final String category;
   final String label;
   final int assessmentIndex;
@@ -90,10 +97,16 @@ class _SubjectGradeDetailState extends State<SubjectGradeDetail> {
           }
           if (snap.hasError) {
             return Center(
-                child: Text('Không thể tải chi tiết điểm.',
-                    style: TextStyle(
-                        color:
-                            Theme.of(context).colorScheme.onSurfaceVariant)));
+              child: Text(
+                apiErrorMessage(
+                  snap.error,
+                  fallback: 'Không thể tải chi tiết điểm.',
+                ),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            );
           }
           final data = snap.data ?? const [];
           final definitions = {
@@ -104,9 +117,11 @@ class _SubjectGradeDetailState extends State<SubjectGradeDetail> {
           };
           final scores =
               (data.isNotEmpty ? data[0] : const <Map<String, dynamic>>[])
-                  .where((grade) =>
-                      '${grade['subjectId'] ?? ''}' == widget.subjectId &&
-                      '${grade['semesterId'] ?? ''}' == widget.semesterId)
+                  .where(
+                    (grade) =>
+                        '${grade['subjectId'] ?? ''}' == widget.subjectId &&
+                        '${grade['semesterId'] ?? ''}' == widget.semesterId,
+                  )
                   .map((grade) => _examScoreFromJson(grade, definitions))
                   .toList();
           return _SubjectGradeView(
@@ -145,9 +160,12 @@ class _SubjectGradeView extends StatelessWidget {
   Widget build(BuildContext context) {
     if (scores.isEmpty) {
       return Center(
-        child: Text('Chưa có điểm',
-            style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        child: Text(
+          'Chưa có điểm',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
       );
     }
     final avg = average;
@@ -180,8 +198,9 @@ class _SubjectGradeView extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
-        ...byCategory.entries
-            .map((e) => _buildCategorySection(context, e.key, e.value)),
+        ...byCategory.entries.map(
+          (e) => _buildCategorySection(context, e.key, e.value),
+        ),
         const SizedBox(height: 20),
         const SectionHeader(title: 'Kết quả môn học'),
         const SizedBox(height: 8),
@@ -199,8 +218,10 @@ class _SubjectGradeView extends StatelessWidget {
                 const Divider(),
                 Row(
                   children: [
-                    const Text('Trung bình môn',
-                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    const Text(
+                      'Trung bình môn',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
                     const Spacer(),
                     Text(
                       avg?.toStringAsFixed(1) ?? 'Chưa đủ đầu điểm',
@@ -226,14 +247,7 @@ class _SubjectGradeView extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.studentAccent,
-            AppColors.studentAccent.withValues(alpha: 0.7),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: AppColors.studentAccent,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
@@ -249,9 +263,10 @@ class _SubjectGradeView extends StatelessWidget {
               child: Text(
                 avg?.toStringAsFixed(1) ?? '—',
                 style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold),
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -263,9 +278,10 @@ class _SubjectGradeView extends StatelessWidget {
                 Text(
                   subject,
                   style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold),
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -274,8 +290,10 @@ class _SubjectGradeView extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(6),
@@ -284,16 +302,17 @@ class _SubjectGradeView extends StatelessWidget {
                     avg == null
                         ? 'Chưa đủ đầu điểm'
                         : avg >= 8
-                            ? 'Giỏi'
-                            : avg >= 6.5
-                                ? 'Khá'
-                                : avg >= 5
-                                    ? 'Trung bình'
-                                    : 'Yếu',
+                        ? 'Giỏi'
+                        : avg >= 6.5
+                        ? 'Khá'
+                        : avg >= 5
+                        ? 'Trung bình'
+                        : 'Yếu',
                     style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600),
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -305,8 +324,12 @@ class _SubjectGradeView extends StatelessWidget {
   }
 
   Widget _buildCategorySection(
-      BuildContext context, String category, List<_ExamScore> scores) {
-    final categoryName = const {
+    BuildContext context,
+    String category,
+    List<_ExamScore> scores,
+  ) {
+    final categoryName =
+        const {
           'ORAL': 'Điểm miệng',
           '15M': 'Điểm 15 phút',
           'MID': 'Điểm giữa kỳ',
@@ -330,30 +353,35 @@ class _SubjectGradeView extends StatelessWidget {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: _scoreColor(scores[i].score)
-                            .withValues(alpha: 0.12),
+                        color: _scoreColor(
+                          scores[i].score,
+                        ).withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Center(
                         child: Text(
                           scores[i].score.toStringAsFixed(1),
                           style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: _scoreColor(scores[i].score)),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: _scoreColor(scores[i].score),
+                          ),
                         ),
                       ),
                     ),
                     title: Text(
-                        '${scores[i].label} ${scores[i].assessmentIndex}',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w500, fontSize: 14)),
+                      '${scores[i].label} ${scores[i].assessmentIndex}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14,
+                      ),
+                    ),
                     subtitle: Text(
                       '${scores[i].date} • hệ số ${scores[i].weight.toStringAsFixed(0)}',
                       style: TextStyle(
-                          fontSize: 11,
-                          color:
-                              Theme.of(context).colorScheme.onSurfaceVariant),
+                        fontSize: 11,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
                   if (i < scores.length - 1) const Divider(height: 0),
@@ -378,16 +406,22 @@ class _FormulaRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         children: [
-          Text(label,
-              style: TextStyle(
-                  fontSize: 12,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
           const Spacer(),
-          Text(value,
-              style: TextStyle(
-                  fontSize: 12,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic)),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
         ],
       ),
     );
@@ -413,10 +447,7 @@ class _LineChartPainter extends CustomPainter {
       ..color = gridColor
       ..strokeWidth = 0.5;
 
-    final axisStyle = TextStyle(
-      color: axisColor,
-      fontSize: 10,
-    );
+    final axisStyle = TextStyle(color: axisColor, fontSize: 10);
 
     // Horizontal grid lines for scores 0,2,4,6,8,10
     for (var i = 0; i <= 5; i++) {

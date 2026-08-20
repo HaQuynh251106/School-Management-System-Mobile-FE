@@ -1,7 +1,7 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_error_message.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/role_page_intro.dart';
@@ -67,11 +67,15 @@ class _TimetableOperationsPageState extends State<TimetableOperationsPage> {
       _semesters = values[1];
       _classes = values[2];
       final activeYear = _activeYear;
-      final activeSemesters = _semesters
-          .where((item) => item['academicYearId'] == activeYear?['id'])
-          .toList()
-        ..sort((a, b) => ((a['sequence'] as num?)?.toInt() ?? 0)
-            .compareTo((b['sequence'] as num?)?.toInt() ?? 0));
+      final activeSemesters =
+          _semesters
+              .where((item) => item['academicYearId'] == activeYear?['id'])
+              .toList()
+            ..sort(
+              (a, b) => ((a['sequence'] as num?)?.toInt() ?? 0).compareTo(
+                (b['sequence'] as num?)?.toInt() ?? 0,
+              ),
+            );
       if (_semesterId == null ||
           !activeSemesters.any((item) => item['id'] == _semesterId)) {
         _semesterId = activeSemesters.isEmpty
@@ -80,8 +84,10 @@ class _TimetableOperationsPageState extends State<TimetableOperationsPage> {
       }
       await _loadSemesterData(showLoader: false);
     } catch (error) {
-      _show(_errorMessage(error, 'Không thể tải dữ liệu xếp lịch.'),
-          error: true);
+      _show(
+        apiErrorMessage(error, fallback: 'Không thể tải dữ liệu xếp lịch.'),
+        error: true,
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -97,8 +103,11 @@ class _TimetableOperationsPageState extends State<TimetableOperationsPage> {
   List<Map<String, dynamic>> get _activeSemesters {
     final yearId = _activeYear?['id'];
     return _semesters.where((item) => item['academicYearId'] == yearId).toList()
-      ..sort((a, b) => ((a['sequence'] as num?)?.toInt() ?? 0)
-          .compareTo((b['sequence'] as num?)?.toInt() ?? 0));
+      ..sort(
+        (a, b) => ((a['sequence'] as num?)?.toInt() ?? 0).compareTo(
+          (b['sequence'] as num?)?.toInt() ?? 0,
+        ),
+      );
   }
 
   List<Map<String, dynamic>> get _scopedClasses {
@@ -128,7 +137,8 @@ class _TimetableOperationsPageState extends State<TimetableOperationsPage> {
     }
     if (_requirements.isEmpty) {
       issues.add(
-          'Chưa có kế hoạch đào tạo. Hãy khai báo số tiết từng môn trước khi tự xếp lịch.');
+        'Chưa có kế hoạch đào tạo. Hãy khai báo số tiết từng môn trước khi tự xếp lịch.',
+      );
     }
     return issues;
   }
@@ -140,8 +150,10 @@ class _TimetableOperationsPageState extends State<TimetableOperationsPage> {
         .map((item) => '${item['code'] ?? item['name']}')
         .toList();
     if (noRoom.isNotEmpty) {
-      warnings.add('Chưa gán phòng cho: ${noRoom.take(4).join(', ')}'
-          '${noRoom.length > 4 ? ' và ${noRoom.length - 4} lớp khác' : ''}.');
+      warnings.add(
+        'Chưa gán phòng cho: ${noRoom.take(4).join(', ')}'
+        '${noRoom.length > 4 ? ' và ${noRoom.length - 4} lớp khác' : ''}.',
+      );
     }
     final approvedTeachers = _teacherLoads
         .where((item) => const ['APPROVED', 'LOCKED'].contains(item['status']))
@@ -152,8 +164,9 @@ class _TimetableOperationsPageState extends State<TimetableOperationsPage> {
         .map((item) => '${item['teacherName'] ?? item['teacherId']}')
         .toSet();
     if (missingLoads.isNotEmpty) {
-      warnings
-          .add('${missingLoads.length} giáo viên chưa có tải dạy được duyệt.');
+      warnings.add(
+        '${missingLoads.length} giáo viên chưa có tải dạy được duyệt.',
+      );
     }
     return warnings;
   }
@@ -180,8 +193,10 @@ class _TimetableOperationsPageState extends State<TimetableOperationsPage> {
         _versions = values[3];
       });
     } catch (error) {
-      _show(_errorMessage(error, 'Không thể kiểm tra dữ liệu học kỳ.'),
-          error: true);
+      _show(
+        apiErrorMessage(error, fallback: 'Không thể kiểm tra dữ liệu học kỳ.'),
+        error: true,
+      );
     } finally {
       if (showLoader && mounted) setState(() => _loading = false);
     }
@@ -201,12 +216,19 @@ class _TimetableOperationsPageState extends State<TimetableOperationsPage> {
       if (!mounted) return;
       setState(() => _plan = plan);
       final missing = (plan['unscheduledSlots'] as num?)?.toInt() ?? 0;
-      _show(missing == 0
-          ? 'Phương án đã đủ tiết và không có xung đột.'
-          : 'Còn $missing tiết chưa xếp được. Hãy xem các cảnh báo.');
+      _show(
+        missing == 0
+            ? 'Phương án đã đủ tiết và không có xung đột.'
+            : 'Còn $missing tiết chưa xếp được. Hãy xem các cảnh báo.',
+      );
     } catch (error) {
-      _show(_errorMessage(error, 'Không thể tạo phương án thời khóa biểu.'),
-          error: true);
+      _show(
+        apiErrorMessage(
+          error,
+          fallback: 'Không thể tạo phương án thời khóa biểu.',
+        ),
+        error: true,
+      );
     } finally {
       if (mounted) setState(() => _checking = false);
     }
@@ -217,11 +239,14 @@ class _TimetableOperationsPageState extends State<TimetableOperationsPage> {
     if (semesterId == null || _plan == null) return;
     final unscheduled = (_plan!['unscheduledSlots'] as num?)?.toInt() ?? 0;
     if (unscheduled > 0 && !_allowPartial) {
-      _show('Còn $unscheduled tiết chưa xếp được nên chưa thể tạo bản nháp.',
-          error: true);
+      _show(
+        'Còn $unscheduled tiết chưa xếp được nên chưa thể tạo bản nháp.',
+        error: true,
+      );
       return;
     }
-    final defaultName = 'TKB ${_scopes[_scopeGradeLevel]} '
+    final defaultName =
+        'TKB ${_scopes[_scopeGradeLevel]} '
         '${DateTime.now().day}/${DateTime.now().month}';
     final name = await _askDraftName(defaultName);
     if (name == null || !mounted) return;
@@ -238,11 +263,17 @@ class _TimetableOperationsPageState extends State<TimetableOperationsPage> {
       if (!mounted) return;
       setState(() => _plan = applied);
       _show(
-          'Đã tạo bản nháp “${created?['name'] ?? name}”. Hãy kiểm tra trước khi phát hành.');
+        'Đã tạo bản nháp “${created?['name'] ?? name}”. Hãy kiểm tra trước khi phát hành.',
+      );
       await _loadSemesterData();
     } catch (error) {
-      _show(_errorMessage(error, 'Không thể tạo bản nháp thời khóa biểu.'),
-          error: true);
+      _show(
+        apiErrorMessage(
+          error,
+          fallback: 'Không thể tạo bản nháp thời khóa biểu.',
+        ),
+        error: true,
+      );
     } finally {
       if (mounted) setState(() => _checking = false);
     }
@@ -256,33 +287,43 @@ class _TimetableOperationsPageState extends State<TimetableOperationsPage> {
       builder: (context) => SafeArea(
         child: Padding(
           padding: EdgeInsets.fromLTRB(
-              20, 20, 20, MediaQuery.viewInsetsOf(context).bottom + 20),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text('Tạo bản nháp', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 8),
-            const Text(
-              'Bản nháp chưa hiển thị cho giáo viên và học sinh cho đến khi được phát hành.',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              autofocus: true,
-              maxLength: 255,
-              decoration: const InputDecoration(labelText: 'Tên bản lịch'),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () {
-                  final value = controller.text.trim();
-                  if (value.isNotEmpty) Navigator.pop(context, value);
-                },
-                child: const Text('Tạo bản nháp'),
+            20,
+            20,
+            20,
+            MediaQuery.viewInsetsOf(context).bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Tạo bản nháp',
+                style: Theme.of(context).textTheme.titleLarge,
               ),
-            ),
-          ]),
+              const SizedBox(height: 8),
+              const Text(
+                'Bản nháp chưa hiển thị cho giáo viên và học sinh cho đến khi được phát hành.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                maxLength: 255,
+                decoration: const InputDecoration(labelText: 'Tên bản lịch'),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () {
+                    final value = controller.text.trim();
+                    if (value.isNotEmpty) Navigator.pop(context, value);
+                  },
+                  child: const Text('Tạo bản nháp'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -303,8 +344,10 @@ class _TimetableOperationsPageState extends State<TimetableOperationsPage> {
       _show('Đã phát hành thời khóa biểu cho giáo viên và học sinh.');
       await _loadSemesterData(showLoader: false);
     } catch (error) {
-      _show(_errorMessage(error, 'Không thể phát hành thời khóa biểu.'),
-          error: true);
+      _show(
+        apiErrorMessage(error, fallback: 'Không thể phát hành thời khóa biểu.'),
+        error: true,
+      );
     } finally {
       if (mounted) setState(() => _checking = false);
     }
@@ -323,7 +366,10 @@ class _TimetableOperationsPageState extends State<TimetableOperationsPage> {
       _show('Đã xóa bản nháp.');
       await _loadSemesterData();
     } catch (error) {
-      _show(_errorMessage(error, 'Không thể xóa bản nháp.'), error: true);
+      _show(
+        apiErrorMessage(error, fallback: 'Không thể xóa bản nháp.'),
+        error: true,
+      );
     }
   }
 
@@ -343,35 +389,47 @@ class _TimetableOperationsPageState extends State<TimetableOperationsPage> {
             controller: controller,
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
             children: [
-              Text('${version['name']}',
-                  style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                '${version['name']}',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: 4),
               Text(
-                  '${slots.length} tiết · ${_statusLabel('${version['status']}')}'),
+                '${slots.length} tiết · ${_statusLabel('${version['status']}')}',
+              ),
               const SizedBox(height: 12),
-              ...slots.map((slot) => Card(
-                    child: ListTile(
-                      title:
-                          Text('${slot['classCode']} · ${slot['subjectName']}'),
-                      subtitle: Text(
-                        '${_dayNames[slot['dayOfWeek']] ?? slot['dayOfWeek']} · '
-                        'Tiết ${slot['periodNo']} · ${slot['teacherName']}\n'
-                        '${slot['roomCode'] ?? 'Chưa có phòng'}',
-                      ),
+              ...slots.map(
+                (slot) => Card(
+                  child: ListTile(
+                    title: Text(
+                      '${slot['classCode']} · ${slot['subjectName']}',
                     ),
-                  )),
+                    subtitle: Text(
+                      '${_dayNames[slot['dayOfWeek']] ?? slot['dayOfWeek']} · '
+                      'Tiết ${slot['periodNo']} · ${slot['teacherName']}\n'
+                      '${slot['roomCode'] ?? 'Chưa có phòng'}',
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
       );
     } catch (error) {
-      _show(_errorMessage(error, 'Không thể mở chi tiết bản lịch.'),
-          error: true);
+      _show(
+        apiErrorMessage(error, fallback: 'Không thể mở chi tiết bản lịch.'),
+        error: true,
+      );
     }
   }
 
-  Future<bool> _confirm(String title, String message, String action,
-      {bool destructive = false}) async {
+  Future<bool> _confirm(
+    String title,
+    String message,
+    String action, {
+    bool destructive = false,
+  }) async {
     return await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
@@ -379,8 +437,9 @@ class _TimetableOperationsPageState extends State<TimetableOperationsPage> {
             content: Text(message),
             actions: [
               TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Hủy')),
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Hủy'),
+              ),
               FilledButton(
                 style: destructive
                     ? FilledButton.styleFrom(backgroundColor: AppColors.error)
@@ -427,10 +486,7 @@ class _TimetableOperationsPageState extends State<TimetableOperationsPage> {
             _readinessCard(issues),
             const SizedBox(height: 12),
             _actionCard(issues),
-            if (_plan != null) ...[
-              const SizedBox(height: 12),
-              _planCard(),
-            ],
+            if (_plan != null) ...[const SizedBox(height: 12), _planCard()],
             const SizedBox(height: 24),
             _versionHeader(),
             if (_loading)
@@ -467,20 +523,31 @@ class _TimetableOperationsPageState extends State<TimetableOperationsPage> {
         child: Row(
           children: steps.map((step) {
             return Expanded(
-              child: Column(children: [
-                CircleAvatar(
-                  radius: 15,
-                  backgroundColor: AppColors.adminAccent.withValues(alpha: .12),
-                  child: Text(step.$1,
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 15,
+                    backgroundColor: AppColors.adminAccent.withValues(
+                      alpha: .12,
+                    ),
+                    child: Text(
+                      step.$1,
                       style: const TextStyle(
-                          color: AppColors.adminAccent,
-                          fontWeight: FontWeight.bold)),
-                ),
-                const SizedBox(height: 5),
-                Text(step.$2,
+                        color: AppColors.adminAccent,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    step.$2,
                     style: const TextStyle(
-                        fontSize: 11, fontWeight: FontWeight.w600)),
-              ]),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             );
           }).toList(),
         ),
@@ -492,49 +559,58 @@ class _TimetableOperationsPageState extends State<TimetableOperationsPage> {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Phạm vi xếp lịch',
-              style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 14),
-          DropdownButtonFormField<String>(
-            key: ValueKey('semester-$_semesterId'),
-            initialValue: _semesterId,
-            decoration: const InputDecoration(labelText: 'Học kỳ'),
-            items: _activeSemesters
-                .map((item) => DropdownMenuItem(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Phạm vi xếp lịch',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 14),
+            DropdownButtonFormField<String>(
+              key: ValueKey('semester-$_semesterId'),
+              initialValue: _semesterId,
+              decoration: const InputDecoration(labelText: 'Học kỳ'),
+              items: _activeSemesters
+                  .map(
+                    (item) => DropdownMenuItem(
                       value: '${item['id']}',
                       child: Text('${item['name'] ?? item['code']}'),
-                    ))
-                .toList(),
-            onChanged: _checking
-                ? null
-                : (value) async {
-                    setState(() {
-                      _semesterId = value;
-                      _plan = null;
-                    });
-                    await _loadSemesterData();
-                  },
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String?>(
-            key: ValueKey('scope-$_scopeGradeLevel'),
-            initialValue: _scopeGradeLevel,
-            decoration: const InputDecoration(labelText: 'Lớp cần xếp'),
-            items: _scopes.entries
-                .map((entry) => DropdownMenuItem<String?>(
+                    ),
+                  )
+                  .toList(),
+              onChanged: _checking
+                  ? null
+                  : (value) async {
+                      setState(() {
+                        _semesterId = value;
+                        _plan = null;
+                      });
+                      await _loadSemesterData();
+                    },
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String?>(
+              key: ValueKey('scope-$_scopeGradeLevel'),
+              initialValue: _scopeGradeLevel,
+              decoration: const InputDecoration(labelText: 'Lớp cần xếp'),
+              items: _scopes.entries
+                  .map(
+                    (entry) => DropdownMenuItem<String?>(
                       value: entry.key,
                       child: Text(entry.value),
-                    ))
-                .toList(),
-            onChanged: _checking
-                ? null
-                : (value) => setState(() {
+                    ),
+                  )
+                  .toList(),
+              onChanged: _checking
+                  ? null
+                  : (value) => setState(() {
                       _scopeGradeLevel = value;
                       _plan = null;
                     }),
-          ),
-        ]),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -548,40 +624,58 @@ class _TimetableOperationsPageState extends State<TimetableOperationsPage> {
           : Theme.of(context).colorScheme.errorContainer.withValues(alpha: .4),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Icon(
-              ready ? Icons.check_circle_rounded : Icons.warning_amber_rounded,
-              color: ready ? Colors.green : Theme.of(context).colorScheme.error,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                ready ? 'Sẵn sàng tạo phương án' : 'Cần hoàn tất dữ liệu',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-          ]),
-          const SizedBox(height: 10),
-          if (ready)
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${_scopedClasses.length} lớp · '
-                  '${_scopedAssignments.length} phân công · '
-                  '${_requirements.length} định mức môn học'),
-              if (warnings.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                ...warnings.map((warning) => Padding(
-                      padding: const EdgeInsets.only(bottom: 5),
-                      child: Text('Lưu ý: $warning'),
-                    )),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  ready
+                      ? Icons.check_circle_rounded
+                      : Icons.warning_amber_rounded,
+                  color: ready
+                      ? Colors.green
+                      : Theme.of(context).colorScheme.error,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    ready ? 'Sẵn sàng tạo phương án' : 'Cần hoàn tất dữ liệu',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
               ],
-            ])
-          else
-            ...issues.map((issue) => Padding(
+            ),
+            const SizedBox(height: 10),
+            if (ready)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${_scopedClasses.length} lớp · '
+                    '${_scopedAssignments.length} phân công · '
+                    '${_requirements.length} định mức môn học',
+                  ),
+                  if (warnings.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    ...warnings.map(
+                      (warning) => Padding(
+                        padding: const EdgeInsets.only(bottom: 5),
+                        child: Text('Lưu ý: $warning'),
+                      ),
+                    ),
+                  ],
+                ],
+              )
+            else
+              ...issues.map(
+                (issue) => Padding(
                   padding: const EdgeInsets.only(bottom: 6),
                   child: Text('• $issue'),
-                )),
-        ]),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -590,32 +684,37 @@ class _TimetableOperationsPageState extends State<TimetableOperationsPage> {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(children: [
-          SwitchListTile.adaptive(
-            value: _allowPartial,
-            onChanged: _checking
-                ? null
-                : (value) => setState(() => _allowPartial = value),
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Cho phép phương án chưa đủ tiết'),
-            subtitle:
-                const Text('Chỉ bật khi cần kiểm tra phần chưa xếp được.'),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed:
-                  _loading || _checking || issues.isNotEmpty ? null : _preview,
-              icon: _checking
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.auto_awesome_rounded),
-              label: Text(_checking ? 'Đang xếp lịch…' : 'Tạo phương án'),
+        child: Column(
+          children: [
+            SwitchListTile.adaptive(
+              value: _allowPartial,
+              onChanged: _checking
+                  ? null
+                  : (value) => setState(() => _allowPartial = value),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Cho phép phương án chưa đủ tiết'),
+              subtitle: const Text(
+                'Chỉ bật khi cần kiểm tra phần chưa xếp được.',
+              ),
             ),
-          ),
-        ]),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _loading || _checking || issues.isNotEmpty
+                    ? null
+                    : _preview,
+                icon: _checking
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.auto_awesome_rounded),
+                label: Text(_checking ? 'Đang xếp lịch…' : 'Tạo phương án'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -629,62 +728,82 @@ class _TimetableOperationsPageState extends State<TimetableOperationsPage> {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Kết quả phương án',
-              style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 12),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            Chip(label: Text('$existing tiết hiện có')),
-            Chip(label: Text('$proposed tiết đã xếp')),
-            Chip(
-              avatar: Icon(missing == 0 ? Icons.check : Icons.warning_rounded,
-                  size: 18),
-              label: Text('$missing tiết chưa xếp'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Kết quả phương án',
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-          ]),
-          if (warnings.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            ...warnings.take(6).map((message) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                  leading: const Icon(Icons.warning_amber_rounded,
-                      color: AppColors.warning),
-                  title: Text('$message'),
-                )),
-          ],
-          ExpansionTile(
-            tilePadding: EdgeInsets.zero,
-            title: Text('Xem các tiết được đề xuất (${items.length})'),
-            children: items.take(40).map((raw) {
-              final item = Map<String, dynamic>.from(raw as Map);
-              final scheduled = item['status'] == 'PROPOSED';
-              return ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                  scheduled ? Icons.check_circle_outline : Icons.error_outline,
-                  color: scheduled ? Colors.green : AppColors.error,
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                Chip(label: Text('$existing tiết hiện có')),
+                Chip(label: Text('$proposed tiết đã xếp')),
+                Chip(
+                  avatar: Icon(
+                    missing == 0 ? Icons.check : Icons.warning_rounded,
+                    size: 18,
+                  ),
+                  label: Text('$missing tiết chưa xếp'),
                 ),
-                title: Text('${item['classCode']} · ${item['subjectName']}'),
-                subtitle: scheduled
-                    ? Text(
-                        '${_dayNames[item['dayOfWeek']] ?? item['dayOfWeek']} · '
-                        'Tiết ${item['periodNo']} · ${item['teacherName']}')
-                    : Text('${item['message']}'),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.tonalIcon(
-              onPressed: _checking || (missing > 0 && !_allowPartial)
-                  ? null
-                  : _applyAndSave,
-              icon: const Icon(Icons.save_outlined),
-              label: const Text('Tạo bản nháp từ phương án'),
+              ],
             ),
-          ),
-        ]),
+            if (warnings.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              ...warnings
+                  .take(6)
+                  .map(
+                    (message) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      leading: const Icon(
+                        Icons.warning_amber_rounded,
+                        color: AppColors.warning,
+                      ),
+                      title: Text('$message'),
+                    ),
+                  ),
+            ],
+            ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              title: Text('Xem các tiết được đề xuất (${items.length})'),
+              children: items.take(40).map((raw) {
+                final item = Map<String, dynamic>.from(raw as Map);
+                final scheduled = item['status'] == 'PROPOSED';
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    scheduled
+                        ? Icons.check_circle_outline
+                        : Icons.error_outline,
+                    color: scheduled ? Colors.green : AppColors.error,
+                  ),
+                  title: Text('${item['classCode']} · ${item['subjectName']}'),
+                  subtitle: scheduled
+                      ? Text(
+                          '${_dayNames[item['dayOfWeek']] ?? item['dayOfWeek']} · '
+                          'Tiết ${item['periodNo']} · ${item['teacherName']}',
+                        )
+                      : Text('${item['message']}'),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.tonalIcon(
+                onPressed: _checking || (missing > 0 && !_allowPartial)
+                    ? null
+                    : _applyAndSave,
+                icon: const Icon(Icons.save_outlined),
+                label: const Text('Tạo bản nháp từ phương án'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -692,13 +811,17 @@ class _TimetableOperationsPageState extends State<TimetableOperationsPage> {
   Widget _versionHeader() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Row(children: [
-        Expanded(
-          child: Text('Các bản thời khóa biểu',
-              style: Theme.of(context).textTheme.titleLarge),
-        ),
-        Text('${_versions.length} bản'),
-      ]),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Các bản thời khóa biểu',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+          ),
+          Text('${_versions.length} bản'),
+        ],
+      ),
     );
   }
 
@@ -708,46 +831,57 @@ class _TimetableOperationsPageState extends State<TimetableOperationsPage> {
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 10, 10),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            CircleAvatar(
-              child: Text('${version['versionNo'] ?? '?'}'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(child: Text('${version['versionNo'] ?? '?'}')),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${version['name'] ?? 'Bản thời khóa biểu'}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${version['scheduledPeriods'] ?? 0} tiết · '
+                        '${version['unscheduledPeriods'] ?? 0} chưa xếp',
+                      ),
+                    ],
+                  ),
+                ),
+                Chip(label: Text(_statusLabel(status))),
+              ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('${version['name'] ?? 'Bản thời khóa biểu'}',
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text('${version['scheduledPeriods'] ?? 0} tiết · '
-                      '${version['unscheduledPeriods'] ?? 0} chưa xếp'),
-                ],
-              ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton.icon(
+                  onPressed: () => _viewVersion(version),
+                  icon: const Icon(Icons.visibility_outlined),
+                  label: const Text('Xem'),
+                ),
+                if (publishable)
+                  IconButton(
+                    onPressed: () => _delete(version),
+                    tooltip: 'Xóa bản nháp',
+                    icon: const Icon(Icons.delete_outline_rounded),
+                  ),
+                if (publishable)
+                  FilledButton.tonal(
+                    onPressed: _checking ? null : () => _publish(version),
+                    child: const Text('Phát hành'),
+                  ),
+              ],
             ),
-            Chip(label: Text(_statusLabel(status))),
-          ]),
-          const SizedBox(height: 8),
-          Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-            TextButton.icon(
-              onPressed: () => _viewVersion(version),
-              icon: const Icon(Icons.visibility_outlined),
-              label: const Text('Xem'),
-            ),
-            if (publishable)
-              IconButton(
-                onPressed: () => _delete(version),
-                tooltip: 'Xóa bản nháp',
-                icon: const Icon(Icons.delete_outline_rounded),
-              ),
-            if (publishable)
-              FilledButton.tonal(
-                onPressed: _checking ? null : () => _publish(version),
-                child: const Text('Phát hành'),
-              ),
-          ]),
-        ]),
+          ],
+        ),
       ),
     );
   }
@@ -761,24 +895,15 @@ class _TimetableOperationsPageState extends State<TimetableOperationsPage> {
       }[value] ??
       value;
 
-  String _errorMessage(Object error, String fallback) {
-    if (error is DioException) {
-      final data = error.response?.data;
-      if (data is Map) {
-        final message = data['message'] ?? data['error'];
-        if (message != null && '$message'.trim().isNotEmpty) return '$message';
-      }
-    }
-    return fallback;
-  }
-
   void _show(String text, {bool error = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: Text(text),
-        backgroundColor: error ? AppColors.error : null,
-      ));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(text),
+          backgroundColor: error ? AppColors.error : null,
+        ),
+      );
   }
 }

@@ -32,19 +32,19 @@ class TimetableSlot {
   final String publishedPlanId;
 
   factory TimetableSlot.fromJson(Map<String, dynamic> json) => TimetableSlot(
-        id: '${json['id'] ?? ''}',
-        classId: '${json['classId'] ?? ''}',
-        classCode: '${json['classCode'] ?? ''}',
-        subjectId: '${json['subjectId'] ?? ''}',
-        subjectName: '${json['subjectName'] ?? ''}',
-        teacherId: '${json['teacherId'] ?? ''}',
-        teacherName: '${json['teacherName'] ?? ''}',
-        roomCode: '${json['roomCode'] ?? ''}',
-        dayOfWeek: '${json['dayOfWeek'] ?? ''}',
-        periodNo: (json['periodNo'] as num?)?.toInt() ?? 0,
-        startTime: '${json['startTime'] ?? ''}',
-        endTime: '${json['endTime'] ?? ''}',
-        semesterId: '${json['semesterId'] ?? ''}',
-        publishedPlanId: '${json['publishedPlanId'] ?? ''}',
-      );
+    id: '${json['id'] ?? ''}',
+    classId: '${json['classId'] ?? ''}',
+    classCode: '${json['classCode'] ?? ''}',
+    subjectId: '${json['subjectId'] ?? ''}',
+    subjectName: '${json['subjectName'] ?? ''}',
+    teacherId: '${json['teacherId'] ?? ''}',
+    teacherName: '${json['teacherName'] ?? ''}',
+    roomCode: '${json['roomCode'] ?? ''}',
+    dayOfWeek: '${json['dayOfWeek'] ?? ''}',
+    periodNo: (json['periodNo'] as num?)?.toInt() ?? 0,
+    startTime: '${json['startTime'] ?? ''}',
+    endTime: '${json['endTime'] ?? ''}',
+    semesterId: '${json['semesterId'] ?? ''}',
+    publishedPlanId: '${json['publishedPlanId'] ?? ''}',
+  );
 }

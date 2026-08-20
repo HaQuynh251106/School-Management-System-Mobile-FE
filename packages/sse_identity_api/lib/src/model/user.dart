@@ -62,6 +62,8 @@ class User {
 
     this.teacherCode,
 
+    this.mainSubjectId,
+
     this.mainSubject,
 
     this.childrenIds,
@@ -147,6 +149,9 @@ class User {
   @JsonKey(name: r'teacherCode', required: false, includeIfNull: false)
   final String? teacherCode;
 
+  @JsonKey(name: r'mainSubjectId', required: false, includeIfNull: false)
+  final String? mainSubjectId;
+
   @JsonKey(name: r'mainSubject', required: false, includeIfNull: false)
   final String? mainSubject;
 
@@ -198,6 +203,7 @@ class User {
           other.guardianName == guardianName &&
           other.guardianPhone == guardianPhone &&
           other.teacherCode == teacherCode &&
+          other.mainSubjectId == mainSubjectId &&
           other.mainSubject == mainSubject &&
           other.childrenIds == childrenIds &&
           other.cohortId == cohortId &&
@@ -230,6 +236,7 @@ class User {
       (guardianName == null ? 0 : guardianName.hashCode) +
       (guardianPhone == null ? 0 : guardianPhone.hashCode) +
       (teacherCode == null ? 0 : teacherCode.hashCode) +
+      (mainSubjectId == null ? 0 : mainSubjectId.hashCode) +
       (mainSubject == null ? 0 : mainSubject.hashCode) +
       (childrenIds == null ? 0 : childrenIds.hashCode) +
       (cohortId == null ? 0 : cohortId.hashCode) +
@@ -253,10 +260,6 @@ class User {
 enum UserRoleEnum {
   @JsonValue(r'ADMIN')
   ADMIN(r'ADMIN'),
-  @JsonValue(r'ACADEMIC_STAFF')
-  ACADEMIC_STAFF(r'ACADEMIC_STAFF'),
-  @JsonValue(r'ACCOUNTANT')
-  ACCOUNTANT(r'ACCOUNTANT'),
   @JsonValue(r'TEACHER')
   TEACHER(r'TEACHER'),
   @JsonValue(r'STUDENT')

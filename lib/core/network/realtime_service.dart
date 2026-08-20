@@ -46,8 +46,9 @@ class RealtimeService {
       );
       _retrySeconds = 1;
       var buffer = '';
-      await for (final bytes
-          in utf8.decoder.bind(response.data!.stream.cast<List<int>>())) {
+      await for (final bytes in utf8.decoder.bind(
+        response.data!.stream.cast<List<int>>(),
+      )) {
         buffer += bytes;
         var boundary = buffer.indexOf('\n\n');
         while (boundary >= 0) {
@@ -58,9 +59,11 @@ class RealtimeService {
       }
     } on DioException catch (error) {
       if (!CancelToken.isCancel(error)) {
-        _events.add(RealtimeEvent('DISCONNECTED', {
-          'message': error.message ?? 'Mất kết nối thời gian thực',
-        }));
+        _events.add(
+          RealtimeEvent('DISCONNECTED', {
+            'message': error.message ?? 'Mất kết nối thời gian thực',
+          }),
+        );
       }
     } finally {
       if (identical(_cancelToken, token)) _cancelToken = null;
@@ -85,12 +88,14 @@ class RealtimeService {
     if (dataLines.isEmpty) return;
     try {
       final decoded = jsonDecode(dataLines.join('\n'));
-      _events.add(RealtimeEvent(
-        type,
-        decoded is Map
-            ? decoded.cast<String, dynamic>()
-            : <String, dynamic>{'value': decoded},
-      ));
+      _events.add(
+        RealtimeEvent(
+          type,
+          decoded is Map
+              ? decoded.cast<String, dynamic>()
+              : <String, dynamic>{'value': decoded},
+        ),
+      );
     } catch (_) {
       _events.add(RealtimeEvent(type, {'value': dataLines.join('\n')}));
     }

@@ -17,17 +17,13 @@ abstract class _$CreateUserRequestCWProxy {
 
   CreateUserRequest role(CreateUserRequestRoleEnum role);
 
-  CreateUserRequest email(String? email);
+  CreateUserRequest email(String email);
 
-  CreateUserRequest phone(String? phone);
+  CreateUserRequest phone(String phone);
 
   CreateUserRequest avatarUrl(String? avatarUrl);
 
-  CreateUserRequest teacherCode(String? teacherCode);
-
-  CreateUserRequest mainSubject(String? mainSubject);
-
-  CreateUserRequest studentCode(String? studentCode);
+  CreateUserRequest mainSubjectId(String? mainSubjectId);
 
   CreateUserRequest classId(String? classId);
 
@@ -63,12 +59,10 @@ abstract class _$CreateUserRequestCWProxy {
     String password,
     String fullName,
     CreateUserRequestRoleEnum role,
-    String? email,
-    String? phone,
+    String email,
+    String phone,
     String? avatarUrl,
-    String? teacherCode,
-    String? mainSubject,
-    String? studentCode,
+    String? mainSubjectId,
     String? classId,
     String? className,
     DateTime? dateOfBirth,
@@ -105,25 +99,17 @@ class _$CreateUserRequestCWProxyImpl implements _$CreateUserRequestCWProxy {
   CreateUserRequest role(CreateUserRequestRoleEnum role) => this(role: role);
 
   @override
-  CreateUserRequest email(String? email) => this(email: email);
+  CreateUserRequest email(String email) => this(email: email);
 
   @override
-  CreateUserRequest phone(String? phone) => this(phone: phone);
+  CreateUserRequest phone(String phone) => this(phone: phone);
 
   @override
   CreateUserRequest avatarUrl(String? avatarUrl) => this(avatarUrl: avatarUrl);
 
   @override
-  CreateUserRequest teacherCode(String? teacherCode) =>
-      this(teacherCode: teacherCode);
-
-  @override
-  CreateUserRequest mainSubject(String? mainSubject) =>
-      this(mainSubject: mainSubject);
-
-  @override
-  CreateUserRequest studentCode(String? studentCode) =>
-      this(studentCode: studentCode);
+  CreateUserRequest mainSubjectId(String? mainSubjectId) =>
+      this(mainSubjectId: mainSubjectId);
 
   @override
   CreateUserRequest classId(String? classId) => this(classId: classId);
@@ -180,9 +166,7 @@ class _$CreateUserRequestCWProxyImpl implements _$CreateUserRequestCWProxy {
     Object? email = const $CopyWithPlaceholder(),
     Object? phone = const $CopyWithPlaceholder(),
     Object? avatarUrl = const $CopyWithPlaceholder(),
-    Object? teacherCode = const $CopyWithPlaceholder(),
-    Object? mainSubject = const $CopyWithPlaceholder(),
-    Object? studentCode = const $CopyWithPlaceholder(),
+    Object? mainSubjectId = const $CopyWithPlaceholder(),
     Object? classId = const $CopyWithPlaceholder(),
     Object? className = const $CopyWithPlaceholder(),
     Object? dateOfBirth = const $CopyWithPlaceholder(),
@@ -219,27 +203,19 @@ class _$CreateUserRequestCWProxyImpl implements _$CreateUserRequestCWProxy {
       email: email == const $CopyWithPlaceholder()
           ? _value.email
           // ignore: cast_nullable_to_non_nullable
-          : email as String?,
+          : email as String,
       phone: phone == const $CopyWithPlaceholder()
           ? _value.phone
           // ignore: cast_nullable_to_non_nullable
-          : phone as String?,
+          : phone as String,
       avatarUrl: avatarUrl == const $CopyWithPlaceholder()
           ? _value.avatarUrl
           // ignore: cast_nullable_to_non_nullable
           : avatarUrl as String?,
-      teacherCode: teacherCode == const $CopyWithPlaceholder()
-          ? _value.teacherCode
+      mainSubjectId: mainSubjectId == const $CopyWithPlaceholder()
+          ? _value.mainSubjectId
           // ignore: cast_nullable_to_non_nullable
-          : teacherCode as String?,
-      mainSubject: mainSubject == const $CopyWithPlaceholder()
-          ? _value.mainSubject
-          // ignore: cast_nullable_to_non_nullable
-          : mainSubject as String?,
-      studentCode: studentCode == const $CopyWithPlaceholder()
-          ? _value.studentCode
-          // ignore: cast_nullable_to_non_nullable
-          : studentCode as String?,
+          : mainSubjectId as String?,
       classId: classId == const $CopyWithPlaceholder()
           ? _value.classId
           // ignore: cast_nullable_to_non_nullable
@@ -303,7 +279,14 @@ CreateUserRequest _$CreateUserRequestFromJson(Map<String, dynamic> json) =>
     $checkedCreate('CreateUserRequest', json, ($checkedConvert) {
       $checkKeys(
         json,
-        requiredKeys: const ['username', 'password', 'fullName', 'role'],
+        requiredKeys: const [
+          'username',
+          'password',
+          'fullName',
+          'role',
+          'email',
+          'phone',
+        ],
       );
       final val = CreateUserRequest(
         id: $checkedConvert('id', (v) => v as String?),
@@ -314,12 +297,10 @@ CreateUserRequest _$CreateUserRequestFromJson(Map<String, dynamic> json) =>
           'role',
           (v) => $enumDecode(_$CreateUserRequestRoleEnumEnumMap, v),
         ),
-        email: $checkedConvert('email', (v) => v as String?),
-        phone: $checkedConvert('phone', (v) => v as String?),
+        email: $checkedConvert('email', (v) => v as String),
+        phone: $checkedConvert('phone', (v) => v as String),
         avatarUrl: $checkedConvert('avatarUrl', (v) => v as String?),
-        teacherCode: $checkedConvert('teacherCode', (v) => v as String?),
-        mainSubject: $checkedConvert('mainSubject', (v) => v as String?),
-        studentCode: $checkedConvert('studentCode', (v) => v as String?),
+        mainSubjectId: $checkedConvert('mainSubjectId', (v) => v as String?),
         classId: $checkedConvert('classId', (v) => v as String?),
         className: $checkedConvert('className', (v) => v as String?),
         dateOfBirth: $checkedConvert(
@@ -348,12 +329,10 @@ Map<String, dynamic> _$CreateUserRequestToJson(CreateUserRequest instance) =>
       'password': instance.password,
       'fullName': instance.fullName,
       'role': _$CreateUserRequestRoleEnumEnumMap[instance.role]!,
-      'email': ?instance.email,
-      'phone': ?instance.phone,
+      'email': instance.email,
+      'phone': instance.phone,
       'avatarUrl': ?instance.avatarUrl,
-      'teacherCode': ?instance.teacherCode,
-      'mainSubject': ?instance.mainSubject,
-      'studentCode': ?instance.studentCode,
+      'mainSubjectId': ?instance.mainSubjectId,
       'classId': ?instance.classId,
       'className': ?instance.className,
       'dateOfBirth': ?instance.dateOfBirth?.toIso8601String(),
@@ -369,8 +348,6 @@ Map<String, dynamic> _$CreateUserRequestToJson(CreateUserRequest instance) =>
 
 const _$CreateUserRequestRoleEnumEnumMap = {
   CreateUserRequestRoleEnum.ADMIN: 'ADMIN',
-  CreateUserRequestRoleEnum.ACADEMIC_STAFF: 'ACADEMIC_STAFF',
-  CreateUserRequestRoleEnum.ACCOUNTANT: 'ACCOUNTANT',
   CreateUserRequestRoleEnum.TEACHER: 'TEACHER',
   CreateUserRequestRoleEnum.STUDENT: 'STUDENT',
   CreateUserRequestRoleEnum.PARENT: 'PARENT',

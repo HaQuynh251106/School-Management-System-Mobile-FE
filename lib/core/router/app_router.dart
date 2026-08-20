@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../auth/mobile_role_access.dart';
 import '../../features/auth/data/models/user_model.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/bloc/auth_event.dart';
@@ -11,9 +12,6 @@ import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/reset_password_page.dart';
 import '../../features/auth/presentation/pages/change_password_page.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
-import '../../features/admin/presentation/pages/admin_home.dart';
-import '../../features/accountant/presentation/pages/accountant_home.dart';
-import '../../features/academic_staff/presentation/pages/academic_staff_home.dart';
 import '../../features/teacher/presentation/pages/teacher_home.dart';
 import '../../features/student/presentation/pages/student_home.dart';
 import '../../features/parent/presentation/pages/parent_home.dart';
@@ -44,15 +42,26 @@ class AppRouter {
         return atLogin ? null : '/login';
       }
       if (authState is AuthAuthenticated) {
+        final home = homeForRole(authState.user);
+        if (home == unsupportedMobileRolePath) {
+          return state.matchedLocation == unsupportedMobileRolePath
+              ? null
+              : unsupportedMobileRolePath;
+        }
         if (authState.user.passwordChangeRequired) {
           return atPasswordChange ? null : '/change-password';
         }
         if (atSplash || atLogin || atPasswordChange) {
-          return homeForRole(authState.user);
+          return home;
+        }
+        if (mobileRoleHomes.values.contains(state.matchedLocation) &&
+            state.matchedLocation != home) {
+          return home;
         }
       }
       return null;
     },
+    errorBuilder: (_, __) => const _UnsupportedRolePage(),
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => const SplashPage()),
       GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
@@ -69,12 +78,6 @@ class AppRouter {
         builder: (_, state) =>
             ResetPasswordPage(initialToken: state.uri.queryParameters['token']),
       ),
-      GoRoute(path: '/admin', builder: (_, __) => const AdminHome()),
-      GoRoute(
-        path: '/academic-staff',
-        builder: (_, __) => const AcademicStaffHome(),
-      ),
-      GoRoute(path: '/accountant', builder: (_, __) => const AccountantHome()),
       GoRoute(path: '/teacher', builder: (_, __) => const TeacherHome()),
       GoRoute(path: '/student', builder: (_, __) => const StudentHome()),
       GoRoute(path: '/parent', builder: (_, __) => const ParentHome()),
@@ -85,24 +88,7 @@ class AppRouter {
     ],
   );
 
-  static String homeForRole(UserModel user) {
-    switch (user.role) {
-      case 'ADMIN':
-        return '/admin';
-      case 'ACADEMIC_STAFF':
-        return '/academic-staff';
-      case 'ACCOUNTANT':
-        return '/accountant';
-      case 'TEACHER':
-        return '/teacher';
-      case 'PARENT':
-        return '/parent';
-      case 'STUDENT':
-        return '/student';
-      default:
-        return '/unsupported-role';
-    }
-  }
+  static String homeForRole(UserModel user) => homePathForMobileRole(user.role);
 
   void dispose() => config.dispose();
 }
@@ -112,7 +98,7 @@ class _UnsupportedRolePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Không có quyền truy cập')),
+    appBar: AppBar(title: const Text('Sử dụng phiên bản Web')),
     body: SafeArea(
       child: Center(
         child: Padding(
@@ -120,10 +106,10 @@ class _UnsupportedRolePage extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.lock_outline_rounded, size: 48),
+              const Icon(Icons.computer_rounded, size: 48),
               const SizedBox(height: 16),
               const Text(
-                'Tài khoản này chưa được cấp vai trò sử dụng ứng dụng.',
+                unsupportedMobileRoleMessage,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),

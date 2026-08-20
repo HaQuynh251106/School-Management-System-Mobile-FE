@@ -41,8 +41,7 @@ class _TeacherProgressPageState extends State<TeacherProgressPage> {
   @override
   void initState() {
     super.initState();
-    _progressEvents = (sl<RealtimeService>()..connect())
-        .events
+    _progressEvents = (sl<RealtimeService>()..connect()).events
         .where((event) => event.type == 'TEACHING_PROGRESS_UPDATED')
         .listen((_) => _reloadHistory());
     _bootstrap();
@@ -89,11 +88,11 @@ class _TeacherProgressPageState extends State<TeacherProgressPage> {
   }
 
   Future<DateTime?> _pickDate(DateTime initial) => showDatePicker(
-        context: context,
-        initialDate: initial,
-        firstDate: initial.subtract(const Duration(days: 180)),
-        lastDate: initial.add(const Duration(days: 365)),
-      );
+    context: context,
+    initialDate: initial,
+    firstDate: initial.subtract(const Duration(days: 180)),
+    lastDate: initial.add(const Duration(days: 365)),
+  );
 
   static const _dayCodeByWeekday = <int, String>{
     DateTime.monday: 'MON',
@@ -127,8 +126,9 @@ class _TeacherProgressPageState extends State<TeacherProgressPage> {
     }
     if (!_dateMatchesSlot) {
       return _show(
-          'Ngày đã chọn không đúng thứ của tiết trong thời khóa biểu. Hãy chọn đúng ngày dạy thực tế.',
-          error: true);
+        'Ngày đã chọn không đúng thứ của tiết trong thời khóa biểu. Hãy chọn đúng ngày dạy thực tế.',
+        error: true,
+      );
     }
     if (_status == 'CANCELLED' && _reason.text.trim().length < 5) {
       return _show('Tiết hủy cần lý do ít nhất 5 ký tự', error: true);
@@ -144,9 +144,11 @@ class _TeacherProgressPageState extends State<TeacherProgressPage> {
         'reason': _status == 'CANCELLED' ? _reason.text.trim() : null,
         'makeupDate': _makeupDate == null ? null : _iso(_makeupDate!),
       });
-      _show(_status == 'COMPLETED'
-          ? 'Đã cập nhật tiến độ thực dạy'
-          : 'Đã gửi ngoại lệ/lịch bù cho Giáo vụ');
+      _show(
+        _status == 'COMPLETED'
+            ? 'Đã cập nhật tiến độ thực dạy'
+            : 'Đã gửi ngoại lệ/lịch bù cho quản trị viên',
+      );
       _topic.clear();
       _reason.clear();
       _makeupDate = null;
@@ -161,188 +163,220 @@ class _TeacherProgressPageState extends State<TeacherProgressPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
+      ..showSnackBar(
+        SnackBar(
           content: Text(text),
-          backgroundColor: error ? AppColors.error : null));
+          backgroundColor: error ? AppColors.error : null,
+        ),
+      );
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          title: const Text('Tiến độ giảng dạy'),
-          backgroundColor: AppColors.teacherAccent,
-        ),
-        body: RefreshIndicator(
-          onRefresh: _bootstrap,
-          child: ListView(padding: const EdgeInsets.all(16), children: [
-            const RolePageIntro(
-              title: 'Cập nhật sau từng buổi dạy',
-              subtitle:
-                  'Ghi đúng nội dung đã hoàn thành. Nếu nghỉ, khai báo lý do và đề xuất ngày bù để nhà trường duyệt.',
-              accent: AppColors.teacherAccent,
-              icon: Icons.history_edu_rounded,
-            ),
-            if (_slots.isEmpty)
-              const Card(
-                  child: Padding(
+    appBar: AppBar(
+      title: const Text('Tiến độ giảng dạy'),
+      backgroundColor: AppColors.teacherAccent,
+    ),
+    body: RefreshIndicator(
+      onRefresh: _bootstrap,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const RolePageIntro(
+            title: 'Cập nhật sau từng buổi dạy',
+            subtitle:
+                'Ghi đúng nội dung đã hoàn thành. Nếu nghỉ, khai báo lý do và đề xuất ngày bù để nhà trường duyệt.',
+            accent: AppColors.teacherAccent,
+            icon: Icons.history_edu_rounded,
+          ),
+          if (_slots.isEmpty)
+            const Card(
+              child: Padding(
                 padding: EdgeInsets.all(20),
                 child: Text('Chưa có tiết dạy được phân công.'),
-              ))
-            else ...[
-              DropdownButtonFormField<String>(
-                initialValue: _slotId,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Tiết trong TKB'),
-                items: _slots
-                    .map((slot) => DropdownMenuItem(
-                          value: '${slot['id']}',
-                          child: Text(
-                              '${slot['classCode'] ?? 'Lớp học'} · '
-                              '${slot['subjectName']} · ${slot['dayOfWeek']} tiết ${slot['periodNo']}',
-                              overflow: TextOverflow.ellipsis),
-                        ))
+              ),
+            )
+          else ...[
+            DropdownButtonFormField<String>(
+              initialValue: _slotId,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Tiết trong TKB'),
+              items: _slots
+                  .map(
+                    (slot) => DropdownMenuItem(
+                      value: '${slot['id']}',
+                      child: Text(
+                        '${slot['classCode'] ?? 'Lớp học'} · '
+                        '${slot['subjectName']} · ${slot['dayOfWeek']} tiết ${slot['periodNo']}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (v) {
+                setState(() {
+                  _slotId = v;
+                  if (_slot != null) _selectSlotDate(_slot!);
+                });
+                _reloadHistory();
+              },
+            ),
+            const SizedBox(height: 10),
+            InkWell(
+              onTap: () async {
+                final value = await _pickDate(_date);
+                if (value != null) {
+                  setState(() => _date = value);
+                  if (!_dateMatchesSlot) {
+                    _show(
+                      'Ngày này không đúng thứ của tiết đã chọn trong thời khóa biểu.',
+                      error: true,
+                    );
+                  }
+                }
+              },
+              child: InputDecorator(
+                decoration: const InputDecoration(labelText: 'Ngày dạy'),
+                child: Text(DateFormat('dd/MM/yyyy').format(_date)),
+              ),
+            ),
+            if (!_dateMatchesSlot)
+              const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: Text(
+                  'Chọn đúng ngày xuất hiện của tiết trong thời khóa biểu.',
+                  style: TextStyle(color: AppColors.error, fontSize: 12),
+                ),
+              ),
+            const SizedBox(height: 10),
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(
+                  value: 'COMPLETED',
+                  icon: Icon(Icons.check_circle_outline),
+                  label: Text('Đã dạy'),
+                ),
+                ButtonSegment(
+                  value: 'CANCELLED',
+                  icon: Icon(Icons.event_busy_outlined),
+                  label: Text('Nghỉ/ngoại lệ'),
+                ),
+              ],
+              selected: {_status},
+              onSelectionChanged: (v) => setState(() => _status = v.first),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _topic,
+              minLines: 2,
+              maxLines: 4,
+              decoration: InputDecoration(
+                labelText: _status == 'COMPLETED'
+                    ? 'Nội dung đã dạy'
+                    : 'Nội dung dự kiến của tiết bị hủy',
+                hintText: 'Ví dụ: Chương 2 · Hàm số bậc hai, bài 1',
+              ),
+            ),
+            if (_status == 'COMPLETED') ...[
+              const SizedBox(height: 10),
+              DropdownButtonFormField<int>(
+                initialValue: _periods,
+                decoration: const InputDecoration(
+                  labelText: 'Số tiết hoàn thành',
+                ),
+                items: [1, 2, 3, 4, 5, 6]
+                    .map(
+                      (v) => DropdownMenuItem(value: v, child: Text('$v tiết')),
+                    )
                     .toList(),
-                onChanged: (v) {
-                  setState(() {
-                    _slotId = v;
-                    if (_slot != null) _selectSlotDate(_slot!);
-                  });
-                  _reloadHistory();
-                },
+                onChanged: (v) => setState(() => _periods = v!),
+              ),
+            ] else ...[
+              const SizedBox(height: 10),
+              TextField(
+                controller: _reason,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Lý do nghỉ/ngoại lệ',
+                ),
               ),
               const SizedBox(height: 10),
               InkWell(
                 onTap: () async {
-                  final value = await _pickDate(_date);
-                  if (value != null) {
-                    setState(() => _date = value);
-                    if (!_dateMatchesSlot) {
-                      _show(
-                          'Ngày này không đúng thứ của tiết đã chọn trong thời khóa biểu.',
-                          error: true);
-                    }
-                  }
+                  final value = await _pickDate(
+                    _date.add(const Duration(days: 1)),
+                  );
+                  if (value != null) setState(() => _makeupDate = value);
                 },
                 child: InputDecorator(
-                  decoration: const InputDecoration(labelText: 'Ngày dạy'),
-                  child: Text(DateFormat('dd/MM/yyyy').format(_date)),
-                ),
-              ),
-              if (!_dateMatchesSlot)
-                const Padding(
-                  padding: EdgeInsets.only(top: 6),
+                  decoration: const InputDecoration(
+                    labelText: 'Ngày bù đề xuất (không bắt buộc)',
+                  ),
                   child: Text(
-                    'Chọn đúng ngày xuất hiện của tiết trong thời khóa biểu.',
-                    style: TextStyle(color: AppColors.error, fontSize: 12),
-                  ),
-                ),
-              const SizedBox(height: 10),
-              SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(
-                      value: 'COMPLETED',
-                      icon: Icon(Icons.check_circle_outline),
-                      label: Text('Đã dạy')),
-                  ButtonSegment(
-                      value: 'CANCELLED',
-                      icon: Icon(Icons.event_busy_outlined),
-                      label: Text('Nghỉ/ngoại lệ')),
-                ],
-                selected: {_status},
-                onSelectionChanged: (v) => setState(() => _status = v.first),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _topic,
-                minLines: 2,
-                maxLines: 4,
-                decoration: InputDecoration(
-                  labelText: _status == 'COMPLETED'
-                      ? 'Nội dung đã dạy'
-                      : 'Nội dung dự kiến của tiết bị hủy',
-                  hintText: 'Ví dụ: Chương 2 · Hàm số bậc hai, bài 1',
-                ),
-              ),
-              if (_status == 'COMPLETED') ...[
-                const SizedBox(height: 10),
-                DropdownButtonFormField<int>(
-                  initialValue: _periods,
-                  decoration:
-                      const InputDecoration(labelText: 'Số tiết hoàn thành'),
-                  items: [1, 2, 3, 4, 5, 6]
-                      .map((v) =>
-                          DropdownMenuItem(value: v, child: Text('$v tiết')))
-                      .toList(),
-                  onChanged: (v) => setState(() => _periods = v!),
-                ),
-              ] else ...[
-                const SizedBox(height: 10),
-                TextField(
-                  controller: _reason,
-                  maxLines: 3,
-                  decoration:
-                      const InputDecoration(labelText: 'Lý do nghỉ/ngoại lệ'),
-                ),
-                const SizedBox(height: 10),
-                InkWell(
-                  onTap: () async {
-                    final value =
-                        await _pickDate(_date.add(const Duration(days: 1)));
-                    if (value != null) setState(() => _makeupDate = value);
-                  },
-                  child: InputDecorator(
-                    decoration: const InputDecoration(
-                        labelText: 'Ngày bù đề xuất (không bắt buộc)'),
-                    child: Text(_makeupDate == null
+                    _makeupDate == null
                         ? 'Chạm để chọn'
-                        : DateFormat('dd/MM/yyyy').format(_makeupDate!)),
+                        : DateFormat('dd/MM/yyyy').format(_makeupDate!),
                   ),
                 ),
-              ],
-              const SizedBox(height: 12),
-              FilledButton.icon(
-                onPressed: _loading ? null : _save,
-                icon: const Icon(Icons.save_rounded),
-                label: Text(
-                    _status == 'COMPLETED' ? 'Lưu tiến độ' : 'Gửi ngoại lệ'),
               ),
             ],
-            if (_loading)
-              const Padding(
-                  padding: EdgeInsets.only(top: 12),
-                  child: LinearProgressIndicator()),
-            const Divider(height: 32),
-            Text('Nhật ký học kỳ',
-                style: Theme.of(context).textTheme.titleMedium),
-            if (_history.isEmpty)
-              const Padding(
-                  padding: EdgeInsets.all(20),
-                  child: Text('Chưa có lần cập nhật nào.')),
-            ..._history.map((item) => Card(
-                    child: ListTile(
-                  leading: Icon(
-                      item['status'] == 'COMPLETED'
-                          ? Icons.check_circle
-                          : Icons.event_busy,
-                      color: item['status'] == 'COMPLETED'
-                          ? AppColors.success
-                          : AppColors.warning),
-                  title: Text('${item['classCode']} · ${item['subjectName']}'),
-                  subtitle: Text('${item['lessonDate']} · ${item['topic']}\n'
-                      '${item['status'] == 'COMPLETED' ? '${item['completedPeriods']} tiết' : 'Lịch bù: ${item['makeupDate'] ?? 'chưa đề xuất'} · ${_makeupStatus(item['makeupStatus'])}'}'),
-                  isThreeLine: true,
-                ))),
-          ]),
-        ),
-      );
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: _loading ? null : _save,
+              icon: const Icon(Icons.save_rounded),
+              label: Text(
+                _status == 'COMPLETED' ? 'Lưu tiến độ' : 'Gửi ngoại lệ',
+              ),
+            ),
+          ],
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.only(top: 12),
+              child: LinearProgressIndicator(),
+            ),
+          const Divider(height: 32),
+          Text(
+            'Nhật ký học kỳ',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          if (_history.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(20),
+              child: Text('Chưa có lần cập nhật nào.'),
+            ),
+          ..._history.map(
+            (item) => Card(
+              child: ListTile(
+                leading: Icon(
+                  item['status'] == 'COMPLETED'
+                      ? Icons.check_circle
+                      : Icons.event_busy,
+                  color: item['status'] == 'COMPLETED'
+                      ? AppColors.success
+                      : AppColors.warning,
+                ),
+                title: Text('${item['classCode']} · ${item['subjectName']}'),
+                subtitle: Text(
+                  '${item['lessonDate']} · ${item['topic']}\n'
+                  '${item['status'] == 'COMPLETED' ? '${item['completedPeriods']} tiết' : 'Lịch bù: ${item['makeupDate'] ?? 'chưa đề xuất'} · ${_makeupStatus(item['makeupStatus'])}'}',
+                ),
+                isThreeLine: true,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
-String _iso(DateTime value) => '${value.year.toString().padLeft(4, '0')}-'
+String _iso(DateTime value) =>
+    '${value.year.toString().padLeft(4, '0')}-'
     '${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 
 String _makeupStatus(Object? value) => switch ('$value') {
-      'PROPOSED' => 'Chờ duyệt',
-      'APPROVED' => 'Đã duyệt đề xuất, chờ phát hành lịch',
-      'REJECTED' => 'Đã từ chối',
-      _ => 'Chưa gửi',
-    };
+  'PROPOSED' => 'Chờ duyệt',
+  'APPROVED' => 'Đã duyệt đề xuất, chờ phát hành lịch',
+  'REJECTED' => 'Đã từ chối',
+  _ => 'Chưa gửi',
+};

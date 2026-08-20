@@ -8,13 +8,14 @@ class AttendanceBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (label, color) = switch (status) {
+    final (label, baseColor) = switch (status) {
       'PRESENT' => ('Có mặt', AppColors.present),
       'ABSENT_EXCUSED' => ('Vắng phép', AppColors.absentExcused),
       'ABSENT_UNEXCUSED' => ('Vắng không phép', AppColors.absentUnexcused),
       'LATE' => ('Muộn', AppColors.late),
       _ => (status, Theme.of(context).colorScheme.onSurfaceVariant),
     };
+    final color = AppColors.adaptiveSemantic(context, baseColor);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(

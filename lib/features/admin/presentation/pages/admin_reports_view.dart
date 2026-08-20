@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_error_message.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../core/theme/app_colors.dart';
 
@@ -123,7 +124,14 @@ class _AdminReportsViewState extends State<AdminReportsView> {
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Không thể export báo cáo: $error')),
+          SnackBar(
+            content: Text(
+              apiErrorMessage(
+                error,
+                fallback: 'Không thể xuất báo cáo. Vui lòng thử lại.',
+              ),
+            ),
+          ),
         );
       }
     } finally {
@@ -139,12 +147,12 @@ class _AdminReportsViewState extends State<AdminReportsView> {
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            'Báo cáo dữ liệu thật',
+            'Báo cáo tổng hợp',
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 4),
           Text(
-            'Chọn loại báo cáo và bộ lọc trước khi xem hoặc export.',
+            'Chọn loại báo cáo và bộ lọc trước khi xem hoặc xuất tệp.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 14),
@@ -509,7 +517,7 @@ class _ReportError extends StatelessWidget {
     children: [
       const Icon(Icons.error_outline_rounded, size: 38),
       const SizedBox(height: 8),
-      const Text('Không thể tải báo cáo dữ liệu thật'),
+      const Text('Không thể tải báo cáo'),
       TextButton.icon(
         onPressed: onRetry,
         icon: const Icon(Icons.refresh_rounded),

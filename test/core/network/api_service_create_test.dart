@@ -36,11 +36,18 @@ void main() {
       'password': 'Password123@',
       'fullName': 'Học sinh kiểm thử',
       'role': 'STUDENT',
+      'email': 'student.test@example.edu.vn',
+      'phone': '0901234567',
     });
 
     expect(requests.single.method, 'POST');
     expect(requests.single.path, '/users');
     expect(_requestData(requests.single)['role'], 'STUDENT');
+    expect(
+      _requestData(requests.single)['email'],
+      'student.test@example.edu.vn',
+    );
+    expect(_requestData(requests.single)['phone'], '0901234567');
   });
 
   test('loads a parent dashboard with the selected child scope', () async {
@@ -49,6 +56,13 @@ void main() {
     expect(requests.single.method, 'GET');
     expect(requests.single.path, '/dashboard');
     expect(requests.single.queryParameters['childId'], 'u-student-1');
+  });
+
+  test('loads exam results for the parent linked child', () async {
+    await api.childExamResults('u-student-1');
+
+    expect(requests.single.method, 'GET');
+    expect(requests.single.path, '/students/u-student-1/grades');
   });
 
   test(
@@ -102,32 +116,17 @@ void main() {
         fileName: 'bai-nop.txt',
       );
 
-      final form = requests.single.data as FormData;
-      final file = form.files.single.value;
-      expect(requests.single.path, '/files');
-      expect(file.filename, 'bai-nop.txt');
-      expect(file.contentType.toString(), 'text/plain');
+      expect(requests.map((request) => request.path), [
+        '/files/presigned-upload',
+        'https://storage.test/upload/file-1',
+        '/files/file-1/complete',
+      ]);
+      final body = _requestData(requests.first);
+      expect(body['scope'], 'SUBMISSION');
+      expect(body['fileName'], 'bai-nop.txt');
+      expect(body['contentType'], 'text/plain');
     },
   );
-
-  test('closes and reopens assignment through lifecycle endpoints', () async {
-    await api.closeAssignment('assignment-1');
-    await api.reopenAssignment('assignment-1');
-
-    expect(requests[0].path, '/assignments/assignment-1/close');
-    expect(requests[1].path, '/assignments/assignment-1/reopen');
-  });
-
-  test('updates late policy and extends assignment deadline', () async {
-    await api.updateAssignment('assignment-1', {'allowLate': true});
-    final deadline = DateTime.utc(2026, 8, 20, 23, 59);
-    await api.extendAssignment('assignment-1', deadline);
-
-    expect(requests[0].method, 'PUT');
-    expect((requests[0].data as Map)['allowLate'], isTrue);
-    expect(requests[1].path, '/assignments/assignment-1/extend');
-    expect((requests[1].data as Map)['deadline'], deadline.toIso8601String());
-  });
 
   test('records partial cash payment through finance contract', () async {
     await api.recordCashPayment(
@@ -215,7 +214,7 @@ void main() {
     await api.registerClub('club-robotics', studentId: 'u-student-2');
 
     expect(requests.single.method, 'POST');
-    expect(requests.single.path, '/clubs/club-robotics/registrations');
+    expect(requests.single.path, '/clubs/club-robotics/register');
     expect((requests.single.data as Map)['studentId'], 'u-student-2');
   });
 
@@ -346,26 +345,21 @@ void main() {
     expect((requests[1].data as Map)['type'], 'DISCOUNT');
   });
 
-  test('cancels a club registration with a reason', () async {
+  test('cancels a club registration through the Web endpoint', () async {
     await api.cancelClubRegistration('registration-1', reason: 'Trùng lịch');
 
     expect(requests.single.method, 'POST');
     expect(requests.single.path, '/club-registrations/registration-1/cancel');
-    expect((requests.single.data as Map)['reason'], 'Trùng lịch');
+    expect(requests.single.data, isNull);
   });
 
-  test('rewrites sandbox checkout URL to the configured API host', () async {
-    dio.options.baseUrl = 'http://10.0.2.2:4000';
-
-    final result = await api.createSandboxPayment('invoice-1', 'mobile-key-1');
+  test('creates a bank-transfer payment through the Web contract', () async {
+    final result = await api.pay('invoice-1');
 
     expect(requests.single.path, '/payments');
-    expect((requests.single.data as Map)['method'], 'SANDBOX');
-    expect((requests.single.data as Map)['idempotencyKey'], 'mobile-key-1');
-    expect(
-      result['paymentUrl'],
-      'http://10.0.2.2:4000/payments/sandbox/checkout?txnRef=SBX-1',
-    );
+    expect(_requestData(requests.single)['method'], 'MB_BANK_TRANSFER');
+    expect((result['payment'] as Map)['method'], 'MB_BANK_TRANSFER');
+    expect(result['bankTransfer'], isA<Map>());
   });
 }
 
@@ -393,6 +387,19 @@ Object _responseFor(String path) {
       'status': 'ACTIVE',
       'passwordChangeRequired': true,
     };
+  }
+  if (path == '/students/u-student-1/grades') {
+    return <Map<String, dynamic>>[];
+  }
+  if (path == '/files/presigned-upload') {
+    return {
+      'id': 'file-1',
+      'uploadUrl': 'https://storage.test/upload/file-1',
+      'method': 'PUT',
+    };
+  }
+  if (path == '/files/file-1/complete') {
+    return {'id': 'file-1', 'status': 'COMPLETED'};
   }
   final invoice = <String, dynamic>{
     'id': 'invoice-1',
@@ -424,16 +431,23 @@ Object _responseFor(String path) {
   if (path == '/payments') {
     return {
       'payment': {
-        'id': 'payment-sandbox-1',
+        'id': 'payment-bank-1',
         'invoiceId': 'invoice-1',
         'amount': 250000,
-        'method': 'SANDBOX',
+        'method': 'MB_BANK_TRANSFER',
         'status': 'PENDING',
-        'txnRef': 'SBX-1',
+        'txnRef': 'BANK-1',
+        'createdAt': '2026-08-12T00:00:00Z',
       },
       'invoice': invoice,
-      'paymentUrl':
-          'http://127.0.0.1:4000/payments/sandbox/checkout?txnRef=SBX-1',
+      'gatewayStatus': 'PENDING',
+      'bankTransfer': {
+        'qrImageUrl': 'https://qr.example/invoice-1.png',
+        'bankId': 'TCB',
+        'accountNumber': '19000000000000',
+        'accountName': 'TRUONG SSE',
+        'transferContent': 'SSE INV-1',
+      },
     };
   }
   if (path == '/invoices/invoice-1/refund') {

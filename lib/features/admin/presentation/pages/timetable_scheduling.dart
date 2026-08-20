@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_error_message.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import 'teaching_assignments_page.dart';
@@ -66,7 +67,12 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
       }
       await _loadSlots(showLoader: false);
     } catch (error) {
-      _showError('Không thể tải dữ liệu thời khóa biểu: $error');
+      _showError(
+        apiErrorMessage(
+          error,
+          fallback: 'Không thể tải dữ liệu thời khóa biểu. Vui lòng thử lại.',
+        ),
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -86,7 +92,12 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
       _slots = values[0];
       _assignments = values[1];
     } catch (error) {
-      _showError('Không thể tải thời khóa biểu: $error');
+      _showError(
+        apiErrorMessage(
+          error,
+          fallback: 'Không thể tải thời khóa biểu. Vui lòng thử lại.',
+        ),
+      );
     } finally {
       if (showLoader && mounted) setState(() => _loading = false);
     }
@@ -249,7 +260,12 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
         ),
       );
     } catch (error) {
-      _showError('Không thể tự xếp thời khóa biểu: $error');
+      _showError(
+        apiErrorMessage(
+          error,
+          fallback: 'Không thể tự xếp thời khóa biểu. Vui lòng thử lại.',
+        ),
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -417,7 +433,12 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
         periodNo: current == null ? period : null,
       );
     } catch (error) {
-      _showError('Không thể kiểm tra lịch giáo viên: $error');
+      _showError(
+        apiErrorMessage(
+          error,
+          fallback: 'Không thể kiểm tra lịch giáo viên. Vui lòng thử lại.',
+        ),
+      );
       return;
     }
     if (!mounted) return;
@@ -662,7 +683,12 @@ class _TimetableSchedulingPageState extends State<TimetableSchedulingPage> {
       await _loadSlots();
     } catch (error) {
       await _loadSlots();
-      _showError('Không thể lưu tiết học: $error');
+      _showError(
+        apiErrorMessage(
+          error,
+          fallback: 'Không thể lưu tiết học. Vui lòng thử lại.',
+        ),
+      );
     }
   }
 

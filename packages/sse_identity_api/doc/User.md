@@ -30,6 +30,7 @@ Name | Type | Description | Notes
 **guardianName** | **String** |  | [optional]
 **guardianPhone** | **String** |  | [optional]
 **teacherCode** | **String** |  | [optional]
+**mainSubjectId** | **String** |  | [optional]
 **mainSubject** | **String** |  | [optional]
 **childrenIds** | **List&lt;String&gt;** |  | [optional]
 **cohortId** | **String** |  | [optional]

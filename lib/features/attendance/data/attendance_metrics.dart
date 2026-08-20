@@ -1,7 +1,4 @@
-const attendanceAbsentStatuses = {
-  'ABSENT_EXCUSED',
-  'ABSENT_UNEXCUSED',
-};
+const attendanceAbsentStatuses = {'ABSENT_EXCUSED', 'ABSENT_UNEXCUSED'};
 
 bool isAbsentAttendanceStatus(Object? status) =>
     attendanceAbsentStatuses.contains('$status');

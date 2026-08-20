@@ -63,8 +63,10 @@ class _UserImportPageState extends State<UserImportPage> {
         }
       });
     } catch (error) {
-      _message('Không thể đọc tệp. Hãy kiểm tra đúng mẫu Excel và thử lại.',
-          error: true);
+      _message(
+        'Không thể đọc tệp. Hãy kiểm tra đúng mẫu Excel và thử lại.',
+        error: true,
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -118,10 +120,12 @@ class _UserImportPageState extends State<UserImportPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: Text(text),
-        backgroundColor: error ? AppColors.error : null,
-      ));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(text),
+          backgroundColor: error ? AppColors.error : null,
+        ),
+      );
   }
 
   @override
@@ -143,23 +147,25 @@ class _UserImportPageState extends State<UserImportPage> {
             accent: AppColors.adminAccent,
             icon: Icons.upload_file_rounded,
           ),
-          Row(children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _loading ? null : _downloadTemplate,
-                icon: const Icon(Icons.download_rounded),
-                label: const Text('Tải tệp mẫu'),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _loading ? null : _downloadTemplate,
+                  icon: const Icon(Icons.download_rounded),
+                  label: const Text('Tải tệp mẫu'),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: _loading ? null : _pickAndPreview,
-                icon: const Icon(Icons.folder_open_rounded),
-                label: const Text('Chọn Excel'),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _loading ? null : _pickAndPreview,
+                  icon: const Icon(Icons.folder_open_rounded),
+                  label: const Text('Chọn Excel'),
+                ),
               ),
-            ),
-          ]),
+            ],
+          ),
           if (_loading) ...[
             const SizedBox(height: 16),
             const LinearProgressIndicator(),
@@ -176,17 +182,23 @@ class _UserImportPageState extends State<UserImportPage> {
           ],
           if (preview != null) ...[
             const SizedBox(height: 12),
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              Chip(label: Text('Tổng ${preview['totalRows'] ?? rows.length}')),
-              Chip(
-                avatar: const Icon(Icons.check_circle, size: 17),
-                label: Text('Hợp lệ ${preview['validRows'] ?? 0}'),
-              ),
-              Chip(
-                avatar: const Icon(Icons.error, size: 17),
-                label: Text('Lỗi $invalid'),
-              ),
-            ]),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                Chip(
+                  label: Text('Tổng ${preview['totalRows'] ?? rows.length}'),
+                ),
+                Chip(
+                  avatar: const Icon(Icons.check_circle, size: 17),
+                  label: Text('Hợp lệ ${preview['validRows'] ?? 0}'),
+                ),
+                Chip(
+                  avatar: const Icon(Icons.error, size: 17),
+                  label: Text('Lỗi $invalid'),
+                ),
+              ],
+            ),
             if (invalid > 0) ...[
               const SizedBox(height: 12),
               SegmentedButton<String>(
@@ -217,9 +229,11 @@ class _UserImportPageState extends State<UserImportPage> {
                     child: Text('${row['row'] ?? '?'}'),
                   ),
                   title: Text('${row['fullName'] ?? row['username'] ?? ''}'),
-                  subtitle: Text(valid
-                      ? '${_importRoleLabel(row['role'])} · ${row['classCode'] ?? 'chưa có lớp'}'
-                      : '${row['error'] ?? 'Dòng chưa hợp lệ'}'),
+                  subtitle: Text(
+                    valid
+                        ? '${_importRoleLabel(row['role'])} · ${row['classCode'] ?? 'chưa có lớp'}'
+                        : '${row['error'] ?? 'Dòng chưa hợp lệ'}',
+                  ),
                   trailing: Icon(
                     valid ? Icons.check_circle : Icons.error,
                     color: valid ? AppColors.success : AppColors.error,
@@ -231,8 +245,8 @@ class _UserImportPageState extends State<UserImportPage> {
             FilledButton.icon(
               onPressed:
                   _loading || (invalid > 0 && _strategy == 'ALL_OR_NOTHING')
-                      ? null
-                      : _commit,
+                  ? null
+                  : _commit,
               icon: const Icon(Icons.cloud_done_rounded),
               label: const Text('Xác nhận ghi dữ liệu'),
             ),
@@ -244,9 +258,9 @@ class _UserImportPageState extends State<UserImportPage> {
 }
 
 String _importRoleLabel(Object? value) => switch ('$value'.toUpperCase()) {
-      'ADMIN' => 'Quản trị viên',
-      'TEACHER' => 'Giáo viên',
-      'STUDENT' => 'Học sinh',
-      'PARENT' => 'Phụ huynh',
-      _ => 'Chưa chọn vai trò',
-    };
+  'ADMIN' => 'Quản trị viên',
+  'TEACHER' => 'Giáo viên',
+  'STUDENT' => 'Học sinh',
+  'PARENT' => 'Phụ huynh',
+  _ => 'Chưa chọn vai trò',
+};

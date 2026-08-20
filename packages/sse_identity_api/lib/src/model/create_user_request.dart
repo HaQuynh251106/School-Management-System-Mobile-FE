@@ -28,17 +28,13 @@ class CreateUserRequest {
 
     required this.role,
 
-    this.email,
+    required this.email,
 
-    this.phone,
+    required this.phone,
 
     this.avatarUrl,
 
-    this.teacherCode,
-
-    this.mainSubject,
-
-    this.studentCode,
+    this.mainSubjectId,
 
     this.classId,
 
@@ -78,23 +74,18 @@ class CreateUserRequest {
   @JsonKey(name: r'role', required: true, includeIfNull: false)
   final CreateUserRequestRoleEnum role;
 
-  @JsonKey(name: r'email', required: false, includeIfNull: false)
-  final String? email;
+  @JsonKey(name: r'email', required: true, includeIfNull: false)
+  final String email;
 
-  @JsonKey(name: r'phone', required: false, includeIfNull: false)
-  final String? phone;
+  @JsonKey(name: r'phone', required: true, includeIfNull: false)
+  final String phone;
 
   @JsonKey(name: r'avatarUrl', required: false, includeIfNull: false)
   final String? avatarUrl;
 
-  @JsonKey(name: r'teacherCode', required: false, includeIfNull: false)
-  final String? teacherCode;
-
-  @JsonKey(name: r'mainSubject', required: false, includeIfNull: false)
-  final String? mainSubject;
-
-  @JsonKey(name: r'studentCode', required: false, includeIfNull: false)
-  final String? studentCode;
+  /// Bat buoc khi role la TEACHER; phai la id mon hoc ton tai trong danh muc /subjects.
+  @JsonKey(name: r'mainSubjectId', required: false, includeIfNull: false)
+  final String? mainSubjectId;
 
   @JsonKey(name: r'classId', required: false, includeIfNull: false)
   final String? classId;
@@ -141,9 +132,7 @@ class CreateUserRequest {
           other.email == email &&
           other.phone == phone &&
           other.avatarUrl == avatarUrl &&
-          other.teacherCode == teacherCode &&
-          other.mainSubject == mainSubject &&
-          other.studentCode == studentCode &&
+          other.mainSubjectId == mainSubjectId &&
           other.classId == classId &&
           other.className == className &&
           other.dateOfBirth == dateOfBirth &&
@@ -158,28 +147,26 @@ class CreateUserRequest {
 
   @override
   int get hashCode =>
-      (id == null ? 0 : id.hashCode) +
+      id.hashCode +
       username.hashCode +
       password.hashCode +
       fullName.hashCode +
       role.hashCode +
-      (email == null ? 0 : email.hashCode) +
-      (phone == null ? 0 : phone.hashCode) +
-      (avatarUrl == null ? 0 : avatarUrl.hashCode) +
-      (teacherCode == null ? 0 : teacherCode.hashCode) +
-      (mainSubject == null ? 0 : mainSubject.hashCode) +
-      (studentCode == null ? 0 : studentCode.hashCode) +
-      (classId == null ? 0 : classId.hashCode) +
-      (className == null ? 0 : className.hashCode) +
-      (dateOfBirth == null ? 0 : dateOfBirth.hashCode) +
-      (gender == null ? 0 : gender.hashCode) +
-      (placeOfBirth == null ? 0 : placeOfBirth.hashCode) +
-      (ethnicity == null ? 0 : ethnicity.hashCode) +
-      (nationality == null ? 0 : nationality.hashCode) +
-      (address == null ? 0 : address.hashCode) +
-      (enrollmentDate == null ? 0 : enrollmentDate.hashCode) +
-      (guardianName == null ? 0 : guardianName.hashCode) +
-      (guardianPhone == null ? 0 : guardianPhone.hashCode);
+      email.hashCode +
+      phone.hashCode +
+      avatarUrl.hashCode +
+      mainSubjectId.hashCode +
+      classId.hashCode +
+      className.hashCode +
+      dateOfBirth.hashCode +
+      gender.hashCode +
+      placeOfBirth.hashCode +
+      ethnicity.hashCode +
+      nationality.hashCode +
+      address.hashCode +
+      enrollmentDate.hashCode +
+      guardianName.hashCode +
+      guardianPhone.hashCode;
 
   factory CreateUserRequest.fromJson(Map<String, dynamic> json) =>
       _$CreateUserRequestFromJson(json);
@@ -195,10 +182,6 @@ class CreateUserRequest {
 enum CreateUserRequestRoleEnum {
   @JsonValue(r'ADMIN')
   ADMIN(r'ADMIN'),
-  @JsonValue(r'ACADEMIC_STAFF')
-  ACADEMIC_STAFF(r'ACADEMIC_STAFF'),
-  @JsonValue(r'ACCOUNTANT')
-  ACCOUNTANT(r'ACCOUNTANT'),
   @JsonValue(r'TEACHER')
   TEACHER(r'TEACHER'),
   @JsonValue(r'STUDENT')

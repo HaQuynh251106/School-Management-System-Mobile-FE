@@ -13,32 +13,33 @@ import 'package:sse_mobile/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:sse_mobile/features/auth/presentation/bloc/auth_event.dart';
 
 const _adminPassword = String.fromEnvironment('E2E_ADMIN_PASSWORD');
-const _accountantPassword = String.fromEnvironment('E2E_ACCOUNTANT_PASSWORD');
 const _parentPassword = String.fromEnvironment('E2E_PARENT_PASSWORD');
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
-    'F17 UI Parent creates VietQR and Accountant reconciles it',
+    'F17 UI Parent creates VietQR and Web Admin API reconciles it',
     (tester) async {
       expect(
-        [_adminPassword, _accountantPassword, _parentPassword]
-            .every((value) => value.isNotEmpty),
+        [_adminPassword, _parentPassword].every((value) => value.isNotEmpty),
         isTrue,
-        reason: 'Thiếu biến E2E_ADMIN/ACCOUNTANT/PARENT_PASSWORD',
+        reason: 'Thiếu biến E2E_ADMIN_PASSWORD hoặc E2E_PARENT_PASSWORD',
       );
 
-      final dio = Dio(BaseOptions(
-        baseUrl: Env.baseUrl,
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 15),
-      ));
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: Env.baseUrl,
+          connectTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 15),
+        ),
+      );
       final adminToken = await _loginApi(dio, 'admin', _adminPassword);
-      final parentToken =
-          await _loginApi(dio, 'ph.nguyenvanhung', _parentPassword);
-      final accountantToken =
-          await _loginApi(dio, 'ketoan', _accountantPassword);
+      final parentToken = await _loginApi(
+        dio,
+        'ph.nguyenvanhung',
+        _parentPassword,
+      );
       final suffix = DateTime.now().millisecondsSinceEpoch;
       final fixture = await _createInvoice(dio, adminToken, suffix);
 
@@ -76,10 +77,9 @@ void main() {
         matching: find.byType(Card),
       );
       expect(invoiceCard, findsOneWidget);
-      await tester.tap(find.descendant(
-        of: invoiceCard,
-        matching: find.text('Tạo VietQR'),
-      ));
+      await tester.tap(
+        find.descendant(of: invoiceCard, matching: find.text('Tạo VietQR')),
+      );
 
       await _waitFor(tester, find.text(fixture.invoiceCode));
       final createQrButton = find.textContaining('Tạo mã VietQR');
@@ -97,41 +97,17 @@ void main() {
 
       final pending = await dio.get<List<dynamic>>(
         '/payments/vietqr/pending',
-        options: _auth(accountantToken),
+        options: _auth(adminToken),
       );
       final pendingItem = pending.data!.cast<Map>().firstWhere(
-            (item) => (item['invoice'] as Map)['id'] == fixture.invoiceId,
-          );
+        (item) => (item['invoice'] as Map)['id'] == fixture.invoiceId,
+      );
       final paymentId = (pendingItem['payment'] as Map)['id'].toString();
-      final transferContent = pendingItem['transferContent'].toString();
-
-      authBloc.add(const AuthLogoutRequested());
-      await _waitFor(tester, find.text('Đăng nhập'));
-      await _loginUi(
-        tester,
-        username: 'ketoan',
-        password: _accountantPassword,
-        expectedText: 'Trung tâm Kế toán',
+      await dio.post<Map<String, dynamic>>(
+        '/payments/$paymentId/confirm-vietqr',
+        data: {'bankTransactionRef': 'F17UI$suffix'},
+        options: _auth(adminToken),
       );
-      await tester.tap(find.text('Đối soát').last);
-      await _waitFor(tester, find.text('Đối soát VietQR'));
-      final transferFinder = find.text('Nội dung: $transferContent');
-      await _waitFor(tester, transferFinder);
-      final reconciliationCard = find.ancestor(
-        of: transferFinder,
-        matching: find.byType(Card),
-      );
-      await tester.tap(find.descendant(
-        of: reconciliationCard,
-        matching: find.text('Xác nhận'),
-      ));
-      await _waitFor(tester, find.text('Xác nhận giao dịch VietQR'));
-      await tester.enterText(
-        find.byType(TextField).last,
-        'F17UI$suffix',
-      );
-      await tester.tap(find.text('Xác nhận đã nhận'));
-      await _waitUntilAbsent(tester, transferFinder);
 
       final detail = await dio.get<Map<String, dynamic>>(
         '/invoices/${fixture.invoiceId}',
@@ -143,12 +119,12 @@ void main() {
 
       final pendingAfter = await dio.get<List<dynamic>>(
         '/payments/vietqr/pending',
-        options: _auth(accountantToken),
+        options: _auth(adminToken),
       );
       expect(
         pendingAfter.data!.cast<Map>().any(
-              (item) => (item['payment'] as Map)['id'] == paymentId,
-            ),
+          (item) => (item['payment'] as Map)['id'] == paymentId,
+        ),
         isFalse,
       );
       expect(tester.takeException(), isNull);
@@ -180,16 +156,16 @@ Future<_InvoiceFixture> _createInvoice(
     options: _auth(adminToken),
   );
   final activeYear = years.data!.cast<Map>().firstWhere(
-        (year) => year['status'] == 'ACTIVE',
-        orElse: () => years.data!.cast<Map>().first,
-      );
+    (year) => year['status'] == 'ACTIVE',
+    orElse: () => years.data!.cast<Map>().first,
+  );
   final classes = await dio.get<List<dynamic>>(
     '/classes',
     options: _auth(adminToken),
   );
   final targetClass = classes.data!.cast<Map>().firstWhere(
-        (item) => item['code'] == '10A1',
-      );
+    (item) => item['code'] == '10A1',
+  );
   final period = await dio.post<Map<String, dynamic>>(
     '/fee-periods',
     data: {
@@ -255,19 +231,6 @@ Future<void> _waitFor(
   expect(finder, findsWidgets);
 }
 
-Future<void> _waitUntilAbsent(
-  WidgetTester tester,
-  Finder finder, {
-  Duration timeout = const Duration(seconds: 10),
-}) async {
-  final attempts = timeout.inMilliseconds ~/ 250;
-  for (var attempt = 0; attempt < attempts; attempt++) {
-    await tester.pump(const Duration(milliseconds: 250));
-    if (finder.evaluate().isEmpty) return;
-  }
-  expect(finder, findsNothing);
-}
-
 Future<String> _loginApi(Dio dio, String username, String password) async {
   final response = await dio.post<Map<String, dynamic>>(
     '/auth/login',
@@ -276,6 +239,5 @@ Future<String> _loginApi(Dio dio, String username, String password) async {
   return response.data!['accessToken'].toString();
 }
 
-Options _auth(String token) => Options(
-      headers: {'Authorization': 'Bearer $token'},
-    );
+Options _auth(String token) =>
+    Options(headers: {'Authorization': 'Bearer $token'});

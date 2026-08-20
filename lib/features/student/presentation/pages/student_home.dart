@@ -1,17 +1,24 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_error_message.dart';
 import '../../../../core/network/api_service.dart';
+import '../../../../core/network/domain_realtime.dart';
+import '../../../../core/network/realtime_service.dart';
+import '../../../../shared/navigation/role_shortcut_navigation.dart';
+import '../../../../shared/widgets/accent_tab_bar.dart';
+import '../../../../shared/utils/vi_date_format.dart';
 import '../../../../shared/widgets/attendance_badge.dart';
 import '../../../../shared/widgets/chat_pages.dart';
 import '../../../../shared/widgets/club_registration_page.dart';
 import '../../../../shared/widgets/notification_center.dart';
 import '../../../../shared/widgets/section_header.dart';
 import '../../../../shared/widgets/adaptive_role_scaffold.dart';
-import '../../../../shared/widgets/mobile_workspace_page.dart';
 import '../../../../shared/widgets/role_page_intro.dart';
 import '../../../../shared/widgets/school_day_status.dart';
 import '../../../../shared/widgets/theme_mode_tile.dart';
@@ -20,6 +27,7 @@ import '../../../../shared/widgets/yearly_summary_page.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_event.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
+import '../../../grades/data/grade_record.dart';
 import 'assignment_detail.dart';
 import 'attendance_record_detail.dart';
 import 'exam_results_page.dart';
@@ -33,21 +41,77 @@ class StudentHome extends StatefulWidget {
   State<StudentHome> createState() => _StudentHomeState();
 }
 
-class _StudentHomeState extends State<StudentHome> {
+class _StudentHomeState extends State<StudentHome> with WidgetsBindingObserver {
   int _tab = 0;
+  int _dataRevision = 0;
+  late final DomainRealtimeSubscription _domainEvents;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _domainEvents = DomainRealtimeSubscription.listen(
+      realtime: sl<RealtimeService>(),
+      domains: const {
+        MobileDataDomain.timetable,
+        MobileDataDomain.attendance,
+        MobileDataDomain.grades,
+        MobileDataDomain.assignments,
+        MobileDataDomain.exams,
+        MobileDataDomain.notifications,
+        MobileDataDomain.educationPlan,
+        MobileDataDomain.yearResult,
+        MobileDataDomain.clubs,
+      },
+      onInvalidate: _invalidateData,
+    );
+  }
+
+  void _invalidateData() {
+    if (mounted) setState(() => _dataRevision++);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _invalidateData();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    unawaited(_domainEvents.dispose());
+    super.dispose();
+  }
+
+  void _selectTab(int index) => setState(() => _tab = index);
 
   @override
   Widget build(BuildContext context) {
     return AdaptiveRoleScaffold(
       index: _tab,
-      onSelected: (i) => setState(() => _tab = i),
+      onSelected: _selectTab,
       accent: AppColors.studentAccent,
-      pages: const [
-        _TimetableTab(),
-        _AssignmentsTab(),
-        _GradesTab(),
-        _AttendanceTab(),
-        _ProfileTab(),
+      pages: [
+        KeyedSubtree(
+          key: ValueKey('student-timetable-$_dataRevision'),
+          child: _TimetableTab(onNavigate: _selectTab),
+        ),
+        KeyedSubtree(
+          key: ValueKey('student-assignments-$_dataRevision'),
+          child: const _AssignmentsTab(),
+        ),
+        KeyedSubtree(
+          key: ValueKey('student-grades-$_dataRevision'),
+          child: const _GradesTab(),
+        ),
+        KeyedSubtree(
+          key: ValueKey('student-attendance-$_dataRevision'),
+          child: const _AttendanceTab(),
+        ),
+        KeyedSubtree(
+          key: ValueKey('student-profile-$_dataRevision'),
+          child: _ProfileTab(onNavigate: _selectTab),
+        ),
       ],
       destinations: const [
         RoleDestination(
@@ -91,7 +155,9 @@ class _TSlot {
 }
 
 class _TimetableTab extends StatefulWidget {
-  const _TimetableTab();
+  const _TimetableTab({required this.onNavigate});
+
+  final ValueChanged<int> onNavigate;
 
   @override
   State<_TimetableTab> createState() => _TimetableTabState();
@@ -147,11 +213,9 @@ class _TimetableTabState extends State<_TimetableTab>
         title: const Text('Thời khóa biểu'),
         backgroundColor: AppColors.studentAccent,
         actions: const [_NotiAction()],
-        bottom: TabBar(
+        bottom: AccentTabBar(
+          accent: AppColors.studentAccent,
           controller: _ctrl,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white60,
-          indicatorColor: Colors.white,
           tabs: _days.map((d) => Tab(text: d)).toList(),
         ),
       ),
@@ -163,7 +227,12 @@ class _TimetableTabState extends State<_TimetableTab>
           }
           if (snap.hasError || snap.data == null) {
             return Center(
-              child: Text('Không thể tải thời khóa biểu: ${snap.error}'),
+              child: Text(
+                apiErrorMessage(
+                  snap.error,
+                  fallback: 'Không thể tải thời khóa biểu.',
+                ),
+              ),
             );
           }
           final data = snap.data!;
@@ -193,13 +262,11 @@ class _TimetableTabState extends State<_TimetableTab>
                     UpcomingExamBanner(
                       exams: exams,
                       accent: AppColors.studentAccent,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const MobileWorkspacePage(
-                            role: 'STUDENT',
-                            accent: AppColors.studentAccent,
-                          ),
-                        ),
+                      onTap: () => openRoleWorkspace(
+                        context: context,
+                        role: 'STUDENT',
+                        accent: AppColors.studentAccent,
+                        onNavigate: widget.onNavigate,
                       ),
                     ),
                     if (exams.isNotEmpty) const SizedBox(height: 12),
@@ -220,13 +287,11 @@ class _TimetableTabState extends State<_TimetableTab>
                         UpcomingExamBanner(
                           exams: exams,
                           accent: AppColors.studentAccent,
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const MobileWorkspacePage(
-                                role: 'STUDENT',
-                                accent: AppColors.studentAccent,
-                              ),
-                            ),
+                          onTap: () => openRoleWorkspace(
+                            context: context,
+                            role: 'STUDENT',
+                            accent: AppColors.studentAccent,
+                            onNavigate: widget.onNavigate,
                           ),
                         ),
                         if (exams.isNotEmpty) const SizedBox(height: 12),
@@ -246,6 +311,11 @@ class _TimetableTabState extends State<_TimetableTab>
                     );
                   }
                   final s = slots[j - 1];
+                  final colors = Theme.of(context).colorScheme;
+                  final accent = AppColors.adaptiveAccent(
+                    context,
+                    AppColors.studentAccent,
+                  );
                   return Card(
                     margin: const EdgeInsets.only(bottom: 10),
                     child: ListTile(
@@ -264,15 +334,15 @@ class _TimetableTabState extends State<_TimetableTab>
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: AppColors.studentAccent.withValues(alpha: 0.1),
+                          color: accent.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Center(
                           child: Text(
                             '$j',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: AppColors.studentAccent,
+                              color: accent,
                               fontSize: 16,
                             ),
                           ),
@@ -284,14 +354,14 @@ class _TimetableTabState extends State<_TimetableTab>
                       ),
                       subtitle: Text(
                         '${s.period} • ${s.time} • ${s.room}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.textSecondary,
+                          color: colors.onSurfaceVariant,
                         ),
                       ),
-                      trailing: const Icon(
+                      trailing: Icon(
                         Icons.chevron_right_rounded,
-                        color: AppColors.textSecondary,
+                        color: colors.onSurfaceVariant,
                       ),
                     ),
                   );
@@ -320,9 +390,19 @@ class _StudentTimetableData {
 // ===================== GRADES (sub-tabs HK1 / HK2 / Cả năm) =====================
 
 class _SubjectGrade {
-  const _SubjectGrade(this.subject, this.scores);
+  const _SubjectGrade({
+    required this.subjectId,
+    required this.semesterId,
+    required this.subject,
+    required this.scores,
+    required this.average,
+  });
+
+  final String subjectId;
+  final String semesterId;
   final String subject;
   final List<double?> scores; // [Miệng, 15p, GK, CK]
+  final double? average;
 }
 
 class _GradesTab extends StatefulWidget {
@@ -336,30 +416,41 @@ class _GradesTabState extends State<_GradesTab> {
   late final Future<List<List<Map<String, dynamic>>>> _future = Future.wait([
     sl<ApiService>().grades(),
     sl<ApiService>().semesters(),
+    sl<ApiService>().gradeSummaries(),
   ]);
 
   // Order of categories in the score chips: [Miệng, 15p, GK, CK]
   static const _categoryOrder = ['ORAL', '15M', 'MID', 'FINAL'];
 
-  /// Build the per-semester subject list from raw grade maps belonging to one
-  /// semester. Groups by subjectName, then fills the 4-slot score list in the
-  /// order [ORAL, 15M, MID, FINAL] (null when a category is absent).
-  List<_SubjectGrade> _subjectsFor(List<Map<String, dynamic>> grades) {
-    final bySubject = <String, List<double?>>{};
-    final order = <String>[]; // preserve first-seen subject order
-    for (final g in grades) {
-      final subject = (g['subjectName'] ?? '').toString();
-      if (subject.isEmpty) continue;
-      final scores = bySubject.putIfAbsent(subject, () {
-        order.add(subject);
-        return List<double?>.filled(_categoryOrder.length, null);
-      });
-      final idx = _categoryOrder.indexOf((g['category'] ?? '').toString());
-      if (idx < 0) continue;
-      final raw = g['score'];
-      scores[idx] = raw == null ? null : (raw as num).toDouble();
-    }
-    return order.map((s) => _SubjectGrade(s, bySubject[s]!)).toList();
+  /// Joins the real grade rows with the canonical backend summaries and keeps
+  /// the ids required by the detail API. Multiple assessments in one category
+  /// are represented by their category average in the compact card only; the
+  /// detail screen still loads every assessment separately.
+  List<_SubjectGrade> _subjectsFor(
+    List<Map<String, dynamic>> grades,
+    List<Map<String, dynamic>> summaries,
+  ) {
+    return buildSubjectGradeSelections(
+      gradeRows: grades,
+      summaryRows: summaries,
+    ).map((selection) {
+      final scores = _categoryOrder.map((category) {
+        final values = selection.records.values
+            .where((record) => record.category == category)
+            .map((record) => record.score)
+            .toList();
+        return values.isEmpty
+            ? null
+            : values.reduce((left, right) => left + right) / values.length;
+      }).toList();
+      return _SubjectGrade(
+        subjectId: selection.subjectId,
+        semesterId: selection.semesterId,
+        subject: selection.subjectName,
+        scores: scores,
+        average: selection.average,
+      );
+    }).toList();
   }
 
   /// Find the semesterId(s) matching code 'HK1'/'HK2' (fallback to sequence
@@ -384,6 +475,26 @@ class _GradesTabState extends State<_GradesTab> {
         .toList();
   }
 
+  List<Map<String, dynamic>> _summariesForSemester(
+    List<Map<String, dynamic>> summaries,
+    List<Map<String, dynamic>> semesters,
+    String code,
+    int sequence,
+  ) {
+    final ids = semesters
+        .where(
+          (semester) =>
+              '${semester['code'] ?? ''}' == code ||
+              (semester['sequence'] is num &&
+                  (semester['sequence'] as num).toInt() == sequence),
+        )
+        .map((semester) => '${semester['id'] ?? ''}')
+        .toSet();
+    return summaries
+        .where((summary) => ids.contains('${summary['semesterId'] ?? ''}'))
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -404,10 +515,8 @@ class _GradesTabState extends State<_GradesTab> {
             ),
             const _NotiAction(),
           ],
-          bottom: const TabBar(
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white60,
-            indicatorColor: Colors.white,
+          bottom: const AccentTabBar(
+            accent: AppColors.studentAccent,
             tabs: [
               Tab(text: 'HK1'),
               Tab(text: 'HK2'),
@@ -424,7 +533,7 @@ class _GradesTabState extends State<_GradesTab> {
             if (snap.hasError) {
               return Center(
                 child: Text(
-                  'Lỗi: ${snap.error}',
+                  apiErrorMessage(snap.error!, fallback: 'Không thể tải điểm'),
                   style: const TextStyle(color: AppColors.textSecondary),
                 ),
               );
@@ -436,24 +545,23 @@ class _GradesTabState extends State<_GradesTab> {
             final semesters = data.length > 1
                 ? data[1]
                 : const <Map<String, dynamic>>[];
+            final summaries = data.length > 2
+                ? data[2]
+                : const <Map<String, dynamic>>[];
 
             final hk1 = _subjectsFor(
               _gradesForSemester(grades, semesters, 'HK1', 1),
+              _summariesForSemester(summaries, semesters, 'HK1', 1),
             );
             final hk2 = _subjectsFor(
               _gradesForSemester(grades, semesters, 'HK2', 2),
+              _summariesForSemester(summaries, semesters, 'HK2', 2),
             );
 
             return TabBarView(
               children: [
-                _SemesterGrades(
-                  semester: 'Học kỳ 1 — 2025/2026',
-                  subjects: hk1,
-                ),
-                _SemesterGrades(
-                  semester: 'Học kỳ 2 — 2025/2026',
-                  subjects: hk2,
-                ),
+                _SemesterGrades(semester: 'Học kỳ 1', subjects: hk1),
+                _SemesterGrades(semester: 'Học kỳ 2', subjects: hk2),
                 _YearlyGradesView(hk1: hk1, hk2: hk2),
               ],
             );
@@ -470,19 +578,7 @@ class _SemesterGrades extends StatelessWidget {
   final List<_SubjectGrade> subjects;
 
   double? _avgFor(_SubjectGrade sg) {
-    final scores = sg.scores.whereType<double>().toList();
-    if (scores.isEmpty) return null;
-    // weights: M=1, 15p=1, GK=2, CK=3
-    const weights = [1, 1, 2, 3];
-    var sumW = 0;
-    var sum = 0.0;
-    for (var i = 0; i < sg.scores.length; i++) {
-      if (sg.scores[i] != null) {
-        sum += sg.scores[i]! * weights[i];
-        sumW += weights[i];
-      }
-    }
-    return sum / sumW;
+    return sg.average;
   }
 
   @override
@@ -524,11 +620,11 @@ class _SemesterGrades extends StatelessWidget {
               color: AppColors.studentAccent,
             ),
             title: const Text(
-              'Kết quả kỳ thi và phúc khảo',
+              'Kết quả kiểm tra học kỳ',
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
             subtitle: const Text(
-              'Xem điểm thi, trạng thái phúc khảo hoặc gửi yêu cầu mới.',
+              'Xem điểm giữa kỳ và cuối kỳ đã được nhà trường cập nhật.',
             ),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => Navigator.of(context).push(
@@ -561,14 +657,7 @@ class _SemesterGrades extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.studentAccent,
-            AppColors.studentAccent.withValues(alpha: 0.7),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: AppColors.studentAccent,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
@@ -621,8 +710,13 @@ class _SemesterGrades extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) =>
-                SubjectGradeDetail(subject: sg.subject, semester: semester),
+            builder: (_) => SubjectGradeDetail(
+              subject: sg.subject,
+              subjectId: sg.subjectId,
+              semesterId: sg.semesterId,
+              semester: semester,
+              average: sg.average,
+            ),
           ),
         ),
         child: Padding(
@@ -737,27 +831,21 @@ class _YearlyGradesView extends StatelessWidget {
   final List<_SubjectGrade> hk1;
   final List<_SubjectGrade> hk2;
 
-  double _avg(List<double?> scores) {
-    const weights = [1, 1, 2, 3];
-    var sumW = 0;
-    var sum = 0.0;
-    for (var i = 0; i < scores.length; i++) {
-      if (scores[i] != null) {
-        sum += scores[i]! * weights[i];
-        sumW += weights[i];
-      }
-    }
-    return sumW == 0 ? 0 : sum / sumW;
-  }
-
   @override
   Widget build(BuildContext context) {
     // Union of subjects across both semesters, preserving HK1 order first.
-    final hk1Avg = {for (final sg in hk1) sg.subject: _avg(sg.scores)};
-    final hk2Avg = {for (final sg in hk2) sg.subject: _avg(sg.scores)};
+    final hk1Avg = {
+      for (final sg in hk1)
+        if (sg.average != null) sg.subject: sg.average!,
+    };
+    final hk2Avg = {
+      for (final sg in hk2)
+        if (sg.average != null) sg.subject: sg.average!,
+    };
+    final hk1Subjects = hk1.map((subject) => subject.subject).toSet();
     final subjects = <String>[
       ...hk1.map((sg) => sg.subject),
-      ...hk2.map((sg) => sg.subject).where((s) => !hk1Avg.containsKey(s)),
+      ...hk2.map((sg) => sg.subject).where((s) => !hk1Subjects.contains(s)),
     ];
 
     return ListView(
@@ -801,17 +889,13 @@ class _YearlyGradesView extends StatelessWidget {
           )
         else
           for (final subject in subjects)
-            _buildYearlyRow(
-              subject,
-              hk1Avg[subject] ?? 0,
-              hk2Avg[subject] ?? 0,
-            ),
+            _buildYearlyRow(subject, hk1Avg[subject], hk2Avg[subject]),
       ],
     );
   }
 
-  Widget _buildYearlyRow(String subject, double hk1, double hk2) {
-    final year = hk2 == 0 ? hk1 : (hk1 + 2 * hk2) / 3;
+  Widget _buildYearlyRow(String subject, double? hk1, double? hk2) {
+    final year = hk1 != null && hk2 != null ? (hk1 + 2 * hk2) / 3 : null;
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
@@ -836,7 +920,7 @@ class _YearlyGradesView extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    'Năm: ${year.toStringAsFixed(2)}',
+                    'Năm: ${year?.toStringAsFixed(2) ?? '—'}',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
@@ -861,14 +945,14 @@ class _YearlyGradesView extends StatelessWidget {
                         ),
                       ),
                       LinearProgressIndicator(
-                        value: hk1 / 10,
+                        value: hk1 == null ? 0 : hk1 / 10,
                         color: AppColors.studentAccent,
                         backgroundColor: AppColors.divider,
                         minHeight: 5,
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        hk1.toStringAsFixed(1),
+                        hk1?.toStringAsFixed(1) ?? '—',
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -890,14 +974,14 @@ class _YearlyGradesView extends StatelessWidget {
                         ),
                       ),
                       LinearProgressIndicator(
-                        value: hk2 / 10,
+                        value: hk2 == null ? 0 : hk2 / 10,
                         color: AppColors.warning,
                         backgroundColor: AppColors.divider,
                         minHeight: 5,
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        hk2 == 0 ? '—' : hk2.toStringAsFixed(1),
+                        hk2?.toStringAsFixed(1) ?? '—',
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -924,48 +1008,6 @@ class _ARecord {
   final String status;
   final String? note;
 }
-
-const _attWeek = <_ARecord>[
-  _ARecord('Tiếng Anh', '19/05', 'ABSENT_UNEXCUSED', 'Không liên lạc được PH'),
-  _ARecord('Sinh học', '19/05', 'LATE', 'Muộn 10 phút'),
-  _ARecord('Toán', '20/05', 'ABSENT_EXCUSED', 'Có đơn xin nghỉ ốm'),
-  _ARecord('Vật lý', '21/05', 'PRESENT', null),
-  _ARecord('Toán', '21/05', 'PRESENT', null),
-];
-
-const _attMonth = <_ARecord>[
-  _ARecord('Tiếng Anh', '02/05', 'PRESENT', null),
-  _ARecord('Toán', '03/05', 'PRESENT', null),
-  _ARecord('Vật lý', '06/05', 'LATE', 'Muộn 5 phút'),
-  _ARecord('Ngữ văn', '08/05', 'ABSENT_EXCUSED', 'Đám tang ông'),
-  _ARecord('Sinh học', '12/05', 'PRESENT', null),
-  _ARecord('Tiếng Anh', '19/05', 'ABSENT_UNEXCUSED', 'Không liên lạc được PH'),
-  _ARecord('Sinh học', '19/05', 'LATE', 'Muộn 10 phút'),
-  _ARecord('Toán', '20/05', 'ABSENT_EXCUSED', 'Có đơn xin nghỉ ốm'),
-];
-
-const _attSemester = <_ARecord>[
-  _ARecord('Toán', '15/09', 'PRESENT', null),
-  _ARecord('Vật lý', '22/09', 'LATE', 'Muộn 3 phút'),
-  _ARecord(
-    'Tiếng Anh',
-    '10/10',
-    'ABSENT_EXCUSED',
-    'Tham gia thi học sinh giỏi',
-  ),
-  _ARecord('Sinh học', '25/10', 'ABSENT_UNEXCUSED', 'Trốn tiết'),
-  _ARecord('Ngữ văn', '08/11', 'PRESENT', null),
-  _ARecord('Toán', '12/11', 'PRESENT', null),
-  _ARecord('Vật lý', '20/11', 'PRESENT', null),
-  _ARecord('Tiếng Anh', '02/05', 'PRESENT', null),
-  _ARecord('Toán', '03/05', 'PRESENT', null),
-  _ARecord('Vật lý', '06/05', 'LATE', 'Muộn 5 phút'),
-  _ARecord('Ngữ văn', '08/05', 'ABSENT_EXCUSED', 'Đám tang ông'),
-  _ARecord('Sinh học', '12/05', 'PRESENT', null),
-  _ARecord('Tiếng Anh', '19/05', 'ABSENT_UNEXCUSED', 'Không liên lạc được PH'),
-  _ARecord('Sinh học', '19/05', 'LATE', 'Muộn 10 phút'),
-  _ARecord('Toán', '20/05', 'ABSENT_EXCUSED', 'Có đơn xin nghỉ ốm'),
-];
 
 class _AttendanceTab extends StatefulWidget {
   const _AttendanceTab();
@@ -994,7 +1036,10 @@ class _AttendanceTabState extends State<_AttendanceTab> {
           if (snap.hasError) {
             return Center(
               child: Text(
-                'Lỗi: ${snap.error}',
+                apiErrorMessage(
+                  snap.error!,
+                  fallback: 'Không thể tải lịch sử chuyên cần',
+                ),
                 style: const TextStyle(color: AppColors.textSecondary),
               ),
             );
@@ -1003,7 +1048,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
               .map(
                 (r) => _ARecord(
                   (r['subjectName'] ?? '').toString(),
-                  (r['date'] ?? '').toString(),
+                  formatViDate(r['date']),
                   (r['status'] ?? '').toString(),
                   r['note'] as String?,
                 ),
@@ -1221,11 +1266,17 @@ class _RateBanner extends StatelessWidget {
 // ===================== PROFILE =====================
 
 class _ProfileTab extends StatelessWidget {
-  const _ProfileTab();
+  const _ProfileTab({required this.onNavigate});
+
+  final ValueChanged<int> onNavigate;
 
   @override
   Widget build(BuildContext context) {
     final user = (context.read<AuthBloc>().state as AuthAuthenticated).user;
+    final profileAccent = AppColors.adaptiveAccent(
+      context,
+      AppColors.studentAccent,
+    );
     return Scaffold(
       appBar: AppBar(
         title: const Text('Hồ sơ'),
@@ -1242,15 +1293,13 @@ class _ProfileTab extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 36,
-                    backgroundColor: AppColors.studentAccent.withValues(
-                      alpha: 0.12,
-                    ),
+                    backgroundColor: profileAccent.withValues(alpha: 0.12),
                     child: Text(
                       user.fullName[0],
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.studentAccent,
+                        color: profileAccent,
                       ),
                     ),
                   ),
@@ -1265,8 +1314,8 @@ class _ProfileTab extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     user.studentCode ?? '',
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 13,
                     ),
                   ),
@@ -1277,13 +1326,13 @@ class _ProfileTab extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.studentAccent.withValues(alpha: 0.1),
+                      color: profileAccent.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       'Lớp ${user.className ?? "—"}',
-                      style: const TextStyle(
-                        color: AppColors.studentAccent,
+                      style: TextStyle(
+                        color: profileAccent,
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
                       ),
@@ -1298,9 +1347,9 @@ class _ProfileTab extends StatelessWidget {
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(
+                  leading: Icon(
                     Icons.auto_awesome_rounded,
-                    color: AppColors.studentAccent,
+                    color: profileAccent,
                   ),
                   title: const Text('Trung tâm công việc'),
                   subtitle: const Text(
@@ -1308,20 +1357,18 @@ class _ProfileTab extends StatelessWidget {
                     style: TextStyle(fontSize: 11),
                   ),
                   trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const MobileWorkspacePage(
-                        role: 'STUDENT',
-                        accent: AppColors.studentAccent,
-                      ),
-                    ),
+                  onTap: () => openRoleWorkspace(
+                    context: context,
+                    role: 'STUDENT',
+                    accent: AppColors.studentAccent,
+                    onNavigate: onNavigate,
                   ),
                 ),
                 const Divider(height: 0),
                 ListTile(
-                  leading: const Icon(
+                  leading: Icon(
                     Icons.notifications_outlined,
-                    color: AppColors.studentAccent,
+                    color: profileAccent,
                   ),
                   title: const Text('Thông báo'),
                   trailing: const Icon(Icons.chevron_right_rounded),
@@ -1335,10 +1382,7 @@ class _ProfileTab extends StatelessWidget {
                 ),
                 const Divider(height: 0),
                 ListTile(
-                  leading: const Icon(
-                    Icons.groups_outlined,
-                    color: AppColors.studentAccent,
-                  ),
+                  leading: Icon(Icons.groups_outlined, color: profileAccent),
                   title: const Text('Câu lạc bộ'),
                   subtitle: const Text(
                     'Đăng ký, theo dõi và hủy đăng ký',
@@ -1357,9 +1401,9 @@ class _ProfileTab extends StatelessWidget {
                 const ThemeModeTile(accent: AppColors.studentAccent),
                 const Divider(height: 0),
                 ListTile(
-                  leading: const Icon(
+                  leading: Icon(
                     Icons.chat_bubble_outline_rounded,
-                    color: AppColors.studentAccent,
+                    color: profileAccent,
                   ),
                   title: const Text('Tin nhắn'),
                   subtitle: const Text(
@@ -1564,7 +1608,12 @@ class _AssignmentsTabState extends State<_AssignmentsTab> {
       if (!mounted) return false;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Nộp bài thất bại: $e'),
+          content: Text(
+            apiErrorMessage(
+              e,
+              fallback: 'Không thể nộp bài. Vui lòng thử lại.',
+            ),
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -1598,11 +1647,9 @@ class _AssignmentsTabState extends State<_AssignmentsTab> {
               title: const Text('Bài tập'),
               backgroundColor: AppColors.studentAccent,
               actions: const [_NotiAction()],
-              bottom: TabBar(
+              bottom: AccentTabBar(
+                accent: AppColors.studentAccent,
                 isScrollable: true,
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white60,
-                indicatorColor: Colors.white,
                 tabs: [
                   Tab(text: 'Tất cả (${assignments.length})'),
                   Tab(text: 'Chưa nộp (${pending.length})'),
@@ -1616,7 +1663,10 @@ class _AssignmentsTabState extends State<_AssignmentsTab> {
                 : snap.hasError
                 ? Center(
                     child: Text(
-                      'Lỗi: ${snap.error}',
+                      apiErrorMessage(
+                        snap.error!,
+                        fallback: 'Không thể tải bài tập',
+                      ),
                       style: const TextStyle(color: AppColors.textSecondary),
                     ),
                   )

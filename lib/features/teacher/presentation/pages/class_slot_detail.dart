@@ -30,8 +30,8 @@ class TeacherClassSlotDetail extends StatefulWidget {
 }
 
 class _TeacherClassSlotDetailState extends State<TeacherClassSlotDetail> {
-  late final Future<List<Map<String, dynamic>>> _future =
-      sl<ApiService>().classStudents(widget.className);
+  late final Future<List<Map<String, dynamic>>> _future = sl<ApiService>()
+      .classStudents(widget.className);
 
   String get subject => widget.subject;
   String get period => widget.period;
@@ -52,16 +52,7 @@ class _TeacherClassSlotDetailState extends State<TeacherClassSlotDetail> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.teacherAccent,
-                  Color(0xFF7C3AED),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
+            decoration: const BoxDecoration(color: AppColors.teacherAccent),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -69,7 +60,9 @@ class _TeacherClassSlotDetailState extends State<TeacherClassSlotDetail> {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(6),
@@ -77,41 +70,61 @@ class _TeacherClassSlotDetailState extends State<TeacherClassSlotDetail> {
                       child: Text(
                         className,
                         style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600),
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text(period,
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 12)),
+                    Text(
+                      period,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 Text(
                   subject,
                   style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold),
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    const Icon(Icons.access_time_rounded,
-                        color: Colors.white70, size: 14),
+                    const Icon(
+                      Icons.access_time_rounded,
+                      color: Colors.white70,
+                      size: 14,
+                    ),
                     const SizedBox(width: 4),
-                    Text('$dayLabel • $time',
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 12)),
+                    Text(
+                      '$dayLabel • $time',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
+                    ),
                     const SizedBox(width: 12),
-                    const Icon(Icons.location_on_outlined,
-                        color: Colors.white70, size: 14),
+                    const Icon(
+                      Icons.location_on_outlined,
+                      color: Colors.white70,
+                      size: 14,
+                    ),
                     const SizedBox(width: 4),
-                    Text(room,
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 12)),
+                    Text(
+                      room,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -126,11 +139,13 @@ class _TeacherClassSlotDetailState extends State<TeacherClassSlotDetail> {
                 }
                 if (snap.hasError) {
                   return Center(
-                      child: Text('Không thể tải danh sách học sinh.',
-                          style: TextStyle(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant)));
+                    child: Text(
+                      'Không thể tải danh sách học sinh.',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  );
                 }
                 final students = snap.data ?? [];
                 return Column(
@@ -147,22 +162,27 @@ class _TeacherClassSlotDetailState extends State<TeacherClassSlotDetail> {
                     Expanded(
                       child: students.isEmpty
                           ? Center(
-                              child: Text('Lớp chưa có học sinh',
-                                  style: TextStyle(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant)))
+                              child: Text(
+                                'Lớp chưa có học sinh',
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            )
                           : ListView.separated(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
                               itemCount: students.length,
                               separatorBuilder: (_, __) =>
                                   const Divider(height: 0),
                               itemBuilder: (_, i) {
                                 final s = students[i];
                                 final name = (s['fullName'] ?? '').toString();
-                                final code =
-                                    (s['studentCode'] ?? '').toString();
+                                final code = (s['studentCode'] ?? '')
+                                    .toString();
                                 return ListTile(
                                   leading: CircleAvatar(
                                     radius: 18,
@@ -171,21 +191,28 @@ class _TeacherClassSlotDetailState extends State<TeacherClassSlotDetail> {
                                     child: Text(
                                       '${i + 1}',
                                       style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                          color: AppColors.teacherAccent),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                        color: AppColors.teacherAccent,
+                                      ),
                                     ),
                                   ),
-                                  title: Text(name,
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w500,
-                                          fontSize: 14)),
-                                  subtitle: Text('Mã HS: $code',
-                                      style: TextStyle(
-                                          fontSize: 11,
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onSurfaceVariant)),
+                                  title: Text(
+                                    name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    'Mã HS: $code',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
                                 );
                               },
                             ),

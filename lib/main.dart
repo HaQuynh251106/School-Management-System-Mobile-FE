@@ -10,10 +10,5 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('vi_VN');
   await setupServiceLocator();
-  runApp(
-    BlocProvider(
-      create: (_) => sl<AuthBloc>(),
-      child: const SseApp(),
-    ),
-  );
+  runApp(BlocProvider(create: (_) => sl<AuthBloc>(), child: const SseApp()));
 }

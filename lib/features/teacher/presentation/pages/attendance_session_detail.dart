@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_error_message.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/attendance_badge.dart';
@@ -86,7 +87,12 @@ class _TeacherAttendanceSessionDetailState
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Không thể tải chi tiết: ${snapshot.error}'),
+                  Text(
+                    apiErrorMessage(
+                      snapshot.error,
+                      fallback: 'Không thể tải chi tiết điểm danh.',
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   OutlinedButton(
                     onPressed: _reload,

@@ -51,10 +51,7 @@ class NotificationItem {
 }
 
 class NotificationCenter extends StatefulWidget {
-  const NotificationCenter({
-    super.key,
-    required this.accent,
-  });
+  const NotificationCenter({super.key, required this.accent});
 
   final Color accent;
 
@@ -65,10 +62,19 @@ class NotificationCenter extends StatefulWidget {
     switch (category) {
       case 'ATTENDANCE':
       case 'ATTENDANCE_ALERT':
+      case 'ATTENDANCE_UNLOCK':
+      case 'ATTENDANCE_MISSED':
+      case 'ATTENDANCE_REMINDER':
         return (Icons.event_busy_rounded, AppColors.absentUnexcused);
       case 'GRADE':
       case 'GRADE_PUBLISHED':
         return (Icons.stars_rounded, AppColors.success);
+      case 'EXAM_REVIEW':
+      case 'EXAM_SCHEDULE':
+      case 'EXAM_GRADING_DUTY':
+      case 'EXAM_PROCTOR_DUTY':
+      case 'EXAM_SCORE_ENTRY':
+        return (Icons.quiz_rounded, AppColors.studentAccent);
       case 'HOLIDAY':
         return (Icons.beach_access_rounded, AppColors.teacherAccent);
       case 'EVENT':
@@ -83,17 +89,23 @@ class NotificationCenter extends StatefulWidget {
         return (Icons.assignment_outlined, AppColors.primary);
       case 'FEE':
       case 'INVOICE':
+      case 'INVOICE_REMINDER':
+      case 'FINANCE_CLASS':
+      case 'FINANCE_CLASS_DEBT':
         return (Icons.receipt_long_rounded, AppColors.warning);
       case 'PAYMENT':
         return (Icons.payment_rounded, AppColors.success);
       case 'ANNOUNCEMENT':
         return (Icons.campaign_rounded, AppColors.adminAccent);
       case 'EXTRACURRICULAR':
+      case 'CLUB':
         return (Icons.sports_basketball_rounded, AppColors.teacherAccent);
+      case 'YEAR_END':
+        return (Icons.school_rounded, AppColors.primary);
       default:
         return (
           Icons.notifications_outlined,
-          Theme.of(context).colorScheme.onSurfaceVariant
+          Theme.of(context).colorScheme.onSurfaceVariant,
         );
     }
   }
@@ -104,10 +116,26 @@ class NotificationCenter extends StatefulWidget {
         return 'Điểm danh';
       case 'ATTENDANCE_ALERT':
         return 'Chuyên cần';
+      case 'ATTENDANCE_UNLOCK':
+        return 'Mở khóa điểm danh';
+      case 'ATTENDANCE_MISSED':
+        return 'Chưa điểm danh';
+      case 'ATTENDANCE_REMINDER':
+        return 'Nhắc điểm danh';
       case 'GRADE':
         return 'Điểm số';
       case 'GRADE_PUBLISHED':
         return 'Điểm số';
+      case 'EXAM_REVIEW':
+        return 'Phúc khảo';
+      case 'EXAM_SCHEDULE':
+        return 'Lịch thi';
+      case 'EXAM_GRADING_DUTY':
+        return 'Chấm thi';
+      case 'EXAM_PROCTOR_DUTY':
+        return 'Coi thi';
+      case 'EXAM_SCORE_ENTRY':
+        return 'Điểm thi';
       case 'HOLIDAY':
         return 'Nghỉ lễ';
       case 'EVENT':
@@ -124,10 +152,21 @@ class NotificationCenter extends StatefulWidget {
         return 'Khoản thu';
       case 'INVOICE':
         return 'Hóa đơn';
+      case 'INVOICE_REMINDER':
+        return 'Nhắc học phí';
+      case 'FINANCE_CLASS':
+        return 'Tài chính lớp';
+      case 'FINANCE_CLASS_DEBT':
+        return 'Công nợ lớp';
       case 'PAYMENT':
         return 'Thanh toán';
       case 'ANNOUNCEMENT':
         return 'Thông báo chung';
+      case 'EXTRACURRICULAR':
+      case 'CLUB':
+        return 'Câu lạc bộ';
+      case 'YEAR_END':
+        return 'Tổng kết năm học';
       default:
         return category;
     }
@@ -135,8 +174,11 @@ class NotificationCenter extends StatefulWidget {
 }
 
 class LiveNotificationAction extends StatefulWidget {
-  const LiveNotificationAction(
-      {super.key, required this.accent, this.padding = 4});
+  const LiveNotificationAction({
+    super.key,
+    required this.accent,
+    this.padding = 4,
+  });
   final Color accent;
   final double padding;
 
@@ -166,9 +208,11 @@ class _LiveNotificationActionState extends State<LiveNotificationAction> {
   }
 
   Future<void> _open() async {
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => NotificationCenter(accent: widget.accent),
-    ));
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => NotificationCenter(accent: widget.accent),
+      ),
+    );
     if (mounted) {
       _refresh();
     }
@@ -182,42 +226,52 @@ class _LiveNotificationActionState extends State<LiveNotificationAction> {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: EdgeInsets.only(right: widget.padding),
-        child: FutureBuilder<int>(
-          future: _count,
-          builder: (context, snapshot) {
-            final count = snapshot.data ?? 0;
-            return Stack(children: [
-              IconButton(
-                  icon: const Icon(Icons.notifications_outlined),
-                  onPressed: _open),
-              if (count > 0)
-                Positioned(
-                    right: 8,
-                    top: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 4, vertical: 1),
-                      constraints: const BoxConstraints(minWidth: 14),
-                      decoration: BoxDecoration(
-                          color: AppColors.error,
-                          borderRadius: BorderRadius.circular(8)),
-                      child: Text(count > 99 ? '99+' : '$count',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold)),
-                    )),
-            ]);
-          },
-        ),
-      );
+    padding: EdgeInsets.only(right: widget.padding),
+    child: FutureBuilder<int>(
+      future: _count,
+      builder: (context, snapshot) {
+        final count = snapshot.data ?? 0;
+        return Stack(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.notifications_outlined),
+              onPressed: _open,
+            ),
+            if (count > 0)
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
+                  constraints: const BoxConstraints(minWidth: 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.error,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    count > 99 ? '99+' : '$count',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    ),
+  );
 }
 
 class _NotificationCenterState extends State<NotificationCenter> {
-  late Future<List<Map<String, dynamic>>> _future =
-      sl<ApiService>().notifications();
+  late Future<List<Map<String, dynamic>>> _future = sl<ApiService>()
+      .notifications();
 
   void _refresh() {
     setState(() {
@@ -252,8 +306,7 @@ class _NotificationCenterState extends State<NotificationCenter> {
         .toList();
     if (unreadIds.isEmpty) return;
     try {
-      final api = sl<ApiService>();
-      await Future.wait(unreadIds.map(api.markNotiRead));
+      await sl<ApiService>().markAllNotificationsRead();
       if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(
@@ -321,20 +374,24 @@ class _NotificationCenterState extends State<NotificationCenter> {
             body: loading
                 ? const Center(child: CircularProgressIndicator())
                 : snap.hasError
-                    ? Center(
-                        child: Text('Không thể tải thông báo.',
-                            style: TextStyle(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant)))
-                    : TabBarView(
-                        children: [
-                          _NotiList(
-                              items: items, accent: accent, onTap: _markRead),
-                          _NotiList(
-                              items: unread, accent: accent, onTap: _markRead),
-                        ],
+                ? Center(
+                    child: Text(
+                      'Không thể tải thông báo.',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
+                    ),
+                  )
+                : TabBarView(
+                    children: [
+                      _NotiList(items: items, accent: accent, onTap: _markRead),
+                      _NotiList(
+                        items: unread,
+                        accent: accent,
+                        onTap: _markRead,
+                      ),
+                    ],
+                  ),
           ),
         );
       },
@@ -356,17 +413,23 @@ class _NotiList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (items.isEmpty) {
       return Center(
-          child: Text('Không có thông báo',
-              style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant)));
+        child: Text(
+          'Không có thông báo',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      );
     }
     return ListView.separated(
       itemCount: items.length,
       separatorBuilder: (_, __) => const Divider(height: 0),
       itemBuilder: (_, i) {
         final item = items[i];
-        final (icon, color) =
-            NotificationCenter._styleFor(context, item.category);
+        final (icon, color) = NotificationCenter._styleFor(
+          context,
+          item.category,
+        );
         final isUrgent = item.priority == 'URGENT';
         final isImportant = item.priority == 'IMPORTANT';
         final priorityColor = isUrgent ? AppColors.error : AppColors.warning;
@@ -415,10 +478,12 @@ class _NotiList extends StatelessWidget {
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item.body,
-                    style: const TextStyle(fontSize: 12, height: 1.3),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis),
+                Text(
+                  item.body,
+                  style: const TextStyle(fontSize: 12, height: 1.3),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 const SizedBox(height: 4),
                 Wrap(
                   spacing: 6,
@@ -427,7 +492,9 @@ class _NotiList extends StatelessWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: color.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(4),
@@ -435,15 +502,18 @@ class _NotiList extends StatelessWidget {
                       child: Text(
                         NotificationCenter._categoryLabel(item.category),
                         style: TextStyle(
-                            fontSize: 10,
-                            color: color,
-                            fontWeight: FontWeight.w600),
+                          fontSize: 10,
+                          color: color,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                     if (isUrgent || isImportant)
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: priorityColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
@@ -457,12 +527,13 @@ class _NotiList extends StatelessWidget {
                           ),
                         ),
                       ),
-                    Text(item.time,
-                        style: TextStyle(
-                            fontSize: 11,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant)),
+                    Text(
+                      item.time,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -487,21 +558,21 @@ class _NotificationPreferenceSheet extends StatefulWidget {
 
 class _NotificationPreferenceSheetState
     extends State<_NotificationPreferenceSheet> {
-  late Future<List<Map<String, dynamic>>> _future =
-      sl<ApiService>().notificationPreferences();
+  late Future<List<Map<String, dynamic>>> _future = sl<ApiService>()
+      .notificationPreferences();
 
   String _label(String channel) => switch (channel) {
-        'IN_APP' => 'Trong ứng dụng',
-        'PUSH' => 'Thông báo đẩy',
-        'EMAIL' => 'Email',
-        _ => channel,
-      };
+    'IN_APP' => 'Trong ứng dụng',
+    'PUSH' => 'Thông báo đẩy',
+    'EMAIL' => 'Email',
+    _ => channel,
+  };
 
   IconData _icon(String channel) => switch (channel) {
-        'PUSH' => Icons.phone_android_rounded,
-        'EMAIL' => Icons.email_outlined,
-        _ => Icons.notifications_outlined,
-      };
+    'PUSH' => Icons.phone_android_rounded,
+    'EMAIL' => Icons.email_outlined,
+    _ => Icons.notifications_outlined,
+  };
 
   Future<void> _toggle(String channel, bool enabled) async {
     await sl<ApiService>().updateNotificationPreference(channel, enabled);
@@ -514,44 +585,51 @@ class _NotificationPreferenceSheetState
 
   @override
   Widget build(BuildContext context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Kênh nhận thông báo',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 6),
-              Text('Chọn cách nhà trường có thể gửi thông tin tới bạn.',
-                  style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
-              const SizedBox(height: 12),
-              FutureBuilder<List<Map<String, dynamic>>>(
-                future: _future,
-                builder: (context, snap) {
-                  if (snap.connectionState != ConnectionState.done) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  return Column(
-                    children: (snap.data ?? const [])
-                        .map((preference) => SwitchListTile(
-                              secondary: Icon(
-                                  _icon(preference['channel'].toString()),
-                                  color: widget.accent),
-                              title: Text(
-                                  _label(preference['channel'].toString())),
-                              value: preference['enabled'] == true,
-                              activeThumbColor: widget.accent,
-                              onChanged: (enabled) => _toggle(
-                                  preference['channel'].toString(), enabled),
-                            ))
-                        .toList(),
-                  );
-                },
-              ),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Kênh nhận thông báo',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
-        ),
-      );
+          const SizedBox(height: 6),
+          Text(
+            'Chọn cách nhà trường có thể gửi thông tin tới bạn.',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          FutureBuilder<List<Map<String, dynamic>>>(
+            future: _future,
+            builder: (context, snap) {
+              if (snap.connectionState != ConnectionState.done) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              return Column(
+                children: (snap.data ?? const [])
+                    .map(
+                      (preference) => SwitchListTile(
+                        secondary: Icon(
+                          _icon(preference['channel'].toString()),
+                          color: widget.accent,
+                        ),
+                        title: Text(_label(preference['channel'].toString())),
+                        value: preference['enabled'] == true,
+                        activeThumbColor: widget.accent,
+                        onChanged: (enabled) =>
+                            _toggle(preference['channel'].toString(), enabled),
+                      ),
+                    )
+                    .toList(),
+              );
+            },
+          ),
+        ],
+      ),
+    ),
+  );
 }

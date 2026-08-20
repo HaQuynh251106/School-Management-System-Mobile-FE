@@ -10,6 +10,9 @@ class ThemeModeTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = sl<ThemeController>();
+    final effectiveAccent = Theme.of(context).brightness == Brightness.dark
+        ? Theme.of(context).colorScheme.primary
+        : accent;
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) => ListTile(
@@ -17,9 +20,9 @@ class ThemeModeTile extends StatelessWidget {
           controller.mode == ThemeMode.dark
               ? Icons.dark_mode_rounded
               : controller.mode == ThemeMode.light
-                  ? Icons.light_mode_rounded
-                  : Icons.brightness_auto_rounded,
-          color: accent,
+              ? Icons.light_mode_rounded
+              : Icons.brightness_auto_rounded,
+          color: effectiveAccent,
         ),
         title: const Text('Giao diện'),
         subtitle: Text(switch (controller.mode) {
@@ -36,15 +39,18 @@ class ThemeModeTile extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Chọn giao diện',
-                    style: Theme.of(context).textTheme.titleLarge),
+                Text(
+                  'Chọn giao diện',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
                 const SizedBox(height: 12),
                 for (final mode in ThemeMode.values)
                   ListTile(
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                     selected: controller.mode == mode,
-                    selectedColor: accent,
+                    selectedColor: effectiveAccent,
                     leading: Icon(switch (mode) {
                       ThemeMode.system => Icons.brightness_auto_rounded,
                       ThemeMode.light => Icons.light_mode_rounded,
@@ -56,7 +62,10 @@ class ThemeModeTile extends StatelessWidget {
                       ThemeMode.dark => 'Giao diện tối',
                     }),
                     trailing: controller.mode == mode
-                        ? Icon(Icons.check_circle_rounded, color: accent)
+                        ? Icon(
+                            Icons.check_circle_rounded,
+                            color: effectiveAccent,
+                          )
                         : null,
                     onTap: () async {
                       await controller.setMode(mode);

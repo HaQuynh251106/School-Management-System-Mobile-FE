@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_error_message.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/utils/vi_date_format.dart';
 
 class YearEndManagementPage extends StatefulWidget {
   const YearEndManagementPage({super.key});
@@ -107,7 +109,10 @@ class _YearEndBody extends StatelessWidget {
               (data.year['name'] ?? data.year['code'] ?? 'Năm học').toString(),
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
-            subtitle: Text('Trạng thái: ${preview['status']}'),
+            subtitle: Text(
+              '${formatViDateRange(data.year['startDate'], data.year['endDate'])}\n'
+              'Trạng thái: ${_yearEndStatus(preview['status'])}',
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -237,6 +242,14 @@ class _YearEndBody extends StatelessWidget {
   }
 }
 
+String _yearEndStatus(Object? value) => switch ('$value') {
+  'READY' => 'Sẵn sàng tổng kết',
+  'BLOCKED' => 'Còn điều kiện chưa hoàn tất',
+  'COMPLETED' => 'Đã hoàn tất',
+  'IN_PROGRESS' => 'Đang xử lý',
+  _ => value == null || '$value'.isEmpty ? 'Chưa xác định' : '$value',
+};
+
 class _RolloverDialog extends StatefulWidget {
   const _RolloverDialog({
     required this.api,
@@ -293,9 +306,16 @@ class _RolloverDialogState extends State<_RolloverDialog> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Không thể chuyển năm: $error')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            apiErrorMessage(
+              error,
+              fallback: 'Không thể chuyển sang năm học mới. Vui lòng thử lại.',
+            ),
+          ),
+        ),
+      );
     }
   }
 
@@ -404,7 +424,13 @@ class _ErrorView extends StatelessWidget {
         children: [
           const Icon(Icons.error_outline, size: 40, color: Colors.red),
           const SizedBox(height: 12),
-          Text('Không tải được dữ liệu: $error', textAlign: TextAlign.center),
+          Text(
+            apiErrorMessage(
+              error,
+              fallback: 'Không thể tải dữ liệu tổng kết năm học.',
+            ),
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: retry,

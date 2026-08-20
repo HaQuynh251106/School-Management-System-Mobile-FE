@@ -146,6 +146,29 @@ void main() {
   });
 
   test(
+    'ApiService locks and publishes curriculum plans with optimistic version',
+    () async {
+      final requests = <RequestOptions>[];
+      final dio = Dio(BaseOptions(baseUrl: 'http://test.local'));
+      dio.httpClientAdapter = _AcademicAdapter(requests);
+      final api = ApiService(dio);
+
+      await api.updateCurriculumRequirementStatus('cr-1', 'LOCKED', 3);
+      await api.updateCurriculumRequirementStatus('cr-1', 'PUBLISHED', 4);
+
+      expect(requests.map((request) => request.path), [
+        '/curriculum-requirements/cr-1/status',
+        '/curriculum-requirements/cr-1/status',
+      ]);
+      expect(_body(requests.first), {'status': 'LOCKED', 'expectedVersion': 3});
+      expect(_body(requests.last), {
+        'status': 'PUBLISHED',
+        'expectedVersion': 4,
+      });
+    },
+  );
+
+  test(
     'ApiService uses typed attendance reads, states and bulk marks',
     () async {
       final requests = <RequestOptions>[];
@@ -164,10 +187,6 @@ void main() {
         slotId: 'tt-1',
         date: date,
       );
-      final leaves = await api.approvedLeavesForAttendance(
-        slotId: 'tt-1',
-        date: date,
-      );
       final saved = await api.bulkAttendance(
         slotId: 'tt-1',
         classId: 'c-10a1',
@@ -178,32 +197,19 @@ void main() {
           {'studentId': 'u-student-1', 'status': 'PRESENT', 'note': 'Dung gio'},
         ],
       );
-      final unlocked = await api.unlockLateAttendance(
-        slotId: 'tt-1',
-        date: date,
-        reason: 'Can dieu chinh ban ghi diem danh',
-      );
-
       expect(rows.single['status'], 'PRESENT');
       expect(day['attendanceRequired'], isTrue);
-      expect(session['canMark'], isTrue);
-      expect(leaves.single['status'], 'APPROVED');
+      expect(session['state'], 'COMPLETED');
       expect(saved.single['studentId'], 'u-student-1');
-      expect(unlocked['state'], 'UNLOCKED');
       expect(requests.map((request) => request.path).skip(0), [
         '/attendance',
-        '/attendance/day-status',
-        '/attendance/session-status',
-        '/attendance/approved-leaves',
+        '/school-holidays',
+        '/attendance',
         '/attendance/bulk',
-        '/attendance/unlock',
       ]);
       expect(requests[0].queryParameters['date'], '2026-08-12');
-      expect(requests[1].queryParameters['date'], '2026-08-12');
       expect(requests[2].queryParameters['date'], '2026-08-12');
-      expect(requests[3].queryParameters['date'], '2026-08-12');
-      expect(_body(requests[4])['marks'][0]['status'], 'PRESENT');
-      expect(_body(requests[5])['reason'], 'Can dieu chinh ban ghi diem danh');
+      expect(_body(requests[3])['marks'][0]['status'], 'PRESENT');
     },
   );
 
@@ -257,20 +263,6 @@ void main() {
         },
       ],
     );
-    await api.createGrade(
-      studentId: 'u-student-1',
-      subjectId: 'sj-math',
-      semesterId: 'sm-1',
-      category: '15M',
-      score: 9,
-    );
-    await api.updateGrade(
-      id: 'g-1',
-      score: 9,
-      note: 'Da doi chieu',
-      reason: 'Sua theo bai kiem tra',
-      expectedVersion: 0,
-    );
     final logs = await api.gradeChangeLogs('g-1');
     await api.saveExamCategory(
       code: 'QUIZ',
@@ -291,13 +283,15 @@ void main() {
     expect(context['subjects'][0]['editable'], isTrue);
     expect(grades.single['score'], 8.5);
     expect(logs.single['reason'], 'Sua theo bai kiem tra');
-    expect(_body(requests[3])['entries'][0]['expectedVersion'], 0);
-    expect(_body(requests[5])['reason'], 'Sua theo bai kiem tra');
+    final bulkEditBody = _body(requests[3]);
+    expect(bulkEditBody['assessmentIndex'], 1);
+    expect(bulkEditBody['reason'], 'Nhap diem dot 1');
+    expect(bulkEditBody['entries'][0].containsKey('expectedVersion'), isFalse);
     expect(requests.last.method, 'DELETE');
     expect(requests.last.path, '/exam-categories/ec-quiz');
   });
 
-  test('ApiService uses typed exam agenda, results and reviews', () async {
+  test('ApiService uses the Web exam schedule and published grades', () async {
     final requests = <RequestOptions>[];
     final dio = Dio(BaseOptions(baseUrl: 'http://test.local'));
     dio.httpClientAdapter = _AcademicAdapter(requests);
@@ -305,35 +299,16 @@ void main() {
 
     final periods = await api.examPeriods();
     final agenda = await api.examAgenda(childId: 'u-student-1');
-    final grading = await api.examGradingTasks();
     final results = await api.examResults();
-    final reviews = await api.examReviews(status: 'PENDING');
-    final created = await api.requestExamReview(
-      'ep-1',
-      resultId: 'er-1',
-      reason: 'De nghi kiem tra lai diem bai thi',
-    );
 
     expect(periods.single['period']['code'], 'HK1-2026');
     expect(agenda.single['subjectName'], 'Toan');
-    expect(grading.single['candidates'][0]['studentCode'], 'HS2025001');
     expect(results.single['score'], 8.5);
-    expect(reviews.single['status'], 'PENDING');
-    expect(created['resultId'], 'er-1');
-    expect(requests.map((request) => request.path).skip(requests.length - 6), [
+    expect(requests.map((request) => request.path).skip(requests.length - 3), [
       '/exam-periods',
-      '/me/exam-agenda',
-      '/me/exam-grading',
-      '/me/exam-results',
-      '/me/exam-reviews',
-      '/exam-periods/ep-1/reviews',
+      '/exam-periods/students/u-student-1/schedule',
+      '/grades',
     ]);
-    expect(requests[1].queryParameters['childId'], 'u-student-1');
-    expect(requests[4].queryParameters['status'], 'PENDING');
-    expect(_body(requests[5]), {
-      'resultId': 'er-1',
-      'reason': 'De nghi kiem tra lai diem bai thi',
-    });
   });
 
   test(
@@ -489,6 +464,11 @@ class _AcademicAdapter implements HttpClientAdapter {
         ],
         'warnings': <String>[],
       },
+      ('PUT', '/curriculum-requirements/cr-1/status') => {
+        'id': 'cr-1',
+        'planStatus': _body(options)['status'],
+        'version': (_body(options)['expectedVersion'] as int) + 1,
+      },
       ('POST', '/attendance/bulk') => [_attendanceRecord],
       ('POST', '/attendance/unlock') => _unlockedSession,
       ('POST', '/grades/bulk') => [_grade],
@@ -515,16 +495,28 @@ class _AcademicAdapter implements HttpClientAdapter {
         'conductGrade': 'GOOD',
       },
       (_, '/attendance') => [_attendanceRecord],
-      (_, '/attendance/day-status') => _dayStatus,
-      (_, '/attendance/session-status') => _sessionStatus,
+      (_, '/school-holidays') => <Map<String, dynamic>>[],
       (_, '/attendance/approved-leaves') => [_approvedLeave],
       (_, '/exam-categories') => [_oralCategory],
-      (_, '/me/gradebook-context') => _gradebookContext,
+      (_, '/me/teacher-class-subjects') => [
+        {
+          ..._assignment,
+          'classId': 'c-10a1',
+          'subjectId': 'sj-math',
+          'subjectName': 'Toan',
+          'semesterId': 'sm-1',
+        },
+      ],
       (_, '/grades/g-1/change-logs') => [_gradeLog],
-      (_, '/grades') => [_grade],
+      ('GET', '/grades') when options.queryParameters['category'] == 'ORAL' => [
+        _grade,
+      ],
+      ('GET', '/grades') => [
+        {..._grade, 'category': 'FINAL', 'categoryName': 'Cuoi ky'},
+      ],
       (_, '/exam-periods') => [_examPeriodSummary],
       (_, '/exam-periods/ep-1/schedules') => [_examSchedule],
-      (_, '/me/exam-agenda') => [_examAgenda],
+      (_, '/exam-periods/students/u-student-1/schedule') => [_examAgenda],
       (_, '/me/exam-grading') => [_examGradingTask],
       (_, '/me/exam-results') => [_examResult],
       (_, '/me/exam-reviews') => [_examReview],

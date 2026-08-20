@@ -17,8 +17,9 @@ class ResetPasswordPage extends StatefulWidget {
 
 class _ResetPasswordPageState extends State<ResetPasswordPage> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _tokenController =
-      TextEditingController(text: widget.initialToken ?? '');
+  late final TextEditingController _tokenController = TextEditingController(
+    text: widget.initialToken ?? '',
+  );
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
   bool _busy = false;
@@ -48,15 +49,18 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           child: ListView(
             padding: const EdgeInsets.all(24),
             children: [
-              const Icon(Icons.password_rounded,
-                  size: 58, color: AppColors.primary),
+              const Icon(
+                Icons.password_rounded,
+                size: 58,
+                color: AppColors.primary,
+              ),
               const SizedBox(height: 20),
               Text(
                 'Tạo mật khẩu mới cho tài khoản của bạn',
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 28),
               if (_tokenController.text.trim().isEmpty) ...[
@@ -80,9 +84,11 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                   prefixIcon: const Icon(Icons.lock_outline_rounded),
                   suffixIcon: IconButton(
                     onPressed: () => setState(() => _obscure = !_obscure),
-                    icon: Icon(_obscure
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined),
+                    icon: Icon(
+                      _obscure
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                    ),
                   ),
                 ),
                 validator: (value) {
@@ -142,7 +148,8 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         builder: (dialogContext) => AlertDialog(
           title: const Text('Đặt lại thành công'),
           content: const Text(
-              'Mật khẩu đã được thay đổi. Hãy đăng nhập bằng mật khẩu mới.'),
+            'Mật khẩu đã được thay đổi. Hãy đăng nhập bằng mật khẩu mới.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
@@ -158,16 +165,17 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       final message = data is Map
           ? '${data['message'] ?? data['error'] ?? 'Link không hợp lệ hoặc đã hết hạn.'}'
           : 'Link không hợp lệ hoặc đã hết hạn.';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+      );
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Không thể đặt lại mật khẩu. Vui lòng thử lại.'),
-          behavior: SnackBarBehavior.floating,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Không thể đặt lại mật khẩu. Vui lòng thử lại.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);

@@ -1,7 +1,7 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_error_message.dart';
 import '../../../../core/network/api_service.dart';
 
 class AutoTimetablePage extends StatefulWidget {
@@ -376,10 +376,8 @@ const _dayOptions = {
 };
 
 String _errorMessage(Object? error) {
-  if (error is DioException && error.response?.data is Map) {
-    final data = (error.response!.data as Map).cast<String, dynamic>();
-    return (data['message'] ?? data['error'] ?? 'Không thể tạo phương án')
-        .toString();
-  }
-  return 'Không thể tạo phương án. Vui lòng thử lại.';
+  return apiErrorMessage(
+    error,
+    fallback: 'Không thể tạo phương án. Vui lòng thử lại.',
+  );
 }

@@ -32,20 +32,21 @@ void main() {
       );
 
       expect(dashboard['scope']['role'], 'PARENT');
-      expect(personal['averageScore'], 8.2);
+      expect(personal['grades'], 8.2);
       expect(overview['students'], 2);
       expect(grades.single['band'], '8-10');
       expect(attendance['attendanceRate'], 90.0);
       expect(revenue['outstanding'], 200000);
       expect(requests.map((request) => request.path), [
         '/dashboard',
-        '/me/reports',
+        '/dashboard',
         '/reports/overview',
         '/reports/grade-distribution',
         '/reports/attendance-summary',
         '/reports/revenue',
       ]);
       expect(requests[0].queryParameters['childId'], 'u-student-1');
+      expect(requests[1].queryParameters['childId'], 'u-student-1');
       expect(requests[3].queryParameters, {
         'semesterId': 'sm-1',
         'classId': 'c-10a1',

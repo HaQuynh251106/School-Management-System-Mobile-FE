@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/api_error_message.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../core/theme/app_colors.dart';
 
@@ -43,9 +44,16 @@ class _HomeroomYearEndPageState extends State<HomeroomYearEndPage> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _savingStudent = null);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Không thể cập nhật: $error')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            apiErrorMessage(
+              error,
+              fallback: 'Không thể cập nhật hạnh kiểm. Vui lòng thử lại.',
+            ),
+          ),
+        ),
+      );
     }
   }
 
@@ -66,7 +74,12 @@ class _HomeroomYearEndPageState extends State<HomeroomYearEndPage> {
         }
         if (snapshot.hasError) {
           return Center(
-            child: Text('Không tải được dữ liệu: ${snapshot.error}'),
+            child: Text(
+              apiErrorMessage(
+                snapshot.error,
+                fallback: 'Không thể tải dữ liệu tổng kết lớp.',
+              ),
+            ),
           );
         }
         final data = snapshot.data!;

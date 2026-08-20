@@ -23,20 +23,20 @@ class ParentAttendanceDetail extends StatelessWidget {
   final int? periodNo;
 
   String get _statusLabel => switch (status) {
-        'PRESENT' => 'Có mặt',
-        'ABSENT_EXCUSED' => 'Vắng có phép',
-        'ABSENT_UNEXCUSED' => 'Vắng không phép',
-        'LATE' => 'Muộn',
-        _ => status,
-      };
+    'PRESENT' => 'Có mặt',
+    'ABSENT_EXCUSED' => 'Vắng có phép',
+    'ABSENT_UNEXCUSED' => 'Vắng không phép',
+    'LATE' => 'Muộn',
+    _ => status,
+  };
 
   Color _statusColor(BuildContext context) => switch (status) {
-        'PRESENT' => AppColors.present,
-        'ABSENT_EXCUSED' => AppColors.absentExcused,
-        'ABSENT_UNEXCUSED' => AppColors.absentUnexcused,
-        'LATE' => AppColors.late,
-        _ => Theme.of(context).colorScheme.onSurfaceVariant,
-      };
+    'PRESENT' => AppColors.present,
+    'ABSENT_EXCUSED' => AppColors.absentExcused,
+    'ABSENT_UNEXCUSED' => AppColors.absentUnexcused,
+    'LATE' => AppColors.late,
+    _ => Theme.of(context).colorScheme.onSurfaceVariant,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +54,8 @@ class ParentAttendanceDetail extends StatelessWidget {
               color: _statusColor(context).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                  color: _statusColor(context).withValues(alpha: 0.3)),
+                color: _statusColor(context).withValues(alpha: 0.3),
+              ),
             ),
             child: Column(
               children: [
@@ -69,8 +70,8 @@ class ParentAttendanceDetail extends StatelessWidget {
                     status == 'PRESENT'
                         ? Icons.check_circle_rounded
                         : status == 'LATE'
-                            ? Icons.access_time_filled_rounded
-                            : Icons.cancel_rounded,
+                        ? Icons.access_time_filled_rounded
+                        : Icons.cancel_rounded,
                     color: _statusColor(context),
                     size: 40,
                   ),
@@ -79,14 +80,19 @@ class ParentAttendanceDetail extends StatelessWidget {
                 Text(
                   _statusLabel,
                   style: TextStyle(
-                      color: _statusColor(context),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18),
+                    color: _statusColor(context),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
                 ),
                 const SizedBox(height: 4),
-                Text(childName,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w500, fontSize: 14)),
+                Text(
+                  childName,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                ),
               ],
             ),
           ),
@@ -99,22 +105,30 @@ class ParentAttendanceDetail extends StatelessWidget {
                 _InfoRow(icon: Icons.event_rounded, label: 'Ngày', value: date),
                 const Divider(height: 0),
                 _InfoRow(
-                    icon: Icons.book_rounded, label: 'Môn học', value: subject),
+                  icon: Icons.book_rounded,
+                  label: 'Môn học',
+                  value: subject,
+                ),
                 const Divider(height: 0),
                 _InfoRow(
-                    icon: Icons.access_time_rounded,
-                    label: 'Tiết',
-                    value: periodNo == null ? '—' : 'Tiết $periodNo'),
+                  icon: Icons.access_time_rounded,
+                  label: 'Tiết',
+                  value: periodNo == null ? '—' : 'Tiết $periodNo',
+                ),
                 const Divider(height: 0),
                 ListTile(
-                  leading: Icon(Icons.flag_outlined,
+                  leading: Icon(
+                    Icons.flag_outlined,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    size: 20,
+                  ),
+                  title: Text(
+                    'Trạng thái',
+                    style: TextStyle(
+                      fontSize: 12,
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      size: 20),
-                  title: Text('Trạng thái',
-                      style: TextStyle(
-                          fontSize: 12,
-                          color:
-                              Theme.of(context).colorScheme.onSurfaceVariant)),
+                    ),
+                  ),
                   trailing: AttendanceBadge(status),
                 ),
               ],
@@ -130,12 +144,16 @@ class ParentAttendanceDetail extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.format_quote_rounded,
-                        color: AppColors.parentAccent),
+                    const Icon(
+                      Icons.format_quote_rounded,
+                      color: AppColors.parentAccent,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Text(note!,
-                          style: const TextStyle(fontSize: 14, height: 1.4)),
+                      child: Text(
+                        note!,
+                        style: const TextStyle(fontSize: 14, height: 1.4),
+                      ),
                     ),
                   ],
                 ),
@@ -161,14 +179,22 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icon,
-          color: Theme.of(context).colorScheme.onSurfaceVariant, size: 20),
-      title: Text(label,
-          style: TextStyle(
-              fontSize: 12,
-              color: Theme.of(context).colorScheme.onSurfaceVariant)),
-      subtitle: Text(value,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+      leading: Icon(
+        icon,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+        size: 20,
+      ),
+      title: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
+      subtitle: Text(
+        value,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+      ),
     );
   }
 }
