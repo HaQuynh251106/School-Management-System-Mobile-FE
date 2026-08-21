@@ -23,11 +23,7 @@ void main() {
     final summary = TeacherScopeSummary.fromApi(
       teacherId: 'teacher-1',
       classes: const [
-        {
-          'id': 'class-10a1',
-          'code': '10A1',
-          'homeroomTeacherId': 'teacher-1',
-        },
+        {'id': 'class-10a1', 'code': '10A1', 'homeroomTeacherId': 'teacher-1'},
       ],
       assignments: const [
         {

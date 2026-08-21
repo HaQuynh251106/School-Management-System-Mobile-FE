@@ -14,18 +14,21 @@ void main() {
   };
 
   for (final entry in states.entries) {
-    testWidgets('shows ${entry.key} invoice state in Vietnamese',
-        (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: InvoiceStateIndicator(
-            status: entry.key,
-            remainingAmount: 750000,
-            refundedAmount: 250000,
-            formatAmount: (amount) => '$amount đ',
+    testWidgets('shows ${entry.key} invoice state in Vietnamese', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: InvoiceStateIndicator(
+              status: entry.key,
+              remainingAmount: 750000,
+              refundedAmount: 250000,
+              formatAmount: (amount) => '$amount đ',
+            ),
           ),
         ),
-      ));
+      );
 
       expect(find.text(entry.value), findsOneWidget);
     });

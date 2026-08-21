@@ -17,8 +17,7 @@ class _FakeAuthRepository implements AuthRepository {
   Future<UserModel> login({
     required String username,
     required String password,
-  }) async =>
-      user;
+  }) async => user;
 
   @override
   Future<UserModel?> tryRestoreSession() async => user;
@@ -74,21 +73,25 @@ void main() {
     expect(realtime.restartCalls, 1);
   });
 
-  test('login mở realtime mới và logout đóng stream trước khi xóa phiên',
-      () async {
-    final realtime = _FakeRealtimeService();
-    final repository = _FakeAuthRepository(user);
-    final bloc = AuthBloc(repository: repository, realtime: realtime);
-    addTearDown(bloc.close);
+  test(
+    'login mở realtime mới và logout đóng stream trước khi xóa phiên',
+    () async {
+      final realtime = _FakeRealtimeService();
+      final repository = _FakeAuthRepository(user);
+      final bloc = AuthBloc(repository: repository, realtime: realtime);
+      addTearDown(bloc.close);
 
-    bloc.add(const AuthLoginRequested(username: 'teacher', password: 'secret'));
-    await bloc.stream.firstWhere((state) => state is AuthAuthenticated);
-    expect(realtime.restartCalls, 1);
+      bloc.add(
+        const AuthLoginRequested(username: 'teacher', password: 'secret'),
+      );
+      await bloc.stream.firstWhere((state) => state is AuthAuthenticated);
+      expect(realtime.restartCalls, 1);
 
-    bloc.add(const AuthLogoutRequested());
-    await bloc.stream.firstWhere((state) => state is AuthUnauthenticated);
+      bloc.add(const AuthLogoutRequested());
+      await bloc.stream.firstWhere((state) => state is AuthUnauthenticated);
 
-    expect(realtime.disconnectCalls, 1);
-    expect(repository.logoutCalls, 1);
-  });
+      expect(realtime.disconnectCalls, 1);
+      expect(repository.logoutCalls, 1);
+    },
+  );
 }

@@ -489,7 +489,7 @@ class InvoiceDetailPage extends StatelessWidget {
               icon: Icons.qr_code_rounded,
               name: 'Chuyển khoản ngân hàng',
               subtitle:
-                  'Quét mã bằng ứng dụng ngân hàng và chờ Kế toán đối soát',
+                  'Quét mã bằng ứng dụng ngân hàng và chờ nhà trường đối soát',
               color: AppColors.accountantAccent,
               onTap: () => _processPayment(context),
             ),
@@ -574,7 +574,7 @@ class InvoiceDetailPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 const Text(
-                  'Hóa đơn chỉ được ghi nhận đã thanh toán sau khi Kế toán xác nhận tiền về.',
+                  'Hóa đơn chỉ được ghi nhận đã thanh toán sau khi Admin nhà trường xác nhận tiền về.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 12,
