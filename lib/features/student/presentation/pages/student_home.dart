@@ -177,7 +177,7 @@ class _TimetableTabState extends State<_TimetableTab>
     'Thứ Bảy',
   ];
   late final List<DateTime> _weekDates;
-  late final Future<_StudentTimetableData> _future;
+  late Future<_StudentTimetableData> _future;
 
   @override
   void initState() {
@@ -198,6 +198,10 @@ class _TimetableTabState extends State<_TimetableTab>
       exams: await exams,
       statuses: await statuses,
     );
+  }
+
+  void _retry() {
+    setState(() => _future = _load());
   }
 
   @override
@@ -227,10 +231,25 @@ class _TimetableTabState extends State<_TimetableTab>
           }
           if (snap.hasError || snap.data == null) {
             return Center(
-              child: Text(
-                apiErrorMessage(
-                  snap.error,
-                  fallback: 'Không thể tải thời khóa biểu.',
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      apiErrorMessage(
+                        snap.error,
+                        fallback: 'Không thể tải thời khóa biểu.',
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton.icon(
+                      onPressed: _retry,
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('Thử lại'),
+                    ),
+                  ],
                 ),
               ),
             );

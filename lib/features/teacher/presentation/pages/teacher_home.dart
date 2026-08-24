@@ -178,7 +178,17 @@ class _TimetableTabState extends State<_TimetableTab> {
   static const _days = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
   static const _dayCodes = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
   late final List<DateTime> _weekDates = schoolWeekDates(DateTime.now());
-  late final Future<_TeacherTimetableData> _future = _load();
+  late Future<_TeacherTimetableData> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  void _retry() {
+    setState(() => _future = _load());
+  }
 
   Future<_TeacherTimetableData> _load() async {
     final api = sl<ApiService>();
@@ -215,12 +225,27 @@ class _TimetableTabState extends State<_TimetableTab> {
             }
             if (snap.hasError) {
               return Center(
-                child: Text(
-                  apiErrorMessage(
-                    snap.error,
-                    fallback: 'Không thể tải lịch dạy.',
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        apiErrorMessage(
+                          snap.error,
+                          fallback: 'Không thể tải lịch dạy.',
+                        ),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: AppColors.textSecondary),
+                      ),
+                      const SizedBox(height: 12),
+                      FilledButton.icon(
+                        onPressed: _retry,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Thử lại'),
+                      ),
+                    ],
                   ),
-                  style: const TextStyle(color: AppColors.textSecondary),
                 ),
               );
             }
@@ -250,10 +275,11 @@ class _TimetableTabState extends State<_TimetableTab> {
                   );
                 }
                 if (slots.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Text(
-                      'Không có tiết dạy',
-                      style: TextStyle(color: AppColors.textSecondary),
+                      '${_dayLabels[dayIdx]} không có tiết dạy.\nChọn ngày khác để xem lịch trong tuần.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: AppColors.textSecondary),
                     ),
                   );
                 }
